@@ -4,7 +4,7 @@
    offline fallback to index.html. Versioned cache name.
    ============================================================ */
 
-const VERSION = "1.2.0";
+const VERSION = "1.2.1";
 const CACHE = "hadj-notouch-cache-" + VERSION;
 
 const PRECACHE = [

@@ -47,9 +47,10 @@
         <button type="button" class="btn btn-ghost btn-install" id="install-btn" hidden>
           <span class="btn-ic" aria-hidden="true">↓</span> Install
         </button>
-        <button type="button" class="btn btn-solid" id="run-win-btn">
+        <a class="btn btn-solid" id="run-win-btn" target="_blank" rel="noopener"
+           href="https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v0.9.0-beta/HADJ-NO-TOUCH-AI-Windows.zip">
           <span class="btn-ic win-ic" aria-hidden="true">▣</span> Run on Windows
-        </button>
+        </a>
       </div>
     </nav>
   </header>
@@ -73,18 +74,20 @@
           </p>
 
           <div class="hero-cta reveal" style="--d:.2s">
-            <button type="button" class="btn btn-primary btn-lg" id="download-btn">
+            <a class="btn btn-primary btn-lg" id="download-btn" target="_blank" rel="noopener"
+               href="https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v0.9.0-beta/HADJ-NO-TOUCH-AI-Windows.zip">
               <span class="btn-ic win-ic" aria-hidden="true">▣</span> Download for Windows
-            </button>
+            </a>
             <a class="btn btn-ghost btn-lg" href="#try">Try the demo</a>
           </div>
 
           <div class="download-note glass reveal" id="download-note" hidden>
-            <p><strong>Windows 10 / 11 (x64)</strong> · packaged as a native desktop app, installed from the
-            distribution binary. Needs only a webcam + microphone — MediaPipe and the intent engine run
+            <p><strong>Windows 10 / 11 (x64)</strong> · packaged as a native desktop app, downloaded as a ZIP
+            from GitHub Releases. Needs only a webcam + microphone — MediaPipe and the intent engine run
             locally, on this machine.</p>
-            <p class="note-meta">No download servers reached, no telemetry, no account. When you open the
-            desktop app, mouse, keyboard and media keys are driven through the Windows control layer.</p>
+            <p class="note-meta">After install, the app stays offline: no telemetry, no account, no download
+            servers at runtime. Verify the binary with
+            <code>SHA-256&nbsp;3ceb579992033cbe9a5f0500634b42cdc433e53ed9a4031c96eca4bd13a02d67</code>.</p>
           </div>
 
           <ul class="trust-chips" role="list" aria-label="Product facts">

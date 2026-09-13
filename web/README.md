@@ -48,6 +48,19 @@ python make_icons.py      # or: py -3.12 make_icons.py
 `vercel.json` sets `cleanUrls` and sends `no-cache, no-store, must-revalidate` for
 `/sw.js` so service-worker updates ship immediately.
 
+### Windows download
+
+The "Download for Windows" / "Run on Windows" buttons link to the packaged ZIP hosted
+as a GitHub Release asset (Vercel's Hobby tier caps uploads at 100&nbsp;MB, the binary
+is ~260&nbsp;MB):
+
+- Repo: <https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI>
+- Release `v0.9.0-beta` asset:
+  `https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v0.9.0-beta/HADJ-NO-TOUCH-AI-Windows.zip`
+
+Rebuild the desktop binary with `build_app.py` (PyInstaller), republish the release with
+`gh release create`, then update the `href` in `index.html`.
+
 ### Live deployment
 
 - **Project:** `hadj-no-touch-ai` (Vercel CLI, account `meddahihadj40`)

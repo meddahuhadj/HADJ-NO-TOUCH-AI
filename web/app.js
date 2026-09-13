@@ -60,11 +60,6 @@
   };
 
   $("#install-btn").addEventListener("click", promptInstall);
-  $("#download-btn").addEventListener("click", (e) => {
-    e.preventDefault();
-    promptInstall();
-  });
-  $("#run-win-btn").addEventListener("click", promptInstall);
 
   /* ---------- Shared gesture → action bus ---------- */
 
