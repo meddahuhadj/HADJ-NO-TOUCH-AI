@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f2952"/>
+      <stop offset="0.55" stop-color="#0a1426"/>
+      <stop offset="1" stop-color="#05090f"/>
+    </linearGradient>
+    <linearGradient id="hg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3cb4ee"/>
+      <stop offset="1" stop-color="#e4f6ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.62" cy="0.3" r="0.62">
+      <stop offset="0" stop-color="#4cc9ff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#4cc9ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <rect x="90" y="90" width="844" height="844" rx="220" fill="none"
+        stroke="#7cc3ff" stroke-opacity="0.24" stroke-width="8"/>
+  <g>
+    <rect x="360" y="230" width="131" height="532" rx="52" fill="url(#hg)"/>
+    <rect x="534" y="230" width="131" height="532" rx="52" fill="url(#hg)"/>
+    <rect x="360" y="430" width="305" height="131" rx="42" fill="url(#hg)"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M205 156 H 680" stroke="#7cc3ff" stroke-opacity="0.75" stroke-width="12"/>
+    <path d="M592 104 A 128 128 0 0 1 756 220" stroke="#4cc9ff" stroke-opacity="0.55" stroke-width="8"/>
+  </g>
+  <circle cx="205" cy="156" r="17" fill="#e0f4ff"/>
+  <path d="M644 121 L 782 156 L 644 191 Z" fill="#4cc9ff"/>
+</svg>

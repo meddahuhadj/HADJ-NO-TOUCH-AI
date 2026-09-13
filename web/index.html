@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HADJ NO-TOUCH AI — Control the computer without touching it</title>
+  <meta name="description" content="HADJ NO-TOUCH AI turns your webcam into a virtual interaction plane. Hand gestures, voice and gaze drive Windows — hands-free, private, 100% offline.">
+  <meta name="theme-color" content="#060912">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NO-TOUCH AI">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="backdrop" aria-hidden="true">
+    <div class="backdrop-glow" aria-hidden="true"></div>
+    <div class="backdrop-grid" aria-hidden="true"></div>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="site-header" id="top">
+    <nav class="nav container" aria-label="Primary navigation">
+      <a class="brand" href="#top" aria-label="HADJ NO-TOUCH AI — home">
+        <span class="brand-mark" aria-hidden="true">H</span>
+        <span class="brand-word">
+          <span class="brand-name">HADJ</span>
+          <span class="brand-sub">NO-TOUCH AI</span>
+        </span>
+      </a>
+
+      <ul class="nav-links" role="list">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#gestures">Gestures</a></li>
+        <li><a href="#voice">Voice</a></li>
+        <li><a href="#modes">Modes</a></li>
+        <li><a href="#privacy">Privacy</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button type="button" class="btn btn-ghost btn-install" id="install-btn" hidden>
+          <span class="btn-ic" aria-hidden="true">↓</span> Install
+        </button>
+        <button type="button" class="btn btn-solid" id="run-win-btn">
+          <span class="btn-ic win-ic" aria-hidden="true">▣</span> Run on Windows
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+
+    <!-- ============ HERO ============ -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="supergraphic" aria-hidden="true">NO-TOUCH</div>
+      <div class="container hero-grid">
+
+        <div class="hero-copy">
+          <p class="eyebrow reveal">Contactless computer control · 100% local</p>
+          <h1 class="hero-title reveal" id="hero-title" style="--d:.05s">
+            Control the computer <span class="grad-text">without touching it.</span>
+          </h1>
+          <p class="hero-sub reveal" style="--d:.12s">
+            HADJ NO-TOUCH AI turns your webcam into a virtual interaction plane.
+            Hand gestures, voice and gaze drive Windows — hands-free, private,
+            and yours. No sensors, no cloud, no touching.
+          </p>
+
+          <div class="hero-cta reveal" style="--d:.2s">
+            <button type="button" class="btn btn-primary btn-lg" id="download-btn">
+              <span class="btn-ic win-ic" aria-hidden="true">▣</span> Download for Windows
+            </button>
+            <a class="btn btn-ghost btn-lg" href="#try">Try the demo</a>
+          </div>
+
+          <div class="download-note glass reveal" id="download-note" hidden>
+            <p><strong>Windows 10 / 11 (x64)</strong> · packaged as a native desktop app, installed from the
+            distribution binary. Needs only a webcam + microphone — MediaPipe and the intent engine run
+            locally, on this machine.</p>
+            <p class="note-meta">No download servers reached, no telemetry, no account. When you open the
+            desktop app, mouse, keyboard and media keys are driven through the Windows control layer.</p>
+          </div>
+
+          <ul class="trust-chips" role="list" aria-label="Product facts">
+            <li class="chip reveal" style="--d:.26s"><span class="chip-dot" aria-hidden="true"></span>EN / FR / AR voice</li>
+            <li class="chip reveal" style="--d:.32s"><span class="chip-dot" aria-hidden="true"></span>Webcam only</li>
+            <li class="chip reveal" style="--d:.38s"><span class="chip-dot" aria-hidden="true"></span>100% offline</li>
+            <li class="chip reveal" style="--d:.44s"><span class="chip-dot" aria-hidden="true"></span>Privacy-first</li>
+          </ul>
+        </div>
+
+        <!-- Live interaction plane -->
+        <div class="demo-panel glass reveal" id="demo-plane" style="--d:.18s"
+             aria-label="Live demo of the virtual interaction plane — your mouse stands in for the air-pointer">
+          <div class="demo-topbar">
+            <span class="led"><i aria-hidden="true"></i>LIVE</span>
+            <span class="topbar-mid">HADJ-OS // TRACKING</span>
+            <span class="topbar-scale" aria-hidden="true">GRID 20PX</span>
+          </div>
+
+          <div class="demo-wrap" id="demo-wrap">
+            <canvas id="plane" aria-hidden="true"></canvas>
+
+            <div class="demo-target">
+              <span class="tgt-eyebrow">TARGET 01 · CLICK ZONE</span>
+              <button type="button" class="tgt-btn" id="click-test" data-demo-target="clicktest">
+                PINCH TO CLICK
+              </button>
+              <span class="tgt-status" id="click-status">ready</span>
+            </div>
+          </div>
+
+          <div class="hud" role="status" aria-live="off" aria-label="Live tracking readout">
+            <div class="hud-cell"><span class="hud-label">MODE</span><span class="hud-val" id="hud-mode">POINT</span></div>
+            <div class="hud-cell"><span class="hud-label">GESTURE</span><span class="hud-val" id="hud-gesture">POINT</span></div>
+            <div class="hud-cell"><span class="hud-label">X</span><span class="hud-val tabnum" id="hud-x">0.00</span></div>
+            <div class="hud-cell"><span class="hud-label">Y</span><span class="hud-val tabnum" id="hud-y">0.00</span></div>
+            <div class="hud-cell hud-wide"><span class="hud-label">CONF</span>
+              <span class="hud-val tabnum" id="hud-conf">0.00</span>
+              <span class="conf-bar" aria-hidden="true"><i id="hud-confbar"></i></span>
+            </div>
+            <div class="hud-cell"><span class="hud-label">CLICKS</span><span class="hud-val tabnum" id="hud-clicks">0</span></div>
+          </div>
+
+          <p class="demo-hint" id="demo-hint">
+            mouse = air pointer · <strong>hold left</strong> = pinch→click ·
+            <kbd>space</kbd> = palm mode · wheel = scroll
+          </p>
+          <noscript>
+            <p class="noscript-note">The live demo needs JavaScript. The Windows app itself works entirely on
+            your machine, no browser required.</p>
+          </noscript>
+        </div>
+      </div>
+
+      <div class="scroll-cue" aria-hidden="true"><span></span>SCROLL</div>
+    </section>
+
+    <!-- ============ STATS ============ -->
+    <section class="stats" aria-label="Product statistics">
+      <div class="container">
+        <ul class="stat-strip" role="list">
+          <li class="stat reveal"><span class="stat-num">13</span><span class="stat-label">auto profiles</span></li>
+          <li class="stat reveal stat-2" style="--d:.07s"><span class="stat-num">3</span><span class="stat-label">languages</span></li>
+          <li class="stat reveal stat-3" style="--d:.14s"><span class="stat-num">1</span><span class="stat-label">webcam</span></li>
+          <li class="stat reveal stat-4" style="--d:.21s"><span class="stat-num">0</span><span class="stat-label">touch</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ HOW IT WORKS ============ -->
+    <section class="section" id="how" aria-labelledby="how-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">01 / Pipeline</p>
+          <h2 id="how-title">From webcam to Windows<br>control in one line of motion.</h2>
+          <p class="lede">Four local stages. Nothing leaves your machine — every frame is handled on-device
+          by bundled models and the runtime you already have.</p>
+        </div>
+
+        <ol class="pipe" role="list">
+          <li class="pipe-card glass reveal">
+            <span class="pipe-no">01</span>
+            <span class="pipe-tag">MediaPipe input layer</span>
+            <h3>Webcam + Mic</h3>
+            <p>Your camera and microphone stream frames and audio locally. Resolution and rate adapt to the
+            machine so tracking stays smooth.</p>
+            <span class="pipe-node" aria-hidden="true"></span>
+          </li>
+          <li class="pipe-card glass reveal" style="--d:.07s">
+            <span class="pipe-no">02</span>
+            <span class="pipe-tag">MediaPipe landmarks</span>
+            <h3>Track</h3>
+            <p>Hands, face and pose landmarks are extracted at ~30&nbsp;fps — 21 points per hand — with
+            per-camera calibration for lighting and distance.</p>
+            <span class="pipe-node" aria-hidden="true"></span>
+          </li>
+          <li class="pipe-card glass reveal" style="--d:.14s">
+            <span class="pipe-no">03</span>
+            <span class="pipe-tag">Intent engine</span>
+            <h3>Understand</h3>
+            <p>Gesture + voice phrases are mapped onto a small set of intents with confidence scoring and
+            debounce, so false triggers stay rare.</p>
+            <span class="pipe-node" aria-hidden="true"></span>
+          </li>
+          <li class="pipe-card glass reveal" style="--d:.21s">
+            <span class="pipe-no">04</span>
+            <span class="pipe-tag">Windows control layer</span>
+            <h3>Act</h3>
+            <p>Intent becomes a native action — mouse, keyboard, media keys, window and virtual-desktop
+            control — through the OS API.</p>
+            <span class="pipe-node pipe-node-end" aria-hidden="true"></span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ GESTURES ============ -->
+    <section class="section" id="gestures" aria-labelledby="gestures-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">02 / Gesture library</p>
+          <h2 id="gestures-title">Nine gestures. That’s the whole vocabulary.</h2>
+          <p class="lede">Small, deliberate moves — each one filtered, debounced and confidence-scored
+          before it reaches the Windows control layer.</p>
+        </div>
+
+        <ul class="gesture-grid" role="list">
+          <li class="gesture-card glass reveal">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="16" cy="33" rx="7.5" ry="9.5" transform="rotate(28 16 33)"/>
+                  <path d="M12 30 L10 20"/>
+                  <path d="M15 29 L14 19"/>
+                  <path d="M18 28 L18 18"/>
+                  <path d="M17 30 L9 27"/>
+                </g>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M21 26 L24 13"/>
+                  <circle cx="24" cy="13" r="4.4" stroke-dasharray="3.2 2.2" opacity=".9"/>
+                </g>
+                <path d="M32 8 L40 18 L36.4 16.6 L34.9 21 L32.9 15.4 Z" fill="var(--cyan)" stroke="none"/>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Move</h3>
+              <p class="gesture-trigger">Index finger up</p>
+              <p class="gesture-note">Precision pointer — filtered and smoothed. Sub-pixel feel on a 1080p screen.</p>
+            </div>
+            <span class="gesture-meta">conf 0.97 · debounce 90&nbsp;ms</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.05s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="16" cy="33" rx="7.5" ry="9.5" transform="rotate(28 16 33)"/>
+                  <path d="M12 30 L10 20"/>
+                  <path d="M15 29 L14 19"/>
+                  <path d="M18 28 L20 20"/>
+                </g>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M22 25 L26 15"/>
+                  <path d="M13 27 L26 15"/>
+                  <circle cx="26" cy="15" r="5" stroke-dasharray="3.4 2.2"/>
+                </g>
+                <circle cx="26" cy="15" r="1.8" fill="var(--cyan)" stroke="none"/>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Click</h3>
+              <p class="gesture-trigger">Pinch · index + thumb</p>
+              <p class="gesture-note">Tap for a click. Hold to keep the button pressed — the origin of
+              pinch-to-hold interactions.</p>
+            </div>
+            <span class="gesture-meta">conf 0.99 · debounce 120&nbsp;ms</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.1s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="13" cy="31" rx="6.5" ry="8.5" transform="rotate(28 13 31)" opacity=".7"/>
+                  <ellipse cx="35" cy="31" rx="6.5" ry="8.5" transform="rotate(-28 35 31)" opacity=".7"/>
+                </g>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M15 21 L18 14"/>
+                  <path d="M9 19 L18 14"/>
+                  <circle cx="18" cy="14" r="4" stroke-dasharray="2.6 1.8"/>
+                  <path d="M33 21 L30 14"/>
+                  <path d="M39 19 L30 14"/>
+                  <circle cx="30" cy="14" r="4" stroke-dasharray="2.6 1.8"/>
+                </g>
+                <circle cx="18" cy="14" r="1.5" fill="var(--cyan)" stroke="none"/>
+                <circle cx="30" cy="14" r="1.5" fill="var(--cyan)" stroke="none"/>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Double-click</h3>
+              <p class="gesture-trigger">Double pinch</p>
+              <p class="gesture-note">Two quick taps, like the habit you already have. Opens files and apps.</p>
+            </div>
+            <span class="gesture-meta">conf 0.98 · window 260&nbsp;ms</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.15s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="13" cy="31" rx="6.5" ry="8.5" transform="rotate(28 13 31)" opacity=".7"/>
+                  <rect x="29" y="7" width="15" height="14" rx="2.5" stroke-dasharray="3 2.4"/>
+                </g>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M14 22 L16 17"/>
+                  <path d="M8 20 L16 17"/>
+                  <circle cx="16" cy="17" r="4.2" stroke-dasharray="2.8 2"/>
+                  <path d="M23 26 L37 26"/>
+                  <path d="M31 21 L37 26 L31 31"/>
+                </g>
+                <circle cx="16" cy="17" r="1.6" fill="var(--cyan)" stroke="none"/>
+                <rect x="36" y="19" width="3.4" height="3.4" rx=".8" fill="var(--cyan)" stroke="none"/>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Drag</h3>
+              <p class="gesture-trigger">Pinch + hold + move</p>
+              <p class="gesture-note">Grab windows, files and slider handles. Release the pinch to drop.</p>
+            </div>
+            <span class="gesture-meta">conf 0.96 · debounce 140&nbsp;ms</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.2s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="13" cy="33" rx="6.5" ry="8.5" transform="rotate(28 13 33)" opacity=".7"/>
+                  <path d="M22 20 L26 14" opacity=".7"/>
+                </g>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M14 24 L17 18"/>
+                  <path d="M8 22 L17 18"/>
+                  <circle cx="17" cy="18" r="4.2" stroke-dasharray="2.8 2"/>
+                  <rect x="28" y="11" width="16" height="22" rx="3"/>
+                  <path d="M31 17 h9"/><path d="M31 22 h10"/><path d="M31 27 h6"/>
+                </g>
+                <circle cx="17" cy="18" r="1.6" fill="var(--cyan)" stroke="none"/>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Right-click</h3>
+              <p class="gesture-trigger">Thumb + middle</p>
+              <p class="gesture-note">Context menu on demand — for power users who refuse to live without it.</p>
+            </div>
+            <span class="gesture-meta">conf 0.95 · debounce 120&nbsp;ms</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.25s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="17" cy="33" rx="7" ry="8.5" transform="rotate(-10 17 33)"/>
+                  <path d="M19 26 L20 13"/>
+                  <path d="M16 25 L15 14"/>
+                  <path d="M13 26 L11 16"/>
+                  <path d="M10 28 L7 19"/>
+                  <path d="M17 30 L8 26"/>
+                </g>
+                <path d="M19 26 L20 13" fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round"/>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M28 20 L33 14 L38 20"/>
+                  <path d="M28 30 L33 36 L38 30"/>
+                </g>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Scroll</h3>
+              <p class="gesture-trigger">Open palm, vertical</p>
+              <p class="gesture-note">Palm up, glide the hand — the plane maps hand height to scroll velocity.</p>
+            </div>
+            <span class="gesture-meta">conf 0.97 · inertia on</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.3s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="17" cy="33" rx="7" ry="8.5" transform="rotate(-10 17 33)"/>
+                  <path d="M19 26 L22 15"/>
+                  <path d="M16 25 L18 15"/>
+                  <path d="M13 26 L14 16"/>
+                  <path d="M10 28 L9 19"/>
+                  <path d="M17 30 L8 26"/>
+                </g>
+                <path d="M19 26 L22 13" fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round"/>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M29 15 L34 21 L29 27"/>
+                  <path d="M35 15 L40 21 L35 27"/>
+                </g>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Swipe</h3>
+              <p class="gesture-trigger">Swipe, left / right</p>
+              <p class="gesture-note">Next and previous — slides, pages, browser tabs. Velocity-aware.</p>
+            </div>
+            <span class="gesture-meta">conf 0.94 · edge zones</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.35s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="18" cy="33" rx="7" ry="8.5" transform="rotate(-10 18 33)"/>
+                  <path d="M20 26 L21 14"/>
+                  <path d="M17 25 L17 15"/>
+                  <path d="M14 26 L13 16"/>
+                  <path d="M11 28 L9 20"/>
+                  <path d="M18 30 L9 26"/>
+                </g>
+                <circle cx="18" cy="31" r="13.5" fill="none" stroke="var(--amber)" stroke-width="2.4" stroke-dasharray="3 3" opacity=".9"/>
+                <g fill="none" stroke="var(--amber)" stroke-width="3" stroke-linecap="round">
+                  <path d="M34 17 v9"/>
+                  <path d="M40 17 v9"/>
+                </g>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Pause</h3>
+              <p class="gesture-trigger">Palm held flat</p>
+              <p class="gesture-note">Hold the palm open for one beat — control halts until you lower it.</p>
+            </div>
+            <span class="gesture-meta">conf 0.90 · hold 800&nbsp;ms</span>
+          </li>
+          <li class="gesture-card glass reveal" style="--d:.4s">
+            <div class="gi-wrap" aria-hidden="true">
+              <svg viewBox="0 0 48 48" class="gi">
+                <g fill="none" stroke="rgba(159,176,207,.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="16" cy="33" rx="9" ry="10" transform="rotate(-14 16 33)"/>
+                  <path d="M10 24 L7 22"/>
+                  <path d="M14 24 L13 21"/>
+                  <path d="M18 25 L19 22"/>
+                  <path d="M22 27 L25 25.5"/>
+                </g>
+                <g fill="none" stroke="var(--cyan)" stroke-width="3" stroke-linecap="round">
+                  <path d="M31 23 v-5 a6.5 6.5 0 0 1 13 0 v5"/>
+                  <rect x="29" y="23" width="17" height="13" rx="3"/>
+                </g>
+                <circle cx="37.5" cy="29" r="2.2" fill="var(--cyan)" stroke="none"/>
+                <path d="M37.5 29 L37.5 32.5" stroke="var(--cyan)" stroke-width="2.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="gesture-body">
+              <h3>Lock</h3>
+              <p class="gesture-trigger">Fist</p>
+              <p class="gesture-note">Instant lock screen. The gesture everyone knows by instinct.</p>
+            </div>
+            <span class="gesture-meta">conf 0.88 · confirm req</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ VOICE ============ -->
+    <section class="section" id="voice" aria-labelledby="voice-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">03 / Voice layer</p>
+          <h2 id="voice-title">Say it. Or just point.</h2>
+          <p class="lede">A local intent engine maps spoken phrases onto the same intents as gestures.
+          Example commands, three languages, one vocabulary.</p>
+        </div>
+
+        <div class="voice-table glass reveal" role="table" aria-label="Voice commands by language">
+          <div class="vrow vhead" role="row">
+            <span class="vcol vtask" role="columnheader">Task</span>
+            <span class="vcol" role="columnheader">English</span>
+            <span class="vcol" role="columnheader">Français</span>
+            <span class="vcol" role="columnheader">العربية</span>
+          </div>
+          <div class="vrow" role="row">
+            <span class="vcol vtask" role="rowheader">Open an app</span>
+            <span class="vcol" role="cell">“open chrome”</span>
+            <span class="vcol" role="cell">“ouvre chrome”</span>
+            <span class="vcol vcell-arabic" dir="rtl" role="cell">“افتح كروم”</span>
+          </div>
+          <div class="vrow" role="row">
+            <span class="vcol vtask" role="rowheader">Write a note</span>
+            <span class="vcol" role="cell">“type: call back at…”</span>
+            <span class="vcol" role="cell">“note : rappeler…”</span>
+            <span class="vcol vcell-arabic" dir="rtl" role="cell">“اكتب ملاحظة”</span>
+          </div>
+          <div class="vrow" role="row">
+            <span class="vcol vtask" role="rowheader">Next slide</span>
+            <span class="vcol" role="cell">“next slide”</span>
+            <span class="vcol" role="cell">“diapositive suivante”</span>
+            <span class="vcol vcell-arabic" dir="rtl" role="cell">“الشريحة التالية”</span>
+          </div>
+          <div class="vrow" role="row">
+            <span class="vcol vtask" role="rowheader">Scroll down</span>
+            <span class="vcol" role="cell">“scroll down”</span>
+            <span class="vcol" role="cell">“descends la page”</span>
+            <span class="vcol vcell-arabic" dir="rtl" role="cell">“مرّر للأسفل”</span>
+          </div>
+          <div class="vrow" role="row">
+            <span class="vcol vtask" role="rowheader">Pause media</span>
+            <span class="vcol" role="cell">“pause the music”</span>
+            <span class="vcol" role="cell">“mets en pause”</span>
+            <span class="vcol vcell-arabic" dir="rtl" role="cell">“أوقف الموسيقى”</span>
+          </div>
+          <div class="vrow" role="row">
+            <span class="vcol vtask" role="rowheader">Freeze everything</span>
+            <span class="vcol" role="cell">“freeze”</span>
+            <span class="vcol" role="cell">“bloque tout”</span>
+            <span class="vcol vcell-arabic" dir="rtl" role="cell">“تجمّد”</span>
+          </div>
+        </div>
+
+        <div class="voice-callout glass reveal">
+          <span class="callout-ic" aria-hidden="true">♪</span>
+          <div>
+            <h3>Voice-first “hands busy” mode</h3>
+            <p>When your hands are full — gloves, tools, a plate — voice alone can drive the machine.
+            The same intent engine, zero gestures required. <span class="flag-beta">FR / AR at beta level</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MODES ============ -->
+    <section class="section" id="modes" aria-labelledby="modes-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">04 / Modes &amp; profiles</p>
+          <h2 id="modes-title">Tuned for how you actually work.</h2>
+          <p class="lede">Thirteen auto profiles switch gesture sensitivity, dead zones and voice
+          behaviour per environment — most never need touching.</p>
+        </div>
+
+        <div class="mode-grid">
+          <article class="mode-card glass reveal">
+            <span class="mode-num">M.01</span>
+            <h3>Hands Busy</h3>
+            <p>Voice-first. Gloves, food, tools. Gestures limited to a reserved safe set.</p>
+            <ul class="mode-points" role="list"><li>Voice leads</li><li>Amber-tier gestures only</li></ul>
+          </article>
+          <article class="mode-card glass reveal" style="--d:.05s">
+            <span class="mode-num">M.02</span>
+            <h3>Industrial</h3>
+            <p>HMI panels &amp; line work. Big dead zones, slow deliberate moves, high debounce.</p>
+            <ul class="mode-points" role="list"><li>Extended dead zones</li><li>Slow-mode tracking</li></ul>
+          </article>
+          <article class="mode-card glass reveal" style="--d:.1s">
+            <span class="mode-num">M.03</span>
+            <h3>Medical</h3>
+            <p>Sterile-room browsing and paperwork. Time-limit triggers, hands stay clean.</p>
+            <p class="mode-disclaimer">Not a clinical device — no diagnosis, no treatment, no monitoring
+            of patients.</p>
+          </article>
+          <article class="mode-card glass reveal" style="--d:.15s">
+            <span class="mode-num">M.04</span>
+            <h3>Presentation</h3>
+            <p>Slide decks, laser-pointer lane, precision click zones far from the screen edges.</p>
+            <ul class="mode-points" role="list"><li>Laser lane active</li><li>Click zones tuned</li></ul>
+          </article>
+          <article class="mode-card glass reveal" style="--d:.2s">
+            <span class="mode-num">M.05</span>
+            <h3>Media</h3>
+            <p>Fullscreen video with timeline scrub, volume by palm height, swipe for tracks.</p>
+            <ul class="mode-points" role="list"><li>Scrub gestures</li><li>Palm = volume</li></ul>
+          </article>
+          <article class="mode-card glass reveal" style="--d:.25s">
+            <span class="mode-num">M.06</span>
+            <h3>Accessibility</h3>
+            <p>Large hit zones, dwell-to-click, switch-friendly. Fewer, kinder gestures.</p>
+            <ul class="mode-points" role="list"><li>Dwell-to-click</li><li>Big targets</li></ul>
+          </article>
+          <article class="mode-card glass reveal" style="--d:.3s">
+            <span class="mode-num">M.07</span>
+            <h3>Browser / PDF</h3>
+            <p>Scroll + zoom profiles mapped to palm distance, tab swipes, page-turn pinches.</p>
+            <ul class="mode-points" role="list"><li>Zoom by distance</li><li>Tab swipe</li></ul>
+          </article>
+          <article class="mode-card glass mode-card-wide reveal" style="--d:.35s">
+            <span class="mode-num">M.08+</span>
+            <h3>CAD · Kiosk · Custom</h3>
+            <p>CAD orbit and precision pick, locked kiosk floors, and fully remappable custom profiles.
+            Five more profiles ship out of the box — all thirteen auto-detect context when enabled.</p>
+            <div class="mode-metrics" aria-hidden="true">
+              <span>13</span><i></i><span>MEM</span><span>PROFILES</span><span>3</span><i></i><span>VOICE</span><span>1</span><i></i><span>CAM</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LIVE DEMO REPEAT ============ -->
+    <section class="section section-demo" id="try" aria-labelledby="try-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">05 / Live plane</p>
+          <h2 id="try-title">Try it — right here.</h2>
+          <p class="lede">The mouse is your air-pointer. Push left and hold to pinch-click, wheel over the
+          document to scroll, hit <kbd>space</kbd> for palm mode (wheel scrolls big steps). Works on touch:
+          tap to click, drag to move.</p>
+        </div>
+
+        <div class="try-grid">
+          <figure class="media-card glass reveal" aria-label="Demo media player — controls respond to pinch clicks">
+            <div class="media-top">
+              <span class="led led-green"><i aria-hidden="true"></i>OUTPUT</span>
+              <span class="topbar-mid" id="media-title">flightpath.wav — side A</span>
+              <span class="topbar-scale" id="media-time" aria-hidden="true">0:00 / 0:14</span>
+            </div>
+            <div class="media-visual" aria-hidden="true">
+              <span class="wave wave-1"></span><span class="wave wave-2"></span><span class="wave wave-3"></span>
+              <span class="wave wave-4"></span><span class="wave wave-5"></span><span class="wave wave-6"></span>
+              <span class="wave wave-7"></span><span class="wave wave-8"></span><span class="wave wave-9"></span>
+            </div>
+            <div class="media-controls">
+              <button type="button" class="media-btn" data-demo-target="media-prev" aria-label="Previous track">⏮</button>
+              <button type="button" class="media-btn media-main" id="media-play" data-demo-target="media-play" aria-pressed="false">
+                <span class="play-ic" aria-hidden="true">▶</span><span class="sr-only">Play or pause</span>
+              </button>
+              <button type="button" class="media-btn" data-demo-target="media-next" aria-label="Next track">⏭</button>
+            </div>
+            <div class="media-progress" aria-hidden="true"><i id="media-fill"></i></div>
+            <figcaption class="fig-cap" id="media-cap">Pinch-click the play button. It’s a real button — keyboard works too.</figcaption>
+          </figure>
+
+          <div class="doc-card glass reveal" style="--d:.1s">
+            <div class="doc-head">
+              <span class="led"><i aria-hidden="true"></i>DOC</span>
+              <span class="topbar-mid" id="doc-title">quickstart.txt — scrollable</span>
+              <span class="topbar-scale" id="doc-pos" aria-hidden="true">L:0001</span>
+            </div>
+            <div class="doc-panel" id="doc-panel" tabindex="0" aria-label="Scrollable quick-start document. Wheel scrolls; palm mode scrolls in large steps.">
+              <h3>QUICKSTART — CONTACTLESS SETUP</h3>
+              <ol>
+                <li><strong>Install</strong> the Windows app. MediaPipe runtime and language packs bundle in.</li>
+                <li><strong>Calibrate.</strong> Sit at your desk, raise one hand. The plane locks your arm’s
+                reachable box and maps it to the full screen.</li>
+                <li><strong>Point.</strong> Index finger raised = move. Notice the plane tracks from the
+                shoulder, not the palm — small wrist work, big screen travel.</li>
+                <li><strong>Pinch to click.</strong> Index + thumb closing. Hold to grab, release to drop.</li>
+                <li><strong>Scroll.</strong> Open palm, glide vertically. Wheel-speed follows hand height.</li>
+                <li><strong>Voice.</strong> Say “open chrome”. The intent engine runs locally; commands match
+                intents, not raw audio, so accents are fine.</li>
+                <li><strong>Emergency stop.</strong> Press <kbd>CTRL</kbd>+<kbd>ALT</kbd>+<kbd>H</kbd> any time
+                — every control freezes until release.</li>
+              </ol>
+              <p>That’s the whole system. Every action above is the same intent pipeline the demo plane
+              shows: gesture or voice → intent engine → Windows control layer.</p>
+            </div>
+            <p class="fig-cap">Wheel over this panel to scroll it. <strong>Space</strong> then wheel = big palm-mode steps.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PRIVACY ============ -->
+    <section class="section" id="privacy" aria-labelledby="privacy-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">06 / Privacy</p>
+          <h2 id="privacy-title">Never leaves this machine.</h2>
+          <p class="lede">Video frames, audio and intent logs stay on-device. There is no account, no
+          sync, no analytics beacon to phone home to.</p>
+        </div>
+
+        <div class="privacy-grid">
+          <article class="privacy-card glass reveal">
+            <span class="mode-num">P.01</span>
+            <h3>Local processing</h3>
+            <p>MediaPipe models and the intent engine run on this computer. Frames are handled and discarded
+            in memory — no cloud round-trip exists, because there is no cloud.</p>
+          </article>
+          <article class="privacy-card glass reveal" style="--d:.07s">
+            <span class="mode-num">P.02</span>
+            <h3>Camera toggle</h3>
+            <p>A single switch in the tray menu kills the camera instantly. A global hotkey does the same
+            without touching the tray.</p>
+          </article>
+          <article class="privacy-card glass reveal" style="--d:.14s">
+            <span class="mode-num">P.03</span>
+            <h3>Privacy mode</h3>
+            <p>Optional live-preview blur or blank. You and nearby people can see tracking is active without
+            anyone seeing faces on screen.</p>
+          </article>
+          <article class="privacy-card glass reveal" style="--d:.21s">
+            <span class="mode-num">P.04</span>
+            <h3>Wipe data</h3>
+            <p>One click clears query logs, settings and calibration. Everything HADJ has learned about you
+            fits in a few files and forgets in a tap.</p>
+          </article>
+        </div>
+        <p class="privacy-footnote reveal">Optional — 100% local: no sensors, no telemetry, no account.</p>
+      </div>
+    </section>
+
+    <!-- ============ SAFETY ============ -->
+    <section class="section" id="safety" aria-labelledby="safety-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">07 / Safety</p>
+          <h2 id="safety-title">A kill switch that is always on tap.</h2>
+          <p class="lede">Contactless control is powerful; it’s also engineered to stay out of your way.
+          These are not optional extras.</p>
+        </div>
+
+        <div class="safety-stop glass reveal" role="group" aria-label="Emergency stop: CTRL + ALT + H">
+          <div class="stop-rings" aria-hidden="true"></div>
+          <div class="stop-inner">
+            <span class="stop-pill">
+              <i class="stop-led" aria-hidden="true"></i>
+              <span class="stop-text">EMERGENCY STOP</span>
+              <span class="stop-keys">CTRL + ALT + H</span>
+            </span>
+          </div>
+          <p class="stop-caption">Press and hold on screen or keyboard. Every gesture and voice control
+          freezes until you release. Nothing moves without that release.</p>
+        </div>
+
+        <div class="safety-grid">
+          <article class="safety-card glass reveal">
+            <h3>Jump rejection</h3>
+            <p>Sudden, unnaturally fast motion is discarded, not acted on. Debounce and dead-man logic
+            treat a flinch as noise, never as a command.</p>
+          </article>
+          <article class="safety-card glass reveal" style="--d:.07s">
+            <h3>Dead zones</h3>
+            <p>Define an edge buffer where gestures are ignored entirely — so resting your hand near the
+            screen never triggers anything. Calibrated per desk.</p>
+          </article>
+          <article class="safety-card glass reveal" style="--d:.14s">
+            <h3>Confirm destructive actions</h3>
+            <p>Drag-to-delete, shutdown, format — anything destructive asks once before it happens. A
+            confirmation is a second, deliberate pinch.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track" id="marquee-track">
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+        <span>NO-TOUCH</span><i class="m-dot">•</i><span>NO-TOUCH</span><i class="m-dot">•</i>
+      </div>
+    </div>
+
+    <!-- ============ FAQ ============ -->
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="container container-narrow">
+        <div class="section-head reveal">
+          <p class="eyebrow">08 / FAQ</p>
+          <h2 id="faq-title">Straight answers.</h2>
+        </div>
+
+        <div class="faq-list">
+          <details class="faq glass reveal" open>
+            <summary>Is my webcam footage sent anywhere?</summary>
+            <div class="faq-body">
+              <p>No. Frames stay in memory on your machine and are used only to derive landmarks. There is
+              no upload path, no server, no account. The PWA page you’re on right now also runs fully
+              offline after first load; the camera is never touched by the page.</p>
+            </div>
+          </details>
+          <details class="faq glass reveal">
+            <summary>Which Windows versions are supported?</summary>
+            <div class="faq-body">
+              <p>Windows 10 and Windows 11, 64-bit, with a standard UVC webcam. Microphone for the voice
+              layer is optional. A dedicated GPU is not required — MediaPipe runs on CPU and modest
+              integrated graphics.</p>
+            </div>
+          </details>
+          <details class="faq glass reveal">
+            <summary>Does it work fully offline?</summary>
+            <div class="faq-body">
+              <p>Yes. Models, voice packs and the intent engine are bundled with the installer. This page
+              is a PWA — after the first visit it can be installed and run from the local service-worker
+              cache with no connection at all.</p>
+            </div>
+          </details>
+          <details class="faq glass reveal">
+            <summary>How accurate are the gestures really?</summary>
+            <div class="faq-body">
+              <p>Each intent passes a confidence gate (typically 0.85–0.97, shown live in the demo) and a
+              debounce window before it reaches the Windows control layer. Calibration tunes the reference
+              box for your arm length and camera angle, which is where most “wobbly” systems fail.</p>
+            </div>
+          </details>
+          <details class="faq glass reveal">
+            <summary>What about gaze and custom gestures?</summary>
+            <div class="faq-body">
+              <p>Gaze tracking and user-recorded custom gestures are marked <span class="flag-beta">experimental</span> —
+              they ship behind a flag and are off by default. They’re excluded from the guaranteed gesture
+              set until they meet the same confidence bar as the nine core gestures.</p>
+            </div>
+          </details>
+          <details class="faq glass reveal">
+            <summary>Can I use it alongside mouse and keyboard?</summary>
+            <div class="faq-body">
+              <p>Yes. Control is hybrid and switchable — tray toggle, hotkey, or automatic pause when your
+              hands are at the keys. Most people use the mouse for fine work and gestures for
+              everything else.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="foot">
+    <div class="container">
+      <div class="footer-top">
+        <a class="brand brand-footer" href="#top" aria-label="HADJ NO-TOUCH AI — back to top">
+          <span class="brand-mark" aria-hidden="true">H</span>
+          <span class="brand-word">
+            <span class="brand-name">HADJ</span>
+            <span class="brand-sub">NO-TOUCH AI</span>
+          </span>
+        </a>
+        <ul class="footer-links" role="list" aria-label="Quick links">
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#gestures">Gestures</a></li>
+          <li><a href="#voice">Voice</a></li>
+          <li><a href="#modes">Modes</a></li>
+          <li><a href="#privacy">Privacy</a></li>
+          <li><a href="#safety">Safety</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+      <div class="footer-mid">
+        <span class="footer-line" aria-hidden="true">No touch is the point.</span>
+      </div>
+      <div class="footer-bottom">
+        <p>HADJ NO-TOUCH AI · contactless computer control for Windows</p>
+        <p class="footer-meta">
+          <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>v0.9.0-beta</span>
+          <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>gaze &amp; custom gestures experimental</span>
+          <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>PWA · offline ready</span>
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
