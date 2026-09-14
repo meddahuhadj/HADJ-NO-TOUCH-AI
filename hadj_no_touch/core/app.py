@@ -111,12 +111,17 @@ class AppCore(QObject):
         self.hand_tracker = HandTracker(self.settings.tracking)
         self.face_tracker = FaceTracker()
         self.gaze = GazeTracker()
-        # Preload the MediaPipe Hands model once so the status reflects the
-        # real availability and the first frame does not pay the load cost.
-        try:
-            self.hand_tracker._ensure_model()
-        except Exception as e:
-            log.warning("eager hand model preload failed: %s", e)
+        # Preload the MediaPipe Hands model eagerly on a background thread:
+        # the first frame never pays the load cost, and a slow/frozen
+        # model init can never stall startup (the window shows instantly).
+        def _preload_hands() -> None:
+            try:
+                self.hand_tracker._ensure_model()
+            except Exception as e:
+                log.warning("eager hand model preload failed: %s", e)
+
+        threading.Thread(target=_preload_hands, name="hadj-model-preload",
+                         daemon=True).start()
 
         self.engine = ge.GestureEngine(self.settings.gestures, on_event=self._engine_event_tap)
 
@@ -138,6 +143,7 @@ class AppCore(QObject):
 
         self._last_context_time = 0.0
         self._last_preview_time = 0.0
+        self._last_status_time = 0.0
         self._frame_index = 0
         self._processing_fps = 0.0
         self._status = StatusSnapshot()
@@ -183,9 +189,19 @@ class AppCore(QObject):
     def _processing_loop(self) -> None:
         target_interval = 1.0 / max(1, self.settings.tracking.processing_fps)
         self._last_tick_time = time.monotonic()
+        _last_err = 0.0
         while self._running.is_set():
             t0 = time.monotonic()
-            self._process_tick()
+            try:
+                self._process_tick()
+            except Exception:
+                # A single bad frame must never kill the loop silently: the UI
+                # would freeze on its last state (gray dots, stuck FPS). Log the
+                # traceback (throttled) and keep going.
+                if time.monotonic() - _last_err > 5.0:
+                    _last_err = time.monotonic()
+                    log.exception("processing tick failed")
+                time.sleep(0.05)
             now = time.monotonic()
             dt = now - self._last_tick_time
             self._last_tick_time = now
@@ -197,7 +213,14 @@ class AppCore(QObject):
                 time.sleep(min(sleep, 0.05))
 
     def _process_tick(self) -> None:
-        frame_obj = self.camera.read()
+        frame_obj = None
+        try:
+            frame_obj = self.camera.read()
+        except Exception:
+            frame_obj = None
+        now = time.monotonic()
+
+        self._sd_emit(now)  # keep the dashboard live even with no camera frame
         if frame_obj is None:
             time.sleep(0.01)
             return
@@ -281,7 +304,7 @@ class AppCore(QObject):
                 qimg = self.QImage(rgb.data, w, h, 3 * w, self.QImage.Format.Format_RGB888).copy()
                 self.frame_rendered.emit(qimg)
 
-        self._emit_status(snapshot_time=now, cpu_baseline_ok=True)
+        self._sd_emit(now)
 
         # latent memory of confirm requests expiring
         if self._pending_confirm and now - self._pending_confirm_at > 20:
@@ -937,6 +960,14 @@ class AppCore(QObject):
             if self.profiles.maybe_auto_switch(ctx.exe):
                 self.profile_changed.emit(self.profiles.active.id)
 
+    def _sd_emit(self, now: float) -> None:
+        """Emit a status snapshot at ~6 Hz so the dashboard never stays stuck
+        on its initial (gray) state, even while the camera delivers no frames."""
+        if now - getattr(self, "_last_status_time", 0.0) < 0.16:
+            return
+        self._last_status_time = now
+        self._emit_status(snapshot_time=now, cpu_baseline_ok=True)
+
     def _emit_status(self, snapshot_time: float, cpu_baseline_ok: bool = True) -> None:
         s = self._status
         s.camera_active = self.camera.is_healthy
@@ -976,6 +1007,8 @@ class AppCore(QObject):
             "profile": self.profiles.active.id, "context": s.active_context,
             "voice_status": s.voice_status, "pinch_hold": self.holder.active,
             "custom_gestures": len(self._rematcher.gestures),
+            "camera_state": (self.camera.error if self.camera.error
+                             else ("ok" if self.camera.is_running else "off")),
         }
         self.status_updated.emit(s.filled())
 

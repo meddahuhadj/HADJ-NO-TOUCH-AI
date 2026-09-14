@@ -114,11 +114,14 @@ def _safe_release(cap) -> None:
         pass
 
 
-def _bounded_read(cap, timeout: float = READ_TIMEOUT):
+def _bounded_read_ex(cap, timeout: float = READ_TIMEOUT):
     """Call ``cap.read()`` with a time limit.
 
-    Returns ``(ok, frame)``, or ``(False, None)`` if the read did not finish in
-    time (e.g. a MediaFoundation source stuck in an async grab).
+    Returns ``(ok, frame, thread)``. ``thread`` is the worker that executed
+    the read; if it is still alive after the timeout the driver is wedged and
+    callers must NOT issue another read on the same capture (OpenCV
+    ``VideoCapture`` is not thread-safe, overlapping reads can wedge it for
+    good).
     """
     result: dict = {}
 
@@ -134,8 +137,14 @@ def _bounded_read(cap, timeout: float = READ_TIMEOUT):
     t.start()
     t.join(timeout)
     if t.is_alive():
-        return False, None
-    return bool(result.get("ok", False)), result.get("frame")
+        return False, None, t
+    return bool(result.get("ok", False)), result.get("frame"), t
+
+
+def _bounded_read(cap, timeout: float = READ_TIMEOUT):
+    """``cap.read()`` with a time limit → ``(ok, frame)``."""
+    ok, frame, _t = _bounded_read_ex(cap, timeout)
+    return ok, frame
 
 
 def _bounded_open(index: int, backend: int,

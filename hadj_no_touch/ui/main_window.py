@@ -270,7 +270,19 @@ class MainWindow(QMainWindow):
     # lifecycle
     # ------------------------------------------------------------------
     def start(self) -> None:
-        self.core.start()
+        try:
+            self.core.start()
+        except Exception:
+            # Uncaught exceptions are invisible in a frozen exe: surface them.
+            import traceback
+            tb = traceback.format_exc()
+            log.error("core startup failed:\n%s", tb)
+            QMessageBox.critical(
+                self, "Startup error",
+                "HADJ NO-TOUCH AI could not start.\n\n"
+                f"{tb[-2500:]}\n\n"
+                "Details are in the app log file.")
+            return
         if self.core.camera_error_hint:
             QMessageBox.warning(
                 self, "Camera",

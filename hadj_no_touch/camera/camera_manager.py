@@ -28,6 +28,7 @@ from .camera_config import (
     READ_TIMEOUT,
     _bounded_open,
     _bounded_read,
+    _bounded_read_ex,
     _safe_release,
 )
 
@@ -218,6 +219,7 @@ class CameraManager:
         next_t = time.monotonic()
         fail_streak = 0
         last_useful = time.monotonic()
+        pending_reader = None
         while self._running.is_set():
             now = time.monotonic()
             if now < next_t - 0.001:
@@ -229,7 +231,23 @@ class CameraManager:
                     time.sleep(1.0)
                 continue
 
-            ok, frame = _bounded_read(self._cap, timeout=READ_TIMEOUT)
+            if pending_reader is not None:
+                if pending_reader.is_alive():
+                    # The previous read never returned: the driver is wedged.
+                    # Reading again on the same capture would overlap and only
+                    # makes OpenCV hang harder — reopen from scratch instead.
+                    pending_reader = None
+                    _safe_release(self._cap)
+                    self._cap = None
+                    self.error = ("Camera driver stalled while reading — "
+                                  "reopening the capture device.")
+                    log.warning("camera read stalled; reopening device")
+                    if not self._reopen():
+                        time.sleep(1.0)
+                    continue
+                pending_reader = None
+
+            ok, frame, pending_reader = _bounded_read_ex(self._cap, timeout=READ_TIMEOUT)
             if not ok or frame is None:
                 self.handle_read_error()
                 fail_streak += 1
