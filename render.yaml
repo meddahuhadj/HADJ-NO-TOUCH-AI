@@ -1,0 +1,15 @@
+# Render Blueprint — déploiement de la PWA HADJ NO-TOUCH AI
+# Utilisation : Render Dashboard → New → Blueprint → sélectionner ce dépôt.
+services:
+  - type: web
+    name: hadj-no-touch-ai
+    runtime: static
+    rootDir: web
+    buildCommand: ""
+    staticPublishPath: .
+    # En-têtes spécifiques pour que le service worker (sw.js) se mette à jour immédiatement.
+    headers:
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+    # 90 jours de cache pour les ressources statiques versionnées (icônes, style, js).
