@@ -75,6 +75,10 @@ class CameraManager:
     def is_running(self) -> bool:
         return self._running.is_set() and self._cap is not None
 
+    @property
+    def is_healthy(self) -> bool:
+        return self.is_running and self._frame_counter > 0 and self.error is None
+
     # ---- lifecycle ---------------------------------------------------------
     def _configure_cap(self, cap) -> None:
         if cap is None:
@@ -225,7 +229,7 @@ class CameraManager:
                     time.sleep(1.0)
                 continue
 
-            ok, frame = self._cap.read()
+            ok, frame = _bounded_read(self._cap, timeout=READ_TIMEOUT)
             if not ok or frame is None:
                 self.handle_read_error()
                 fail_streak += 1

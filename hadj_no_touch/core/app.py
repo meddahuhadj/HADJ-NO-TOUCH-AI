@@ -111,6 +111,12 @@ class AppCore(QObject):
         self.hand_tracker = HandTracker(self.settings.tracking)
         self.face_tracker = FaceTracker()
         self.gaze = GazeTracker()
+        # Preload the MediaPipe Hands model once so the status reflects the
+        # real availability and the first frame does not pay the load cost.
+        try:
+            self.hand_tracker._ensure_model()
+        except Exception as e:
+            log.warning("eager hand model preload failed: %s", e)
 
         self.engine = ge.GestureEngine(self.settings.gestures, on_event=self._engine_event_tap)
 
@@ -627,16 +633,6 @@ class AppCore(QObject):
     # =====================================================================
     # voice
     # =====================================================================
-    def _start_voice(self) -> None:
-        if not self.settings.voice.enabled:
-            return
-        if self.voice.available:
-            self._event("INFO", "Voice recognition ready")
-        elif self.voice.create() and self.voice.available:
-            self._event("INFO", "Voice recognition ready")
-        else:
-            self._event("WARN", "Voice recognition not available (check mic & internet)")
-
     def start_listening(self) -> bool:
         return bool(self.voice and self.voice.start())
 
@@ -762,12 +758,18 @@ class AppCore(QObject):
         pass  # thread exits when loop stops
 
     def _start_voice(self) -> None:
+        if not self.settings.voice.enabled:
+            self._event("INFO", "Voice recognition disabled in settings")
+            return
         try:
             ok = self.voice.start()
             if ok:
                 self._event("INFO", "Voice recognition ready")
             else:
-                self._event("WARN", "Voice recognition engine unavailable")
+                eng = self.voice.engine
+                detail = eng.error if eng and eng.error else "engine unavailable"
+                log.warning("start voice: %s", detail)
+                self._event("WARN", f"Voice recognition unavailable: {detail}")
         except Exception as e:
             log.warning("start voice error: %s", e)
             self._event("WARN", f"Voice recognition start failed: {e}")
@@ -937,7 +939,7 @@ class AppCore(QObject):
 
     def _emit_status(self, snapshot_time: float, cpu_baseline_ok: bool = True) -> None:
         s = self._status
-        s.camera_active = self.camera.is_running
+        s.camera_active = self.camera.is_healthy
         s.hand_tracking_active = self.hand_tracker.available
         s.tracking_paused = self.privacy.tracking_paused
         s.voice_ready = bool(self.voice.engine and self.voice.engine.status in ("listening", "recognizing"))
