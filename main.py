@@ -79,15 +79,29 @@ def _make_splash(parent=None):
 
 
 class _StagedStartup:
-    """Builds MainWindow after the splash has been painted on screen."""
+    """Builds MainWindow after the splash has been painted on screen.
+
+    Unowned QTimer.singleShot callbacks are fragile in a frozen build, so the
+    timers live on this object (kept alive) and every stage logs to the app
+    log file — otherwise a silent stall is impossible to diagnose.
+    """
 
     def __init__(self, app, splash):
         self.app = app
         self.splash = splash
         self.window = None
         self.started = False
+        from hadj_no_touch.logging_setup import get_logger
+        self.log = get_logger("startup")
         from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, self._paint_idle)
+        self._timer = QTimer()
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self._paint_idle)
+        self._timer.start(0)
+        self._timer2 = QTimer()
+        self._timer2.setSingleShot(True)
+        self._timer2.timeout.connect(self._start_late)
+        self.log.info("staged startup scheduled")
 
     def _set(self, text: str) -> None:
         try:
@@ -97,6 +111,7 @@ class _StagedStartup:
             pass
 
     def _paint_idle(self) -> None:
+        self.log.info("building main window")
         self._set("Loading models & core …")
 
         from hadj_no_touch.ui.main_window import MainWindow
@@ -105,12 +120,19 @@ class _StagedStartup:
         self.app.processEvents()          # paint the main window first
 
         self._set("Starting camera & trackers …")
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(50, self._start_late)
+        self.log.info("main window shown; scheduling core start")
+        self._timer2.start(50)
 
     def _start_late(self) -> None:
-        self.window.start()
+        self.log.info("calling core start")
+        try:
+            self.window.start()
+        except Exception:
+            import traceback
+            self.log.error("core start crashed:\n%s", traceback.format_exc())
+            raise
         self.started = True
+        self.log.info("core started successfully")
         self.splash.hide()
         self.splash.close()
 
@@ -134,7 +156,7 @@ def main() -> int:
     splash.show()
     app.processEvents()
 
-    _StagedStartup(app, splash)
+    _stager = _StagedStartup(app, splash)  # kept alive by the timers
 
     return app.exec()
 
