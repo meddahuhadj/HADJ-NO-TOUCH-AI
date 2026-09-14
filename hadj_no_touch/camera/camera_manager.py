@@ -6,6 +6,7 @@ consumers. The frame is never stored or uploaded.
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -23,6 +24,10 @@ try:
     HAVE_CV2 = True
 except Exception:
     HAVE_CV2 = False
+
+# Brightness (mean pixel value, 0-255) below which a captured frame is
+# considered black/useless (privacy shutter, broken driver mode, ...).
+_DARK_FRAME_THRESHOLD = 8.0
 
 
 class CameraError(RuntimeError):
@@ -61,23 +66,90 @@ class CameraManager:
         return self._running.is_set() and self._cap is not None
 
     # ---- lifecycle ---------------------------------------------------------
+    @staticmethod
+    def _default_backends() -> list[int]:
+        """Prefer MediaFoundation on Windows (most compatible with modern webcams)."""
+        if os.name == "nt":
+            return [cv2.CAP_MSMF, cv2.CAP_DSHOW]
+        return [cv2.CAP_MSMF, 0]
+
+    def _try_open(self, index: int, first: int | None = None) -> Optional[object]:
+        backends = self._default_backends()
+        if first is not None:
+            backends = [first] + [b for b in backends if b != first]
+        for backend in backends:
+            try:
+                cap = cv2.VideoCapture(index, backend)
+            except Exception:
+                continue
+            if cap is not None and cap.isOpened():
+                return cap
+        return None
+
+    @staticmethod
+    def _probe_brightness(cap, frames: int = 6) -> float:
+        """Average mean-brightness of a few freshly read frames (0-255)."""
+        total, count = 0.0, 0
+        for _ in range(frames):
+            ok, frame = cap.read()
+            if ok and frame is not None:
+                total += float(frame.mean())
+                count += 1
+            else:
+                time.sleep(0.05)
+        return total / count if count else 0.0
+
+    @staticmethod
+    def _apply_exposure(cap) -> None:
+        """Best-effort exposure / brightness boost for dark webcams."""
+        try:
+            cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
+            cap.set(cv2.CAP_PROP_AUTO_WB, 1.0)
+            cap.set(cv2.CAP_PROP_GAIN, 200)
+            cap.set(cv2.CAP_PROP_BRIGHTNESS, 150)
+        except Exception:
+            pass
+
     def open(self, index: int | None = None) -> bool:
         if not HAVE_CV2:
             self.error = "OpenCV not installed"
             return False
         idx = self.settings.index if index is None else index
-        try:
-            self._cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
-        except Exception as e:
-            self.error = str(e)
-            return False
-        if not self._cap or not self._cap.isOpened():
+
+        cap = self._try_open(idx)
+        if cap is None:
             self.error = f"Camera {idx} could not be opened. Is it in use elsewhere?"
             return False
-        if self.settings.width > 0 and self.settings.height > 0:
-            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings.width)
-            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings.height)
-        self._cap.set(cv2.CAP_PROP_FPS, self.settings.target_fps)
+
+        # Apply requested resolution (if any) on MediaFoundation first; some
+        # cameras deliver pure black frames when a low resolution is forced.
+        requested = self.settings.width > 0 and self.settings.height > 0
+        if requested:
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings.width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings.height)
+        cap.set(cv2.CAP_PROP_FPS, self.settings.target_fps)
+        self._apply_exposure(cap)
+
+        # Self-heal: if the forced resolution yields dark frames, reopen at the
+        # camera's native resolution.
+        if requested and self._probe_brightness(cap) < _DARK_FRAME_THRESHOLD:
+            native = self._try_open(idx)
+            if native is not None:
+                native.set(cv2.CAP_PROP_FPS, self.settings.target_fps)
+                self._apply_exposure(native)
+                if self._probe_brightness(native) >= _DARK_FRAME_THRESHOLD:
+                    try:
+                        cap.release()
+                    except Exception:
+                        pass
+                    cap = native
+                else:
+                    try:
+                        native.release()
+                    except Exception:
+                        pass
+
+        self._cap = cap
         self.error = None
         return True
 
@@ -111,6 +183,8 @@ class CameraManager:
     def _run(self) -> None:
         frame_interval = 1.0 / max(1, self.settings.target_fps)
         next_t = time.monotonic()
+        fail_streak = 0
+        idx = self.settings.index
         while self._running.is_set():
             now = time.monotonic()
             if now < next_t - 0.001:
@@ -119,7 +193,22 @@ class CameraManager:
             ok, frame = self._cap.read()
             if not ok or frame is None:
                 self.handle_read_error()
+                fail_streak += 1
+                if fail_streak >= 30:  # ~4 s of continuous failures
+                    fail_streak = 0
+                    log.warning("camera stuck: reopening capture device %s", idx)
+                    try:
+                        self._cap.release()
+                    except Exception:
+                        pass
+                    try:
+                        self._cap = self._try_open(idx)
+                    except Exception:
+                        self._cap = None
+                    if self._cap is not None:
+                        self._apply_exposure(self._cap)
                 continue
+            fail_streak = 0
             frame = cv2.flip(frame, 1)
             with self._lock:
                 self._frame = Frame(bgr=frame, grabbed_at=t0, index=self._frame_counter)
