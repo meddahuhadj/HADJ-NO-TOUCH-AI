@@ -168,7 +168,7 @@ class Database:
     def recent_activity(self, limit: int = 50) -> list[tuple]:
         with self._lock:
             rows = self._conn.execute(
-                "SELECT ts, level, message FROM activity_log ORDER BY ts DESC LIMIT ?",
+                "SELECT ts, level, message FROM activity_log ORDER BY id DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         return [(ts, level, message) for ts, level, message in rows]

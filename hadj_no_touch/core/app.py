@@ -176,18 +176,32 @@ class AppCore(QObject):
     # =====================================================================
     def _processing_loop(self) -> None:
         target_interval = 1.0 / max(1, self.settings.tracking.processing_fps)
+        self._last_tick_time = time.monotonic()
         while self._running.is_set():
             t0 = time.monotonic()
             self._process_tick()
-            elapsed = time.monotonic() - t0
-            self._processing_fps = 0.9 * self._processing_fps + 0.1 * (1.0 / max(0.001, elapsed))
+            now = time.monotonic()
+            dt = now - self._last_tick_time
+            self._last_tick_time = now
+            if dt > 0:
+                self._processing_fps = 0.9 * self._processing_fps + 0.1 * (1.0 / dt)
+            elapsed = now - t0
             sleep = target_interval - elapsed
             if sleep > 0:
                 time.sleep(min(sleep, 0.05))
 
     def _process_tick(self) -> None:
         frame_obj = self.camera.read()
-        frame = frame_obj.bgr if frame_obj is not None else None
+        if frame_obj is None:
+            time.sleep(0.01)
+            return
+
+        if hasattr(self, "_last_processed_frame_index") and self._last_processed_frame_index == frame_obj.index:
+            time.sleep(0.005)
+            return
+        self._last_processed_frame_index = frame_obj.index
+
+        frame = frame_obj.bgr
         w = h = 0
         if frame is not None:
             h, w = frame.shape[:2]
@@ -203,6 +217,7 @@ class AppCore(QObject):
             hands = self.hand_tracker.detect(frame, w, h)
             if hands:
                 hand = self._choose_hand(hands)
+        self._last_hand_detected = hand is not None
 
         # fingertip → virtual interaction plane
         if hand is not None and self.settings.cursor.enabled:
@@ -254,9 +269,11 @@ class AppCore(QObject):
         if now - self._last_preview_time > 0.05:
             self._last_preview_time = now
             if frame is not None and self.QImage is not None and not self.privacy.privacy_mode:
+                import cv2
                 overlay = self._overlay(frame, hand, w, h)
-                qimg = self.QImage(overlay.data, w, h, 3 * w, self.QImage.Format.Format_BGR888)
-                self.frame_rendered.emit(qimg.copy())
+                rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
+                qimg = self.QImage(rgb.data, w, h, 3 * w, self.QImage.Format.Format_RGB888).copy()
+                self.frame_rendered.emit(qimg)
 
         self._emit_status(snapshot_time=now, cpu_baseline_ok=True)
 
@@ -744,6 +761,17 @@ class AppCore(QObject):
     def _stop_hotkey_listener(self) -> None:
         pass  # thread exits when loop stops
 
+    def _start_voice(self) -> None:
+        try:
+            ok = self.voice.start()
+            if ok:
+                self._event("INFO", "Voice recognition ready")
+            else:
+                self._event("WARN", "Voice recognition engine unavailable")
+        except Exception as e:
+            log.warning("start voice error: %s", e)
+            self._event("WARN", f"Voice recognition start failed: {e}")
+
     # =====================================================================
     # calibration (used by the wizard)
     # =====================================================================
@@ -910,15 +938,15 @@ class AppCore(QObject):
     def _emit_status(self, snapshot_time: float, cpu_baseline_ok: bool = True) -> None:
         s = self._status
         s.camera_active = self.camera.is_running
-        s.hand_tracking_active = bool(self._last_hand_seen())
+        s.hand_tracking_active = self.hand_tracker.available
         s.tracking_paused = self.privacy.tracking_paused
-        s.voice_ready = bool(self.voice.engine and self.voice.engine.status == "listening")
+        s.voice_ready = bool(self.voice.engine and self.voice.engine.status in ("listening", "recognizing"))
         s.gaze_active = self.multimodal.state.gaze_active
         ind = self.privacy.indicators()
         s.control_enabled = ind["control"]
         s.emergency = ind["emergency"]
         s.privacy_mode = ind["privacy"]
-        s.hand_present = self._last_hand_seen()
+        s.hand_present = getattr(self, "_last_hand_detected", False) or self._last_hand_seen()
         s.hand_confidence = self.engine.raw_confidence if s.hand_present else 0.0
         s.gesture = "LOCKED" if self.engine.locked else self.engine.confirmed_gesture
         s.gesture_confidence = self.engine.raw_confidence

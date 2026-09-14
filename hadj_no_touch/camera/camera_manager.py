@@ -2,11 +2,14 @@
 
 Frames are grabbed in a loop and the latest one is made available to
 consumers. The frame is never stored or uploaded.
+
+Camera selection is resolved at open-time by probing indices until one
+actually delivers usable frames (see :mod:`.camera_config`), so a broken
+device is skipped instead of showing a black preview.
 """
 
 from __future__ import annotations
 
-import os
 import threading
 import time
 from dataclasses import dataclass
@@ -16,6 +19,17 @@ import numpy as np
 
 from ..config import CameraSettings, SETTINGS
 from ..logging_setup import get_logger
+from .camera_config import (
+    apply_exposure,
+    bounded_call,
+    is_frame_usable,
+    resolve_camera,
+    OPEN_TIMEOUT_REAL,
+    READ_TIMEOUT,
+    _bounded_open,
+    _bounded_read,
+    _safe_release,
+)
 
 log = get_logger("camera.manager")
 
@@ -24,10 +38,6 @@ try:
     HAVE_CV2 = True
 except Exception:
     HAVE_CV2 = False
-
-# Brightness (mean pixel value, 0-255) below which a captured frame is
-# considered black/useless (privacy shutter, broken driver mode, ...).
-_DARK_FRAME_THRESHOLD = 8.0
 
 
 class CameraError(RuntimeError):
@@ -66,89 +76,85 @@ class CameraManager:
         return self._running.is_set() and self._cap is not None
 
     # ---- lifecycle ---------------------------------------------------------
-    @staticmethod
-    def _default_backends() -> list[int]:
-        """Prefer MediaFoundation on Windows (most compatible with modern webcams)."""
-        if os.name == "nt":
-            return [cv2.CAP_MSMF, cv2.CAP_DSHOW]
-        return [cv2.CAP_MSMF, 0]
+    def _configure_cap(self, cap) -> None:
+        if cap is None:
+            return
 
-    def _try_open(self, index: int, first: int | None = None) -> Optional[object]:
-        backends = self._default_backends()
-        if first is not None:
-            backends = [first] + [b for b in backends if b != first]
-        for backend in backends:
+        def _do() -> None:
             try:
-                cap = cv2.VideoCapture(index, backend)
-            except Exception:
-                continue
-            if cap is not None and cap.isOpened():
-                return cap
-        return None
+                if self.settings.width > 0 and self.settings.height > 0:
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings.width)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings.height)
+                cap.set(cv2.CAP_PROP_FPS, self.settings.target_fps)
+            except Exception as e:
+                log.debug("configure cap properties: %s", e)
 
-    @staticmethod
-    def _probe_brightness(cap, frames: int = 6) -> float:
-        """Average mean-brightness of a few freshly read frames (0-255)."""
-        total, count = 0.0, 0
-        for _ in range(frames):
-            ok, frame = cap.read()
-            if ok and frame is not None:
-                total += float(frame.mean())
-                count += 1
-            else:
-                time.sleep(0.05)
-        return total / count if count else 0.0
+        bounded_call(_do, 3.0)
 
-    @staticmethod
-    def _apply_exposure(cap) -> None:
-        """Best-effort exposure / brightness boost for dark webcams."""
-        try:
-            cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
-            cap.set(cv2.CAP_PROP_AUTO_WB, 1.0)
-            cap.set(cv2.CAP_PROP_GAIN, 200)
-            cap.set(cv2.CAP_PROP_BRIGHTNESS, 150)
-        except Exception:
-            pass
+    def _open_with_backend(self, index: int,
+                           backend: Optional[int]) -> Optional[object]:
+        cap = _bounded_open(index, backend if backend is not None else 0,
+                            OPEN_TIMEOUT_REAL)
+        if cap is None:
+            return None
+        self._configure_cap(cap)
+        apply_exposure(cap)
+        return cap
+
+    def _warm_up(self, cap) -> bool:
+        """Confirm the capture delivers usable frames (time-bounded)."""
+        if cap is None:
+            return False
+        apply_exposure(cap)
+        for _ in range(4):
+            ok, frame = _bounded_read(cap, timeout=READ_TIMEOUT)
+            if ok and is_frame_usable(frame):
+                return True
+            time.sleep(0.1)
+        return False
 
     def open(self, index: int | None = None) -> bool:
         if not HAVE_CV2:
             self.error = "OpenCV not installed"
             return False
-        idx = self.settings.index if index is None else index
 
-        cap = self._try_open(idx)
-        if cap is None:
-            self.error = f"Camera {idx} could not be opened. Is it in use elsewhere?"
+        requested = self.settings.index if index is None else index
+        resolved, backend = resolve_camera(requested, use_cache=True)
+        if resolved < 0:
+            self.error = ("No camera detected. Check that the webcam is "
+                          "connected and not already in use by another app.")
             return False
 
-        # Apply requested resolution (if any) on MediaFoundation first; some
-        # cameras deliver pure black frames when a low resolution is forced.
-        requested = self.settings.width > 0 and self.settings.height > 0
-        if requested:
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings.width)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings.height)
-        cap.set(cv2.CAP_PROP_FPS, self.settings.target_fps)
-        self._apply_exposure(cap)
+        cap = self._open_with_backend(resolved, backend)
+        if cap is None:
+            self.error = f"Camera {resolved} could not be opened. Is it in use elsewhere?"
+            return False
 
-        # Self-heal: if the forced resolution yields dark frames, reopen at the
-        # camera's native resolution.
-        if requested and self._probe_brightness(cap) < _DARK_FRAME_THRESHOLD:
-            native = self._try_open(idx)
-            if native is not None:
-                native.set(cv2.CAP_PROP_FPS, self.settings.target_fps)
-                self._apply_exposure(native)
-                if self._probe_brightness(native) >= _DARK_FRAME_THRESHOLD:
-                    try:
-                        cap.release()
-                    except Exception:
-                        pass
-                    cap = native
+        if not self._warm_up(cap):
+            # Some webcams go black only at the forced resolution: reopen at
+            # the camera's native resolution before giving up.
+            if self.settings.width > 0 or self.settings.height > 0:
+                saved_w, saved_h = self.settings.width, self.settings.height
+                self.settings.width = self.settings.height = 0
+                _safe_release(cap)
+                cap = self._open_with_backend(resolved, backend)
+                self.settings.width, self.settings.height = saved_w, saved_h
+                if cap is not None and self._warm_up(cap):
+                    log.info("camera %s: forced resolution rejected, using native", resolved)
                 else:
-                    try:
-                        native.release()
-                    except Exception:
-                        pass
+                    _safe_release(cap)
+                    cap = None
+            else:
+                _safe_release(cap)
+                cap = None
 
+        if cap is None:
+            self.error = (f"Camera {resolved} delivers no usable frames — "
+                          "check the privacy shutter and that no other app "
+                          "is using the webcam.")
+            return False
+
+        self.settings.index = resolved
         self._cap = cap
         self.error = None
         return True
@@ -167,12 +173,8 @@ class CameraManager:
             self._thread.join(timeout=2.0)
             self._thread = None
         with self._lock:
-            if self._cap is not None:
-                try:
-                    self._cap.release()
-                except Exception:
-                    pass
-                self._cap = None
+            _safe_release(self._cap)
+            self._cap = None
 
     def read(self) -> Optional[Frame]:
         """Return the most recent frame, or None."""
@@ -180,36 +182,63 @@ class CameraManager:
             return self._frame
 
     # ---- internals ---------------------------------------------------------
+    def _reopen(self) -> bool:
+        """Re-discover a working camera and swap the capture device.
+
+        Returns True when a new usable capture is in place.
+        """
+        old = self._cap
+        self._cap = None
+        _safe_release(old)
+        try:
+            resolved, backend = resolve_camera(self.settings.index, use_cache=False)
+        except Exception as e:
+            log.debug("reopen discovery failed: %s", e)
+            return False
+        if resolved < 0:
+            self.error = "Camera unavailable: reconnect the webcam or restart the app."
+            return False
+        cap = self._open_with_backend(resolved, backend)
+        if cap is None or not self._warm_up(cap):
+            _safe_release(cap)
+            self.error = f"Camera {resolved} could not be reopened."
+            return False
+        self.settings.index = resolved
+        self._cap = cap
+        self.error = None
+        log.warning("camera reopened on index %s", resolved)
+        return True
+
     def _run(self) -> None:
         frame_interval = 1.0 / max(1, self.settings.target_fps)
         next_t = time.monotonic()
         fail_streak = 0
-        idx = self.settings.index
+        last_useful = time.monotonic()
         while self._running.is_set():
             now = time.monotonic()
             if now < next_t - 0.001:
                 time.sleep(max(0.0, next_t - now - 0.001))
             t0 = time.monotonic()
+
+            if self._cap is None:
+                if not self._reopen():
+                    time.sleep(1.0)
+                continue
+
             ok, frame = self._cap.read()
             if not ok or frame is None:
                 self.handle_read_error()
                 fail_streak += 1
-                if fail_streak >= 30:  # ~4 s of continuous failures
+                if fail_streak >= 30 or t0 - last_useful > 10.0:
                     fail_streak = 0
-                    log.warning("camera stuck: reopening capture device %s", idx)
-                    try:
-                        self._cap.release()
-                    except Exception:
-                        pass
-                    try:
-                        self._cap = self._try_open(idx)
-                    except Exception:
-                        self._cap = None
-                    if self._cap is not None:
-                        self._apply_exposure(self._cap)
+                    if not self._reopen():
+                        time.sleep(1.0)
                 continue
+
             fail_streak = 0
-            frame = cv2.flip(frame, 1)
+            if is_frame_usable(frame):
+                last_useful = t0
+            frame = cv2.flip(frame, 1).copy()
             with self._lock:
                 self._frame = Frame(bgr=frame, grabbed_at=t0, index=self._frame_counter)
                 self._frame_counter += 1
@@ -226,5 +255,8 @@ class CameraManager:
 
     def handle_read_error(self) -> None:
         self.error = "Failed to read frame from camera"
-        log.warning(self.error)
+        now = time.monotonic()
+        if not hasattr(self, "_last_error_log") or now - self._last_error_log > 3.0:
+            log.warning(self.error)
+            self._last_error_log = now
         time.sleep(0.1)

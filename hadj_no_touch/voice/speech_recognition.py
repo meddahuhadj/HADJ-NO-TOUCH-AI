@@ -172,35 +172,37 @@ class GoogleSpeechEngine(SpeechEngine):
         return HAVE_SPEECH_RECOGNITION and HAVE_SOUNDDEVICE
 
     def _loop(self) -> None:
-        try:
-            with SoundDeviceMicrophone(sample_rate=16000) as source:
-                self._recognizer.energy_threshold = 400
-                self.status = "listening"
-                while self._running.is_set():
-                    try:
-                        audio = self._recognizer.listen(source, phrase_time_limit=8,
-                                                        timeout=6)
-                        self.status = "recognizing"
-                        text = self._recognizer.recognize_google(audio, language=self.language)
-                        if text and self.on_text:
-                            self.on_text(text.strip())
-                        self.status = "listening"
-                    except sr.WaitTimeoutError:
-                        continue
-                    except sr.UnknownValueError:
-                        continue
-                    except sr.RequestError as e:
-                        self.error = f"Recognition service error: {e}"
-                        self.status = "error"
-                        time.sleep(3.0)
-                        self.status = "listening"
-                    except Exception as e:
-                        self.error = str(e)
-                        self.status = "error"
-                        time.sleep(2.0)
-        except Exception as e:
-            self.error = str(e)
-            self.status = "error"
+        while self._running.is_set():
+            try:
+                with SoundDeviceMicrophone(sample_rate=16000) as source:
+                    self._recognizer.energy_threshold = 400
+                    self.status = "listening"
+                    self.error = None
+                    while self._running.is_set():
+                        try:
+                            audio = self._recognizer.listen(source, phrase_time_limit=8, timeout=6)
+                            self.status = "recognizing"
+                            text = self._recognizer.recognize_google(audio, language=self.language)
+                            if text and self.on_text:
+                                self.on_text(text.strip())
+                        except (sr.WaitTimeoutError, sr.UnknownValueError):
+                            pass
+                        except sr.RequestError as e:
+                            self.error = f"Recognition service error: {e}"
+                            self.status = "error"
+                            time.sleep(2.0)
+                        except Exception as e:
+                            self.error = str(e)
+                            self.status = "error"
+                            time.sleep(1.0)
+                        finally:
+                            if self._running.is_set():
+                                self.status = "listening"
+            except Exception as e:
+                self.error = str(e)
+                self.status = "error"
+                log.warning("Microphone acquisition error: %s (retrying in 3s)", e)
+                time.sleep(3.0)
 
 
 class VoskSpeechEngine(SpeechEngine):

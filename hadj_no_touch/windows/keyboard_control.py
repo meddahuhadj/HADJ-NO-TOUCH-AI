@@ -17,19 +17,35 @@ KEYEVENTF_UNICODE = 0x0004
 KEYEVENTF_EXTENDEDKEY = 0x0001
 
 VK = {
-    "BACK": 0x08, "BACKSPACE": 0x08, "TAB": 0x09, "CLEAR": 0x0C,
-    "ENTER": 0x0D, "RETURN": 0x0D, "SHIFT": 0x10, "CTRL": 0x11,
-    "LCTRL": 0xA2, "RCTRL": 0xA3, "LSHIFT": 0xA0, "RSHIFT": 0xA1,
-    "ALT": 0x12, "LALT": 0xA4, "RALT": 0xA5, "ESC": 0x1B, "ESCAPE": 0x1B,
-    "SPACE": 0x20, "PAGEUP": 0x21, "PAGEDOWN": 0x22, "END": 0x23,
-    "HOME": 0x24, "LEFT": 0x25, "UP": 0x26, "RIGHT": 0x27, "DOWN": 0x28,
-    "PRINTSCREEN": 0x2C, "INSERT": 0x2D, "DELETE": 0x2E,
-    "WIN": 0x5B, "LWIN": 0x5B, "RWIN": 0x5C, "MENU": 0x5D,
+    "BACK": 0x08, "BACKSPACE": 0x08, "BS": 0x08,
+    "TAB": 0x09, "CLEAR": 0x0C,
+    "ENTER": 0x0D, "RETURN": 0x0D,
+    "SHIFT": 0x10, "LSHIFT": 0xA0, "RSHIFT": 0xA1,
+    "CTRL": 0x11, "CONTROL": 0x11, "LCTRL": 0xA2, "RCTRL": 0xA3,
+    "ALT": 0x12, "OPTION": 0x12, "LALT": 0xA4, "RALT": 0xA5, "ALTGR": 0xA5,
+    "ESC": 0x1B, "ESCAPE": 0x1B,
+    "SPACE": 0x20,
+    "PAGEUP": 0x21, "PGUP": 0x21, "PAGE_UP": 0x21, "PRIOR": 0x21,
+    "PAGEDOWN": 0x22, "PGDN": 0x22, "PGDOWN": 0x22, "PAGE_DOWN": 0x22, "NEXT": 0x22,
+    "END": 0x23, "HOME": 0x24,
+    "LEFT": 0x25, "UP": 0x26, "RIGHT": 0x27, "DOWN": 0x28,
+    "PRINTSCREEN": 0x2C, "PRTSCN": 0x2C,
+    "INSERT": 0x2D, "INS": 0x2D,
+    "DELETE": 0x2E, "DEL": 0x2E,
+    "WIN": 0x5B, "LWIN": 0x5B, "RWIN": 0x5C, "CMD": 0x5B, "COMMAND": 0x5B, "SUPER": 0x5B, "MENU": 0x5D,
     "CAPSLOCK": 0x14, "NUMLOCK": 0x90, "SCROLLLOCK": 0x91,
-    "PAUSE": 0x13, "BREAK": 0x13, "BACKSLASH": 0xDC, "SLASH": 0xBF,
-    "SEMICOLON": 0xBA, "QUOTE": 0xDE, "COMMA": 0xBC, "PERIOD": 0xBE,
-    "MINUS": 0xBD, "EQUAL": 0xBB, "TILDE": 0xC0, "OPENBRACKET": 0xDB,
-    "CLOSEBRACKET": 0xDD,
+    "PAUSE": 0x13, "BREAK": 0x13,
+    "BACKSLASH": 0xDC, "\\": 0xDC,
+    "SLASH": 0xBF, "/": 0xBF,
+    "SEMICOLON": 0xBA, ";": 0xBA,
+    "QUOTE": 0xDE, "'": 0xDE,
+    "COMMA": 0xBC, ",": 0xBC,
+    "PERIOD": 0xBE, ".": 0xBE,
+    "MINUS": 0xBD, "-": 0xBD, "_": 0xBD,
+    "EQUAL": 0xBB, "=": 0xBB, "+": 0xBB,
+    "TILDE": 0xC0, "`": 0xC0, "~": 0xC0,
+    "OPENBRACKET": 0xDB, "[": 0xDB, "{": 0xDB,
+    "CLOSEBRACKET": 0xDD, "]": 0xDD, "}": 0xDD,
 }
 
 for _i in range(1, 25):
@@ -37,14 +53,19 @@ for _i in range(1, 25):
 
 
 def _vk(name: str) -> int:
-    n = name.upper().replace(" ", "")
+    if name in VK:
+        return VK[name]
+    n = name.upper().replace(" ", "").replace("_", "")
+    if n in VK:
+        return VK[n]
     if len(n) == 1 and n.isalpha():
         return ord(n.upper())
     if len(n) == 1 and n.isdigit():
         return ord(n)
-    if n in VK:
-        return VK[n]
-    return ord(n)  # assume 'A'-'Z'
+    if len(n) == 1:
+        return ord(n)
+    log.warning("Unknown key name: %r", name)
+    return 0
 
 
 class _KEYBDINPUT(ctypes.Structure):
@@ -80,23 +101,34 @@ def _send_key(vk: int, up: bool, scan: int = 0, is_unicode: bool = False, extend
 
 
 def tap(name: str, modifiers: list[str] | None = None, repeat: int = 1) -> None:
-    mods = [("LCTRL" if m.upper() in ("CTRL", "CONTROL") else m.upper()) for m in (modifiers or [])]
-    for m in mods:
-        _send_key(_vk(m), False, extended=(m == "WIN"))
-    single = len(name) == 1
     vk = _vk(name)
+    if not vk:
+        log.warning("Cannot tap unknown key: %r", name)
+        return
+    mods = [("LCTRL" if m.upper() in ("CTRL", "CONTROL") else m.upper()) for m in (modifiers or [])]
+    mod_vks = []
+    for m in mods:
+        mvk = _vk(m)
+        if mvk:
+            _send_key(mvk, False, extended=(m == "WIN"))
+            mod_vks.append((m, mvk))
+    single = len(name) == 1
     scan = ord(name) if single else 0
     for _ in range(max(1, repeat)):
         _send_key(vk, False, scan=scan)
         _send_key(vk, True, scan=scan)
-    for m in reversed(mods):
-        _send_key(_vk(m), True, extended=(m == "WIN"))
+    for m, mvk in reversed(mod_vks):
+        _send_key(mvk, True, extended=(m == "WIN"))
 
 
 def press(name: str, hold_ms: int = 500) -> None:
-    _send_key(_vk(name), False)
+    vk = _vk(name)
+    if not vk:
+        log.warning("Cannot press unknown key: %r", name)
+        return
+    _send_key(vk, False)
     time.sleep(hold_ms / 1000.0)
-    _send_key(_vk(name), True)
+    _send_key(vk, True)
 
 
 def type_text(text: str) -> None:

@@ -5,18 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-import numpy as np
-
 from ..logging_setup import get_logger
 
 log = get_logger("vision.face")
-
-try:
-    import mediapipe as mp
-    import cv2
-    HAVE_MEDIAPIPE = True
-except Exception:
-    HAVE_MEDIAPIPE = False
 
 # FaceMesh landmark groups (with refine_landmarks=True)
 LEFT_EYE_CORNERS = [33, 133]
@@ -28,7 +19,7 @@ LEFT_IRIS = [474, 475, 476, 477]
 @dataclass
 class FaceData:
     present: bool = False
-    landmarks_norm: Optional[np.ndarray] = None
+    landmarks_norm: Optional["np.ndarray"] = None
     bbox: tuple = (0, 0, 0, 0)  # x1, y1, x2, y2
 
 
@@ -36,27 +27,54 @@ class FaceTracker:
     def __init__(self, refine_landmarks: bool = True):
         self._mesh = None
         self.error: Optional[str] = None
-        if HAVE_MEDIAPIPE:
-            try:
-                self._mesh = mp.solutions.face_mesh.FaceMesh(
-                    static_image_mode=False,
-                    max_num_faces=1,
-                    refine_landmarks=refine_landmarks,
-                    min_detection_confidence=0.5,
-                )
-            except Exception as e:
-                self.error = str(e)
-        else:
-            self.error = "MediaPipe is not installed"
+        self._tried = False
+        self._refine = refine_landmarks
+        self._mp = None
+        self._np = None
+
+    def _load_deps(self) -> bool:
+        if self._np is not None:
+            return True
+        try:
+            import numpy as np
+            import mediapipe as mp
+            self._np = np
+            self._mp = mp
+            return True
+        except ImportError as e:
+            self.error = f"Dependency missing: {e}"
+            return False
+
+    def _ensure_model(self) -> bool:
+        if self._mesh is not None:
+            return True
+        if self._tried:
+            return False
+        self._tried = True
+        if not self._load_deps():
+            return False
+        try:
+            self._mesh = self._mp.solutions.face_mesh.FaceMesh(
+                static_image_mode=False,
+                max_num_faces=1,
+                refine_landmarks=self._refine,
+                min_detection_confidence=0.5,
+            )
+            return True
+        except Exception as e:
+            self.error = str(e)
+            return False
 
     @property
     def available(self) -> bool:
         return self._mesh is not None
 
-    def detect(self, bgr_frame: np.ndarray, frame_w: int, frame_h: int) -> FaceData:
-        if self._mesh is None:
+    def detect(self, bgr_frame: "np.ndarray", frame_w: int, frame_h: int) -> FaceData:
+        if not self._ensure_model():
             return FaceData()
+        np = self._np
         try:
+            import cv2
             rgb = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
             res = self._mesh.process(rgb)
         except Exception:

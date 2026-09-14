@@ -1021,6 +1021,148 @@ kbd {
 .faq-body { padding: 0.9rem 1.3rem 1.3rem; }
 .faq-body p { color: var(--muted); font-size: 0.95rem; }
 
+/* ---------- Download ---------- */
+
+.download-hero {
+  padding: clamp(1.8rem, 4vw, 2.8rem);
+  text-align: center;
+  margin-bottom: 1.2rem;
+  background:
+    radial-gradient(60% 100% at 50% 0%, rgba(76, 201, 255, 0.1), transparent 70%),
+    var(--panel);
+}
+.download-hero-inner { position: relative; z-index: 2; }
+.download-version {
+  display: flex; justify-content: center; gap: 0.6rem;
+  margin-block-end: 1.2rem;
+}
+.download-hero-btn {
+  font-size: 1.12rem; min-height: 60px; padding-inline: 2rem;
+}
+.download-hero-meta {
+  margin-top: 0.9rem;
+  font-size: 0.85rem; color: var(--muted);
+}
+
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+.download-card {
+  padding: 1.5rem 1.4rem;
+}
+.download-card h3 {
+  font-size: 1.15rem; font-weight: 700; margin-bottom: 0.8rem;
+  letter-spacing: -0.01em;
+}
+.download-card code {
+  display: inline-block;
+  padding: 0.15em 0.5em;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(148, 180, 255, 0.08);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.82em;
+  color: var(--pale);
+}
+
+.req-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.req-list li {
+  display: flex; justify-content: space-between; gap: 1rem;
+  font-size: 0.9rem; color: var(--muted);
+  padding-bottom: 0.45rem;
+  border-bottom: 1px dashed rgba(126, 195, 255, 0.1);
+}
+.req-list li:last-child { border-bottom: 0; }
+.req-label { color: var(--text); font-weight: 600; white-space: nowrap; }
+
+.install-steps {
+  list-style: none; counter-reset: step;
+  display: flex; flex-direction: column; gap: 0.7rem;
+}
+.install-steps li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 2.4rem;
+  font-size: 0.9rem; color: var(--muted); line-height: 1.5;
+}
+.install-steps li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute; left: 0; top: 0;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--cyan); font-variant-numeric: tabular-nums;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: rgba(42, 108, 181, 0.18);
+}
+.install-note {
+  margin-top: 0.8rem;
+  font-size: 0.82rem; color: var(--muted);
+  padding-top: 0.7rem;
+  border-top: 1px dashed rgba(126, 195, 255, 0.12);
+}
+
+.verify-text { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.7rem; }
+.verify-hash {
+  display: block;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(148, 180, 255, 0.05);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.72rem; letter-spacing: 0.04em;
+  color: var(--cyan);
+  word-break: break-all;
+  line-height: 1.6;
+  margin-bottom: 0.8rem;
+}
+.verify-how {
+  font-size: 0.82rem; color: var(--muted);
+  line-height: 1.5;
+}
+.verify-how code {
+  font-size: 0.78em;
+}
+
+.inside-list {
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+.inside-list li {
+  font-size: 0.88rem; color: var(--muted);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.inside-list li::before {
+  content: ""; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--cyan); box-shadow: 0 0 8px rgba(76, 201, 255, 0.9);
+  flex-shrink: 0;
+}
+.inside-list li code {
+  font-size: 0.82em;
+}
+
+.download-footer {
+  padding: 1.2rem 1.4rem;
+  text-align: center;
+}
+.download-footer-row {
+  display: flex; align-items: center; justify-content: center; gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem; color: var(--muted);
+}
+.download-footer-note {
+  margin-top: 0.6rem;
+  font-size: 0.78rem; color: rgba(159, 176, 207, 0.5);
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 620px) {
+  .download-grid { grid-template-columns: 1fr; }
+  .req-list li { flex-direction: column; gap: 0.15rem; }
+}
+
 /* ---------- Footer ---------- */
 
 .site-footer {

@@ -6,19 +6,10 @@ import threading
 from dataclasses import dataclass, field
 from typing import Optional
 
-import numpy as np
-
 from ..config import SETTINGS
 from ..logging_setup import get_logger
 
 log = get_logger("vision.hand")
-
-try:
-    import mediapipe as mp
-    import cv2
-    HAVE_MEDIAPIPE = True
-except Exception:
-    HAVE_MEDIAPIPE = False
 
 # Human-friendly landmark names (MediaPipe Hands).
 LM_WRIST = 0
@@ -46,50 +37,81 @@ LM_PINKY_TIP = 20
 
 @dataclass
 class HandData:
-    landmarks_norm: np.ndarray  # (21, 2) normalized [0..1]
-    landmarks_px: np.ndarray  # (21, 2) pixel coords
+    landmarks_norm: "np.ndarray"  # (21, 2) normalized [0..1]
+    landmarks_px: "np.ndarray"    # (21, 2) pixel coords
     handedness: str = "Right"
     confidence: float = 0.0
     tracked: bool = False
 
-    def landmark(self, idx: int) -> np.ndarray:
+    def landmark(self, idx: int) -> "np.ndarray":
+        import numpy as np
         return self.landmarks_px[idx]
 
 
 class HandTracker:
-    """Thin wrapper around MediaPipe Hands."""
+    """Thin wrapper around MediaPipe Hands (model loaded lazily on first frame)."""
 
     def __init__(self, settings=None):
         self.settings = settings or SETTINGS.tracking
         self._hands = None
         self._lock = threading.RLock()
         self.error: Optional[str] = None
-        if HAVE_MEDIAPIPE:
-            try:
-                self._hands = mp.solutions.hands.Hands(
-                    static_image_mode=False,
-                    max_num_hands=self.settings.max_hands,
-                    model_complexity=self.settings.model_complexity,
-                    min_detection_confidence=self.settings.min_detection_confidence,
-                    min_tracking_confidence=self.settings.min_tracking_confidence,
-                )
-            except Exception as e:
-                self.error = str(e)
-                log.error("HandTracker init failed: %s", e)
-        else:
-            self.error = "MediaPipe is not installed"
+        self._tried = False
+        self._mp = None
+        self._cv2 = None
+        self._np = None
+
+    def _load_deps(self) -> bool:
+        """Lazy-load mediapipe, cv2 and numpy on first use (~2.2s cached once)."""
+        if self._np is not None:
+            return True
+        try:
+            import numpy as np
+            import cv2
+            import mediapipe as mp
+            self._np = np
+            self._cv2 = cv2
+            self._mp = mp
+            return True
+        except ImportError as e:
+            self.error = f"Dependency missing: {e}"
+            return False
+
+    def _ensure_model(self) -> bool:
+        """Lazily load the MediaPipe Hands model on first use."""
+        if self._hands is not None:
+            return True
+        if self._tried:
+            return False
+        self._tried = True
+        if not self._load_deps():
+            return False
+        try:
+            self._hands = self._mp.solutions.hands.Hands(
+                static_image_mode=False,
+                max_num_hands=self.settings.max_hands,
+                model_complexity=self.settings.model_complexity,
+                min_detection_confidence=self.settings.min_detection_confidence,
+                min_tracking_confidence=self.settings.min_tracking_confidence,
+            )
+            return True
+        except Exception as e:
+            self.error = str(e)
+            log.error("HandTracker init failed: %s", e)
+            return False
 
     @property
     def available(self) -> bool:
         return self._hands is not None
 
-    def detect(self, bgr_frame: np.ndarray, frame_w: int, frame_h: int) -> list[HandData]:
-        if self._hands is None:
+    def detect(self, bgr_frame: "np.ndarray", frame_w: int, frame_h: int) -> list[HandData]:
+        if not self._ensure_model():
             return []
+        np, cv2 = self._np, self._cv2
         try:
             rgb = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
             rgb.flags.writeable = False
-            with self._lock:  # serialise MediaPipe inference across threads
+            with self._lock:
                 res = self._hands.process(rgb)
         except Exception as e:
             log.debug("hand detect error: %s", e)

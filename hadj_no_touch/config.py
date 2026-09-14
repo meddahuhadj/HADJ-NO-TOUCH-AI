@@ -42,7 +42,7 @@ class TrackingSettings:
     max_hands: int = 2
     model_complexity: int = 1
     processing_fps: int = 30
-    gaze_enabled: bool = False
+    gaze_enabled: bool = True
     gaze_every_n_frames: int = 5
 
 
