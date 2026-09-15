@@ -403,6 +403,16 @@ class SettingsCenterDialog(QDialog):
             "zoom depending on context. Hold the direction, release to repeat.",))
         lay.addWidget(g_head)
 
+        g_gaze = QGroupBox("Gaze tracking (experimental)")
+        gl = QVBoxLayout(g_gaze)
+        self.g_enabled = QCheckBox("Enable gaze estimation (optional)")
+        self.g_enabled.setChecked(self.core.settings.tracking.gaze_enabled)
+        gl.addWidget(self.g_enabled)
+        gl.addWidget(QLabel(
+            "Uses iris position (FaceMesh, local). Gaze confirms pinch/click on the "
+            "thing you look at, and feeds the AI Copilot context."))
+        lay.addWidget(g_gaze)
+
         g_demo = QGroupBox("Demo mode")
         dl = QVBoxLayout(g_demo)
         self.d_start = QCheckBox("Start the app in demo mode")
@@ -424,6 +434,7 @@ class SettingsCenterDialog(QDialog):
     def _save(self) -> None:
         conf = self.s_conf.currentData() or "smart"
         self.core.set_confirmation_level(conf)
+        self.core.set_gaze_enabled(self.g_enabled.isChecked())
         s = self.core.settings
         s.head.enabled = self.h_enabled.isChecked()
         s.head.sensitivity = self.h_sens.value()

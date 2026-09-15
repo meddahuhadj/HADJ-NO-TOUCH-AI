@@ -39,6 +39,7 @@ class DebugPanel(QWidget):
             "Fingertip idx (norm)", "Cursor (px)", "Gaze (x,y)", "Gaze match",
             "Voice status", "Last voice", "Profile", "Context", "Active app",
             "Pinch hold", "Locked", "Custom gestures", "Calibration",
+            "Hand model", "Face model",
         ]
         self._cells: dict[str, QLabel] = {}
         for i, name in enumerate(rows):
@@ -93,6 +94,13 @@ class DebugPanel(QWidget):
         values["Locked"] = str(self.app.engine.locked)
         values["Custom gestures"] = str(d.get("custom_gestures", 0))
         values["Calibration"] = s.calibration
+        core = getattr(self.app, "core", None)
+        values["Hand model"] = d.get("hand_model") or (
+            "ready" if getattr(getattr(core, "hand_tracker", None), "_hands", None) is not None
+            else "loading…")
+        values["Face model"] = d.get("face_model") or (
+            "ready" if getattr(getattr(core, "face_tracker", None), "_mesh", None) is not None
+            else "loading…")
         for name, text in values.items():
             self._cells[name].setText(str(text))
         if self._recording:

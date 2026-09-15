@@ -12,6 +12,7 @@ class StatusSnapshot:
     tracking_paused: bool = False
     voice_ready: bool = False
     gaze_active: bool = False
+    gaze_ready: bool = False
     control_enabled: bool = True
     privacy_mode: bool = False
     emergency: bool = False

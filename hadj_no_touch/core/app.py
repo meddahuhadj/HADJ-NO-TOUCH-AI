@@ -149,7 +149,7 @@ class AppCore(QObject):
         self.hand_tracker = HandTracker(self.settings.tracking)
         self.face_tracker = FaceTracker()
         self.gaze = GazeTracker()
-        # Preload the MediaPipe Hands model eagerly on a background thread:
+        # Preload the MediaPipe models eagerly on background threads:
         # the first frame never pays the load cost, and a slow/frozen
         # model init can never stall startup (the window shows instantly).
         def _preload_hands() -> None:
@@ -160,6 +160,16 @@ class AppCore(QObject):
 
         threading.Thread(target=_preload_hands, name="hadj-model-preload",
                          daemon=True).start()
+
+        if self.settings.tracking.gaze_enabled or self.settings.head.enabled:
+            def _preload_face() -> None:
+                try:
+                    self.face_tracker._ensure_model()
+                except Exception as e:
+                    log.warning("eager face model preload failed: %s", e)
+
+            threading.Thread(target=_preload_face, name="hadj-face-preload",
+                             daemon=True).start()
 
         self.engine = ge.GestureEngine(self.settings.gestures, on_event=self._engine_event_tap)
 
@@ -317,6 +327,9 @@ class AppCore(QObject):
         gaze_active = self.settings.tracking.gaze_enabled
         head_enabled = self.settings.head.enabled
         face_needed = gaze_active or head_enabled
+        if not face_needed and self.multimodal.state.gaze_active:
+            self.gaze.active = False
+            self.multimodal.set_gaze(0.0, 0.0, False)
         if face_needed and frame is not None and \
                 (self._frame_index % self.settings.tracking.gaze_every_n_frames == 0):
             face = self.face_tracker.detect(frame, w, h)
@@ -1139,6 +1152,8 @@ class AppCore(QObject):
         s = self._status
         s.camera_active = self.camera.is_healthy
         s.hand_tracking_active = self.hand_tracker.available
+        s.gaze_ready = (self.settings.tracking.gaze_enabled
+                        and self.face_tracker.available)
         s.tracking_paused = self.privacy.tracking_paused
         s.voice_ready = bool(self.voice.engine and self.voice.engine.status in ("listening", "recognizing"))
         s.gaze_active = self.multimodal.state.gaze_active
@@ -1192,6 +1207,8 @@ class AppCore(QObject):
             "lighting": s.lighting,
             "camera_state": (self.camera.error if self.camera.error
                              else ("ok" if self.camera.is_running else "off")),
+            "hand_model": self.hand_tracker.error,
+            "face_model": self.face_tracker.error,
         }
         self.status_updated.emit(s.filled())
 

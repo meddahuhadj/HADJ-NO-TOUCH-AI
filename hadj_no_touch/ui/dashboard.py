@@ -221,10 +221,12 @@ class Dashboard(QWidget):
 
     # ---- state updates --------------------------------------------------------
     def update_status(self, s: StatusSnapshot) -> None:
-        self.dot_cam.set_active(s.camera_active)
-        self.dot_hand.set_active(not s.tracking_paused and s.hand_tracking_active)
+        self.dot_cam.set_active(s.camera_active,
+                                tooltip=self._camera_tooltip(s))
+        self.dot_hand.set_active(not s.tracking_paused and s.hand_tracking_active,
+                                 tooltip=self._hand_tooltip(s))
         self.dot_voice.set_active(s.voice_ready)
-        self.dot_gaze.set_active(s.gaze_active)
+        self.dot_gaze.set_active(s.gaze_ready, tooltip=self._gaze_tooltip(s))
         self.dot_ctl.set_active(s.control_enabled, color_on="#37d67a", color_off="#ff5b5b")
         env_colors = {"dark": "#ff6b6b", "low": "#ffb35c", "bright": "#7cc3ff",
                       "good": "#37d67a"}
@@ -274,6 +276,34 @@ class Dashboard(QWidget):
             self.btn_demo.blockSignals(True)
             self.btn_demo.setChecked(bool(on))
             self.btn_demo.blockSignals(False)
+
+    def _camera_tooltip(self, s: StatusSnapshot) -> str:
+        if s.camera_active:
+            return "Camera running"
+        err = getattr(getattr(self.app.core, "camera", None), "error", None)
+        return err or "Camera unavailable"
+
+    def _hand_tooltip(self, s: StatusSnapshot) -> str:
+        if s.tracking_paused:
+            return "Tracking paused"
+        if s.hand_tracking_active:
+            return "Hand model ready"
+        err = getattr(getattr(self.app.core, "hand_tracker", None), "error", None)
+        return err or "Loading hand model (MediaPipe)…"
+
+    def _gaze_tooltip(self, s: StatusSnapshot) -> str:
+        if not s.gaze_ready:
+            core = getattr(self.app, "core", None)
+            if not getattr(getattr(core, "settings", None), "tracking", None) or \
+                    not core.settings.tracking.gaze_enabled:
+                return "Gaze tracking disabled"
+            err = getattr(getattr(core, "face_tracker", None), "error", None)
+            if err:
+                return f"Face model error: {err}"
+            return "Face model loading…"
+        if s.gaze_active:
+            return "Gaze active (tracking your eyes)"
+        return "Gaze ready — face not in view"
 
     def _refresh_recent(self) -> None:
         try:

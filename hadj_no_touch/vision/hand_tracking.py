@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -10,6 +11,8 @@ from ..config import SETTINGS
 from ..logging_setup import get_logger
 
 log = get_logger("vision.hand")
+
+RETRY_COOLDOWN_S = 5.0
 
 # Human-friendly landmark names (MediaPipe Hands).
 LM_WRIST = 0
@@ -56,7 +59,7 @@ class HandTracker:
         self._hands = None
         self._lock = threading.RLock()
         self.error: Optional[str] = None
-        self._tried = False
+        self._last_try_time = 0.0
         self._mp = None
         self._cv2 = None
         self._np = None
@@ -78,12 +81,21 @@ class HandTracker:
             return False
 
     def _ensure_model(self) -> bool:
-        """Lazily load the MediaPipe Hands model on first use."""
+        """Lazily load the MediaPipe Hands model on first use.
+
+        Failed loads are retried after a cooldown so a transient failure
+        (e.g. model file still being downloaded) does not disable the
+        feature permanently.
+        """
         if self._hands is not None:
             return True
-        if self._tried:
-            return False
-        self._tried = True
+        now = time.monotonic()
+        with self._lock:
+            if self._hands is not None:
+                return True
+            if now - self._last_try_time < RETRY_COOLDOWN_S:
+                return False
+            self._last_try_time = now
         if not self._load_deps():
             return False
         try:

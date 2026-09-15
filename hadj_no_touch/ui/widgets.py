@@ -24,8 +24,11 @@ class StatusDot(QWidget):
         lay.addWidget(self.label)
         lay.addStretch(1)
 
-    def set_active(self, on: bool, color_on: str = "#37d67a", color_off: str = "#ff6b6b"):
+    def set_active(self, on: bool, tooltip: str = "",
+                   color_on: str = "#37d67a", color_off: str = "#ff6b6b"):
         self.dot.setStyleSheet(f"color: {color_on if on else color_off}; font-size: 16px;")
+        if tooltip:
+            self.setToolTip(tooltip)
 
 
 class StatCard(QFrame):

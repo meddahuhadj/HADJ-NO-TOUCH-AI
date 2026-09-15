@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from dataclasses import dataclass
 from typing import Optional
 
 from ..logging_setup import get_logger
 
 log = get_logger("vision.face")
+
+RETRY_COOLDOWN_S = 5.0
 
 # FaceMesh landmark groups (with refine_landmarks=True)
 LEFT_EYE_CORNERS = [33, 133]
@@ -26,8 +30,9 @@ class FaceData:
 class FaceTracker:
     def __init__(self, refine_landmarks: bool = True):
         self._mesh = None
+        self._lock = threading.RLock()
         self.error: Optional[str] = None
-        self._tried = False
+        self._last_try_time = 0.0
         self._refine = refine_landmarks
         self._mp = None
         self._np = None
@@ -46,11 +51,20 @@ class FaceTracker:
             return False
 
     def _ensure_model(self) -> bool:
+        """Lazily load the MediaPipe FaceMesh model on first use.
+
+        Failed loads are retried after a cooldown so a transient failure
+        does not disable the feature permanently.
+        """
         if self._mesh is not None:
             return True
-        if self._tried:
-            return False
-        self._tried = True
+        now = time.monotonic()
+        with self._lock:
+            if self._mesh is not None:
+                return True
+            if now - self._last_try_time < RETRY_COOLDOWN_S:
+                return False
+            self._last_try_time = now
         if not self._load_deps():
             return False
         try:
