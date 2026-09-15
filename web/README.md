@@ -55,8 +55,9 @@ as a GitHub Release asset (Vercel's Hobby tier caps uploads at 100&nbsp;MB, the 
 is ~260&nbsp;MB):
 
 - Repo: <https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI>
-- Release `v0.9.2-beta` asset:
-  `https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v0.9.2-beta/HADJ-NO-TOUCH-AI-Windows.zip`
+- Release `v2.0-beta` asset:
+  `https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v2.0-beta/HADJ-NO-TOUCH-AI-Windows.zip`
+- SHA-256: `CAF27A9BE6B7CABE747A2FF817D9B5CA83142F6472F7C15D56EB20D29D98F188`
 
 Rebuild the desktop binary with `build_app.py` (PyInstaller), republish the release with
 `gh release create`, then update the `href` in `index.html`.
