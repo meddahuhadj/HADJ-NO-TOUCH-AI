@@ -100,6 +100,27 @@ class PrivacySettings:
 
 
 @dataclass
+class HeadSettings:
+    enabled: bool = False
+    sensitivity: float = 0.12
+    hold_ms: int = 300
+    cooldown_ms: int = 900
+
+
+@dataclass
+class SafetySettings:
+    confirmation_level: str = "smart"  # none | smart | all
+    # empty = everything registered is allowed; a non-empty list restricts.
+    allowed_actions: list = field(default_factory=list)
+
+
+@dataclass
+class DemoSettings:
+    start_in_demo: bool = False
+    show_demo_badge: bool = True
+
+
+@dataclass
 class Settings:
     camera: CameraSettings = field(default_factory=CameraSettings)
     tracking: TrackingSettings = field(default_factory=TrackingSettings)
@@ -107,6 +128,9 @@ class Settings:
     cursor: CursorSettings = field(default_factory=CursorSettings)
     voice: VoiceSettings = field(default_factory=VoiceSettings)
     privacy: PrivacySettings = field(default_factory=PrivacySettings)
+    head: HeadSettings = field(default_factory=HeadSettings)
+    safety: SafetySettings = field(default_factory=SafetySettings)
+    demo: DemoSettings = field(default_factory=DemoSettings)
 
     active_profile: str = "personal"
     auto_switch_profile: bool = True
@@ -120,7 +144,8 @@ class Settings:
             if p.exists():
                 try:
                     data = json.loads(p.read_text(encoding="utf-8"))
-                    for key in ("camera", "tracking", "gestures", "cursor", "voice", "privacy"):
+                    for key in ("camera", "tracking", "gestures", "cursor",
+                                "voice", "privacy", "head", "safety", "demo"):
                         blk = type(getattr(self, key))()
                         sub = data.pop(key, {})
                         sub_data = getattr(self, key)

@@ -43,6 +43,20 @@ class StatusSnapshot:
     calibration: str = "none"
     multimodal_hint: str = ""
 
+    demo_mode: bool = False
+    safety_level: str = "smart"
+    head_enabled: bool = False
+
+    lighting: str = "unknown"
+    brightness: float = 0.0
+    contrast: float = 0.0
+
+    cmd_per_minute: float = 0.0
+    gesture_latency_ms: float = 0.0
+    voice_latency_ms: float = 0.0
+    history_count: int = 0
+    perf: dict = field(default_factory=dict)
+
     diag: dict = field(default_factory=dict)
 
     def filled(self) -> "StatusSnapshot":

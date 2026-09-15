@@ -43,6 +43,7 @@ class Dashboard(QWidget):
             "pdf": "📄 PDF", "hands_busy": "🧤 Hands Busy",
             "copilot": "🤖 AI Copilot", "custom": "✨ Custom",
         }
+        self._last_history_count = -1
         self._build()
 
     # ---- construction -------------------------------------------------------
@@ -56,8 +57,13 @@ class Dashboard(QWidget):
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: #7cc3ff;")
         tagline = QLabel("Multimodal contactless control — hands, voice & eyes")
         tagline.setStyleSheet("color: #5f7ea0; font-size: 12px;")
+        self.demo_badge = QLabel("🔴 REAL")
+        self.demo_badge.setStyleSheet(
+            "font-size: 13px; font-weight: bold; color: #ff6b6b; background: #2a1515;"
+            "border: 1px solid #b33636; border-radius: 8px; padding: 3px 10px;")
         header.addWidget(title)
         header.addStretch(1)
+        header.addWidget(self.demo_badge)
         header.addWidget(tagline)
         root.addLayout(header)
 
@@ -106,11 +112,13 @@ class Dashboard(QWidget):
         self.dot_voice = StatusDot("Voice")
         self.dot_gaze = StatusDot("Gaze (optional)")
         self.dot_ctl = StatusDot("Control")
+        self.dot_env = StatusDot("Lighting")
         dlay.addWidget(self.dot_cam, 0, 0)
         dlay.addWidget(self.dot_hand, 0, 1)
         dlay.addWidget(self.dot_voice, 1, 0)
         dlay.addWidget(self.dot_gaze, 1, 1)
         dlay.addWidget(self.dot_ctl, 2, 0)
+        dlay.addWidget(self.dot_env, 2, 1)
         rlay.addWidget(dotbox)
 
         # stat cards
@@ -120,7 +128,9 @@ class Dashboard(QWidget):
         self.card_lat = StatCard("Latency", "—", "ms")
         self.card_cpu = StatCard("CPU", "—", "%")
         self.card_mem = StatCard("RAM", "—", "MB")
-        for c in (self.card_fps, self.card_tfps, self.card_lat, self.card_cpu, self.card_mem):
+        self.card_cmd = StatCard("Commands", "—", "per minute")
+        for c in (self.card_fps, self.card_tfps, self.card_lat, self.card_cpu,
+                  self.card_mem, self.card_cmd):
             cards.addWidget(c)
         rlay.addLayout(cards)
 
@@ -171,6 +181,20 @@ class Dashboard(QWidget):
         btnrow.addWidget(self.btn_keyboard, 2, 1)
         btnrow.addWidget(self.btn_trainer, 2, 2)
         btnrow.addWidget(self.btn_debug, 2, 3)
+
+        self.btn_demo = QPushButton("🔵 DEMO MODE")
+        self.btn_demo.setCheckable(True)
+        self.btn_demo.clicked.connect(self._on_demo)
+        self.btn_macro = QPushButton("🧩 Macro Studio")
+        self.btn_macro.clicked.connect(lambda: self.app._ui_macros())
+        self.btn_testlab = QPushButton("🧪 Test Lab")
+        self.btn_testlab.clicked.connect(lambda: self.app._ui_testlab())
+        self.btn_settings = QPushButton("⚙ Settings")
+        self.btn_settings.clicked.connect(lambda: self.app._ui_settings())
+        btnrow.addWidget(self.btn_demo, 3, 0)
+        btnrow.addWidget(self.btn_macro, 3, 1)
+        btnrow.addWidget(self.btn_testlab, 3, 2)
+        btnrow.addWidget(self.btn_settings, 3, 3)
         rlay.addLayout(btnrow)
 
         # toast
@@ -181,8 +205,14 @@ class Dashboard(QWidget):
         # activity log
         rlay.addWidget(QLabel("Activity log"))
         self.activity = QListWidget()
-        self.activity.setMaximumHeight(120)
+        self.activity.setMaximumHeight(110)
         rlay.addWidget(self.activity)
+
+        # recent actions (real-time, local history)
+        rlay.addWidget(QLabel("Recent actions"))
+        self.recent = QListWidget()
+        self.recent.setMaximumHeight(110)
+        rlay.addWidget(self.recent)
         right.setLayout(rlay)
         split.addWidget(right)
         split.setSizes([560, 520])
@@ -196,7 +226,14 @@ class Dashboard(QWidget):
         self.dot_voice.set_active(s.voice_ready)
         self.dot_gaze.set_active(s.gaze_active)
         self.dot_ctl.set_active(s.control_enabled, color_on="#37d67a", color_off="#ff5b5b")
+        env_colors = {"dark": "#ff6b6b", "low": "#ffb35c", "bright": "#7cc3ff",
+                      "good": "#37d67a"}
+        self.dot_env.set_active(s.lighting in ("good", "bright"),
+                                color_on=env_colors.get(s.lighting, "#ffb35c"),
+                                color_off=env_colors.get(s.lighting, "#ffb35c"))
+        self.dot_env.label.setText(f"Lighting: {s.lighting.title()}")
 
+        self.set_demo_badge(s.demo_mode)
         self.gesture_big.setText(self._pretty_gesture(s.gesture, s.gesture_confidence))
         if s.action:
             self.action_label.setText(f"⚡ {s.action}")
@@ -206,6 +243,7 @@ class Dashboard(QWidget):
         self.card_lat.set_value(f"{s.latency_ms:.0f}")
         self.card_cpu.set_value(f"{s.cpu:.0f}")
         self.card_mem.set_value(f"{s.memory_mb:.0f}")
+        self.card_cmd.set_value(f"{s.cmd_per_minute:.1f}")
 
         pc = self.profile_combo.findData(s.active_profile.lower())
         if pc >= 0 and pc != self.profile_combo.currentIndex():
@@ -216,6 +254,36 @@ class Dashboard(QWidget):
         if s.recognized_text:
             self.voice_label.setText(f"🎤 {s.recognized_text}")
             self.toast.setText(s.recognized_text)
+
+        if s.history_count != self._last_history_count:
+            self._last_history_count = s.history_count
+            self._refresh_recent()
+
+    def set_demo_badge(self, on: bool) -> None:
+        if on:
+            self.demo_badge.setText("🔵 DEMO MODE")
+            self.demo_badge.setStyleSheet(
+                "font-size: 13px; font-weight: bold; color: #6fc3ff; background: #11263a;"
+                "border: 1px solid #2a7ab5; border-radius: 8px; padding: 3px 10px;")
+        else:
+            self.demo_badge.setText("🔴 REAL")
+            self.demo_badge.setStyleSheet(
+                "font-size: 13px; font-weight: bold; color: #ff6b6b; background: #2a1515;"
+                "border: 1px solid #b33636; border-radius: 8px; padding: 3px 10px;")
+        if hasattr(self, "btn_demo"):
+            self.btn_demo.blockSignals(True)
+            self.btn_demo.setChecked(bool(on))
+            self.btn_demo.blockSignals(False)
+
+    def _refresh_recent(self) -> None:
+        try:
+            rows = self.app.core.get_history(20)
+        except Exception:
+            return
+        self.recent.clear()
+        for r in reversed(rows):
+            self.recent.addItem(
+                f"[{r.get('source','?')}] {r.get('status','')} — {r.get('action','')}")
 
     def update_preview(self, image: QImage) -> None:
         if image.isNull():
@@ -256,6 +324,9 @@ class Dashboard(QWidget):
 
     def _on_privacy(self, checked: bool) -> None:
         self.app.toggle_privacy_mode()
+
+    def _on_demo(self) -> None:
+        self.app.core.toggle_demo()
 
     def on_toast(self, text: str) -> None:
         self.toast.setText(text)

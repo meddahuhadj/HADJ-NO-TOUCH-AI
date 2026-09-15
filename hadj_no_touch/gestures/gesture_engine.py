@@ -42,6 +42,10 @@ CIRCLE_CCW = "CIRCLE_CCW"
 
 CLICK_EVENT_KINDS = {LEFT_CLICK, RIGHT_CLICK, DOUBLE_CLICK, DRAG_START, DRAG_END}
 
+# Minimum screen-pixel movement (in interaction-plane pixels) before a held
+# pinch becomes a drag instead of a click.
+DRAG_DISTANCE_PX = 30
+
 
 @dataclass
 class GestureEvent:
@@ -93,14 +97,23 @@ class GestureEngine:
         self._last_click_time = 0.0
         self._palm_open_since = 0.0
         self._fist_since = 0.0
+        self._last_confirmed = REST
+        self._gesture_since = 0.0
 
     # ---- helpers -----------------------------------------------------------
     def _can_fire(self, kind: str, cooldown_ms: int) -> bool:
         now = time.monotonic()
-        if now - self.last_event_time.get(kind, 0.0) < (cooldown_ms / 1000.0):
+        min_gap = max(cooldown_ms / 1000.0,
+                      self.settings.gesture_debounce_ms / 1000.0)
+        if now - self.last_event_time.get(kind, 0.0) < min_gap:
             return False
         self.last_event_time[kind] = now
         return True
+
+    def _stable(self, now: float) -> bool:
+        """A gesture only counts once it has been confirmed for a minimum
+        duration, so a single noisy frame can never trigger a discrete action."""
+        return (now - self._gesture_since) * 1000.0 >= self.settings.min_gesture_duration_ms
 
     def _cast(self, ev: GestureEvent) -> GestureEvent:
         ev.ts = time.monotonic()
@@ -154,6 +167,9 @@ class GestureEngine:
         self.raw_confidence = res.confidence
 
         g = self._confirm(res, now)
+        if g != self._last_confirmed:
+            self._gesture_since = now
+            self._last_confirmed = g
         self.confirmed_gesture = g
 
         idx_norm = primary.landmarks_norm[8]
@@ -173,17 +189,22 @@ class GestureEngine:
         # ---- pinch -> left click / double / drag ----------------------------
         if g == PINCH:
             if not self._pinch_active and res.confidence > cfg.gesture_confidence:
-                self._pinch_active = True
-                self._pinch_entry = now
-                self._pinch_anchor = pointer or res.position_px or None
+                if self._stable(now):
+                    self._pinch_active = True
+                    self._pinch_entry = now
+                    self._pinch_anchor = pointer or res.position_px or None
+            elif self._pinch_active:
+                # still pinching: a long, drifting pinch becomes a drag
+                events.extend(self._while_pinch(pointer, res, now))
         elif self._pinch_active:
             events.extend(self._finish_pinch(pointer, res, now))
 
         # ---- thumb+middle -> right click ------------------------------------
         if g == RIGHT_PINCH:
             if not self._right_pinch_active and res.confidence > cfg.gesture_confidence:
-                self._right_pinch_active = True
-                self._right_pinch_entry = now
+                if self._stable(now):
+                    self._right_pinch_active = True
+                    self._right_pinch_entry = now
         elif self._right_pinch_active:
             held = (now - self._right_pinch_entry) * 1000.0
             self._right_pinch_active = False
@@ -322,9 +343,14 @@ class GestureEngine:
                 return GestureEvent(kind=kind, confidence=res.confidence)
         return None
 
-    def _finish_pinch(self, pointer, res, now) -> list[GestureEvent]:
-        """On pinch release: click, double click, or start drag."""
-        events: list[GestureEvent] = []
+    def _while_pinch(self, pointer, res, now) -> list[GestureEvent]:
+        """While the pinch is still held: a drifted, long pinch becomes a drag.
+
+        DRAG_START is emitted exactly once; the cursor-movement loop below
+        then converts subsequent movement into DRAG_UPDATE events.
+        """
+        if self._drag_on or pointer is None:
+            return []
         cfg = self.settings
         held = (now - self._pinch_entry) * 1000.0
         p = self._pos_or(pointer, res)
@@ -332,6 +358,18 @@ class GestureEngine:
             moved = math.hypot(p[0] - self._pinch_anchor[0], p[1] - self._pinch_anchor[1])
         else:
             moved = 0.0
+        if held >= cfg.pinch_hold_drag_ms and moved >= DRAG_DISTANCE_PX:
+            self._drag_on = True
+            return [self._cast(GestureEvent(kind=DRAG_START, x=p[0], y=p[1],
+                                            confidence=res.confidence))]
+        return []
+
+    def _finish_pinch(self, pointer, res, now) -> list[GestureEvent]:
+        """On pinch release: finish a drag, else fire a click/double-click."""
+        events: list[GestureEvent] = []
+        cfg = self.settings
+        held = (now - self._pinch_entry) * 1000.0
+        p = self._pos_or(pointer, res)
 
         if self._drag_on:
             # drag in progress finishes with this release
@@ -347,13 +385,9 @@ class GestureEngine:
                                                           confidence=res.confidence)))
             else:
                 if self._can_fire(LEFT_CLICK, cfg.gesture_cooldown_ms):
-                    if moved > 12:
-                        # dragged without crossing drag threshold: treat as drag
-                        self._drag_on = True
-                    else:
-                        self._last_click_time = now
-                        events.append(self._cast(GestureEvent(kind=LEFT_CLICK, x=p[0], y=p[1],
-                                                              confidence=res.confidence)))
+                    self._last_click_time = now
+                    events.append(self._cast(GestureEvent(kind=LEFT_CLICK, x=p[0], y=p[1],
+                                                          confidence=res.confidence)))
         self._pinch_active = False
         self._pinch_entry = 0.0
         self._pinch_anchor = None

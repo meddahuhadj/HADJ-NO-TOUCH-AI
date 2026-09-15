@@ -93,6 +93,7 @@ class TestGestureEngine:
     def _engine(self):
         cfg = ge.SETTINGS.gestures
         cfg.pinch_dwell_click_ms = 200
+        cfg.pinch_hold_drag_ms = 250
         cfg.gesture_confidence = 0.5
         return ge.GestureEngine(cfg)
 
@@ -100,16 +101,62 @@ class TestGestureEngine:
         eng = self._engine()
         pinch_hand = _hand({})
         pinch_hand.landmarks_norm[4] = pinch_hand.landmarks_norm[8].copy()
-        pinch_hand.landmarks_norm[4] = pinch_hand.landmarks_norm[8].copy()
 
-        evs = eng.update([pinch_hand], (0.5, 0.5), 640, 480)
+        # hold a stable pinch for several frames so it becomes confirmed
+        for _ in range(8):
+            eng.update([pinch_hand], (0.5, 0.5), 640, 480)
+            time.sleep(0.05)
         assert eng.raw_gesture == PINCH
 
-        time.sleep(0.25)
+        # release: the confirmed gesture must leave PINCH before the release
+        # is interpreted as a click (real multi-frame release)
         rest_hand = _hand({4: "straight"})
-        release_evs = eng.update([rest_hand], (0.5, 0.5), 640, 480)
+        all_kinds: list[str] = []
+        for _ in range(8):
+            all_kinds += [e.kind for e in eng.update([rest_hand], (0.5, 0.5), 640, 480)]
+            time.sleep(0.05)
+        assert ge.LEFT_CLICK in all_kinds, all_kinds
+
+    def test_held_drifted_pinch_starts_and_stops_drag(self) -> None:
+        eng = self._engine()
+        pinch_hand = _hand({})
+        pinch_hand.landmarks_norm[4] = pinch_hand.landmarks_norm[8].copy()
+
+        # stable pinch held in place, pointer near the anchor
+        for _ in range(8):
+            eng.update([pinch_hand], (100.0, 100.0), 1920, 1080)
+            time.sleep(0.05)
+
+        assert eng._pinch_active, "pinch should be active before drag"
+        # drift far enough while still pinching → DRAG_START fires
+        ds_evs = eng.update([pinch_hand], (500.0, 500.0), 1920, 1080)
+        assert any(e.kind == ge.DRAG_START for e in ds_evs), ds_evs
+        assert eng._drag_on, "drag should be active after DRAG_START"
+
+        # continued movement while dragging → DRAG_UPDATE
+        upd_evs = eng.update([pinch_hand], (700.0, 520.0), 1920, 1080)
+        assert any(e.kind == ge.DRAG_UPDATE for e in upd_evs), upd_evs
+
+        # releasing the pinch finishes the drag (no stray click)
+        rest_hand = _hand({4: "straight"})
+        end_kinds: list[str] = []
+        for _ in range(8):
+            end_kinds += [e.kind for e in eng.update([rest_hand], (700.0, 520.0), 1920, 1080)]
+            time.sleep(0.05)
+        assert ge.DRAG_END in end_kinds, end_kinds
+        assert ge.LEFT_CLICK not in end_kinds, end_kinds
+
+    def test_click_requires_stable_pinch(self) -> None:
+        """A single noisy pinch frame must NOT produce a click."""
+        eng = self._engine()
+        pinch_hand = _hand({})
+        pinch_hand.landmarks_norm[4] = pinch_hand.landmarks_norm[8].copy()
+
+        eng.update([pinch_hand], (0.5, 0.5), 640, 480)   # single glitch frame
+        time.sleep(0.02)
+        release_evs = eng.update([_hand({4: "straight"})], (0.5, 0.5), 640, 480)
         kinds = [e.kind for e in release_evs]
-        assert ge.LEFT_CLICK in kinds, kinds
+        assert ge.LEFT_CLICK not in kinds, kinds
 
     def test_pointer_move_requires_allowable_pose(self) -> None:
         eng = self._engine()

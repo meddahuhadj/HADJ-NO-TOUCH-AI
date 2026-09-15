@@ -20,6 +20,8 @@ from .dashboard import Dashboard
 from .calibration_wizard import CalibrationWizard
 from .gesture_trainer import GestureTrainer
 from .debug_panel import DebugPanel
+from .panels import MacroStudioDialog, PlannerPreviewDialog, TestLabDialog, \
+    SettingsCenterDialog, HelpDialog
 from ..interaction.virtual_keyboard import FloatingKeyboard
 
 log = get_logger("ui.main")
@@ -54,6 +56,10 @@ class MainWindow(QMainWindow):
             "trainer": None,
             "keyboard": None,
             "debug": None,
+            "macro": None,
+            "testlab": None,
+            "settings": None,
+            "planner": None,
         }
         self._tray = None
 
@@ -116,6 +122,8 @@ class MainWindow(QMainWindow):
         c.profile_changed.connect(self._on_profile_changed)
         c.emergency_changed.connect(self._on_emergency_changed)
         c.request_confirmation.connect(self._on_confirm_request)
+        c.demo_changed.connect(self.dashboard.set_demo_badge)
+        c.plan_preview.connect(self._on_plan_preview)
 
     # ------------------------------------------------------------------
     # menus & tray
@@ -143,9 +151,13 @@ class MainWindow(QMainWindow):
         act(m_v, "Calibration wizard", self._ui_calibrate)
         act(m_v, "Virtual keyboard", self._ui_keyboard)
         act(m_v, "Teach my gesture", self._ui_trainer)
+        act(m_v, "Macro Studio & custom commands", self._ui_macros)
+        act(m_v, "Test Lab", self._ui_testlab)
+        act(m_v, "Settings Center", self._ui_settings)
         act(m_v, "Debug panel", self._ui_debug)
 
         m_h = m.addMenu("&Help")
+        act(m_h, "Quick start", self._ui_help)
         act(m_h, "Quick guide", self._quick_guide)
         act(m_h, "About", self._about)
 
@@ -255,6 +267,43 @@ class MainWindow(QMainWindow):
         win.show()
         win.raise_()
         win.activateWindow()
+
+    def _ui_macros(self) -> None:
+        win = self._dialogs["macro"]
+        if win is None or not win.isVisible():
+            win = MacroStudioDialog(self.core, self)
+            win.destroyed.connect(lambda: self._dialogs.__setitem__("macro", None))
+            self._dialogs["macro"] = win
+        win.show()
+        win.raise_()
+        win.activateWindow()
+
+    def _ui_testlab(self) -> None:
+        win = self._dialogs["testlab"]
+        if win is None or not win.isVisible():
+            win = TestLabDialog(self.core, self)
+            win.destroyed.connect(lambda: self._dialogs.__setitem__("testlab", None))
+            self._dialogs["testlab"] = win
+        win.show()
+        win.raise_()
+        win.activateWindow()
+
+    def _ui_settings(self) -> None:
+        win = self._dialogs["settings"]
+        if win is None or not win.isVisible():
+            win = SettingsCenterDialog(self.core, self)
+            win.destroyed.connect(lambda: self._dialogs.__setitem__("settings", None))
+            self._dialogs["settings"] = win
+        win.show()
+        win.raise_()
+        win.activateWindow()
+
+    def _ui_help(self) -> None:
+        HelpDialog(self).exec()
+
+    def _on_plan_preview(self, plan) -> None:
+        win = PlannerPreviewDialog(self.core, plan, self)
+        win.exec()
 
     def _on_dictation_toggled(self, on: bool) -> None:
         self.core.set_dictation(on)

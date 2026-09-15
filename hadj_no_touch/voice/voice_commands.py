@@ -412,7 +412,7 @@ COMMANDS: list[dict] = [
      "param": "profile"},
     # --- copilot / generic intent ------------------------------------------
     {"intent": COPILOT, "langs": ["en"],
-     "patterns": [r"\bhkajdj? copilot\b", r"\bask\s+copilot\b", r"\bturn\s+off\s+(?:the\s+)?(?:lights|devices)\b"]},
+     "patterns": [r"\bhadj copilot\b", r"\bask\s+copilot\b", r"\bturn\s+off\s+(?:the\s+)?(?:lights|devices)\b"]},
 ]
 
 

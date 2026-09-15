@@ -91,7 +91,7 @@ class GestureClassifier:
 
         # Confidence for pinch: how far under the threshold it is.
         pinch_conf = float(np.clip(1.0 - d_thumb_index / max(cfg.pinch_distance_ratio, 1e-4), 0.0, 1.0))
-        pinch_conf = max(0.0, pinch_conf * 1.4)
+        pinch_conf = float(np.clip(pinch_conf * 1.4, 0.0, 1.0))
 
         if pinched_middle and not pinched:
             return self._res(RIGHT_PINCH, pinch_conf, index_px, norm, fe,

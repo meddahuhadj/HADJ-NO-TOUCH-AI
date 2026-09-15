@@ -61,10 +61,10 @@ class InteractionPlane:
         target_px = self.to_pixels(target_norm)
 
         cs = self.cursor_settings
-        # large jumps = tracking glitch; reject
+        # large jumps = tracking glitch; reject (ratio from gesture settings)
         if self._cur is not None:
             delta = abs(target_px[0] - self._cur[0] + target_px[1] - self._cur[1])
-            max_jump = (self.screen_w + self.screen_h) / 2 * 0.18
+            max_jump = (self.screen_w + self.screen_h) / 2 * SETTINGS.gestures.max_cursor_jump_ratio
             if delta > max_jump:
                 self._last_target = None
                 return None

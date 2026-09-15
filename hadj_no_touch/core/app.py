@@ -43,9 +43,26 @@ from ..ai.multimodal_engine import MultimodalEngine
 from ..profiles.manager import ProfileManager
 from ..privacy.privacy_manager import PrivacyManager
 from ..windows.mouse_control import HoldingClick
+from ..safety import SafetyEngine, ActionRegistry
+from ..demo import DemoMode, DEMO_EXEMPT_ACTIONS
+from ..history import ActionHistory, STATUS_OK, STATUS_SIMULATED, STATUS_FAILED
+from ..performance import PerformanceMonitor, EnvironmentQuality
+from ..macros import MacroRunner, Macro
+from ..planner import ActionPlanner
+from ..custom_commands import CustomCommandRegistry, CustomCommand
+from ..head_tracking import HeadController, head_action_for
+from ..test_lab import TestLab
 from .status import StatusSnapshot
 
 log = get_logger("core")
+
+# outcomes of routing an Intent, returned by _route_intent so callers can
+# decide whether to continue (e.g. macro steps halt on a pending prompt).
+OUT_EXECUTED = "executed"
+OUT_PENDING = "pending"
+OUT_SIMULATED = "simulated"
+OUT_BLOCKED = "blocked"
+OUT_FAILED = "failed"
 
 try:
     import psutil
@@ -74,6 +91,8 @@ class AppCore(QObject):
     request_confirmation = Signal(object)    # Intent needing confirmation
     toasts = Signal(str)
     emergency_changed = Signal()
+    demo_changed = Signal(bool)              # demo mode toggled
+    plan_preview = Signal(object)            # ActionPlanner Plan suggestion
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -95,6 +114,25 @@ class AppCore(QObject):
         self.context_engine = ContextEngine()
         self.intent_engine = IntentEngine()
         self.multimodal = MultimodalEngine()
+
+        # ---- v2.0 engines ---------------------------------------------------
+        self.safety = SafetyEngine(ActionRegistry(),
+                                   confirmation_level=SETTINGS.safety.confirmation_level)
+        self.demo = DemoMode(SETTINGS.demo.start_in_demo)
+        self.history = ActionHistory()
+        self.perf = PerformanceMonitor()
+        self.env_quality = EnvironmentQuality()
+        self.env_report = None
+        self.head = HeadController(sensitivity=SETTINGS.head.sensitivity,
+                                   hold_ms=SETTINGS.head.hold_ms,
+                                   cooldown_ms=SETTINGS.head.cooldown_ms)
+        self.macros = MacroRunner(executor=self._macro_execute)
+        self.custom_commands = CustomCommandRegistry()
+        self.planner = ActionPlanner(self.safety.registry)
+        self.test_lab = TestLab(self)
+        self._load_macros()
+        self._load_custom_commands()
+        self._last_plan_time = 0.0
 
         self.calibration = CalibrationManager()
         self._load_calibration()
@@ -213,6 +251,7 @@ class AppCore(QObject):
                 time.sleep(min(sleep, 0.05))
 
     def _process_tick(self) -> None:
+        tick0 = time.monotonic()
         frame_obj = None
         try:
             frame_obj = self.camera.read()
@@ -222,6 +261,7 @@ class AppCore(QObject):
 
         self._sd_emit(now)  # keep the dashboard live even with no camera frame
         if frame_obj is None:
+            self.perf.note_frame((time.monotonic() - tick0) * 1000.0)
             time.sleep(0.01)
             return
 
@@ -273,18 +313,35 @@ class AppCore(QObject):
         elif self._rematcher.gestures:
             self._rematcher.clear()
 
-        # optional gaze
+        # optional gaze + head control (share one FaceMesh detection)
         gaze_active = self.settings.tracking.gaze_enabled
-        if gaze_active and frame is not None and (self._frame_index %
-                                                  self.settings.tracking.gaze_every_n_frames == 0):
+        head_enabled = self.settings.head.enabled
+        face_needed = gaze_active or head_enabled
+        if face_needed and frame is not None and \
+                (self._frame_index % self.settings.tracking.gaze_every_n_frames == 0):
             face = self.face_tracker.detect(frame, w, h)
             if face.present:
-                self.gaze.update(face)
-                gx, gy = self.gaze.direction()
-                self.multimodal.set_gaze(gx, gy, True)
+                if gaze_active:
+                    self.gaze.update(face)
+                    gx, gy = self.gaze.direction()
+                    self.multimodal.set_gaze(gx, gy, True)
+                if head_enabled:
+                    hev = self.head.update(face.landmarks_norm)
+                    if hev is not None:
+                        action = head_action_for(self._context_cache.category,
+                                                 hev.direction)
+                        if action:
+                            intent = Intent(action=action, source="head",
+                                            params={"head": hev.direction,
+                                                    "confidence": hev.confidence},
+                                            description=hev.describe())
+                            self._route_intent(intent)
             else:
-                self.gaze.active = False
-                self.multimodal.set_gaze(0.0, 0.0, False)
+                if gaze_active:
+                    self.gaze.active = False
+                    self.multimodal.set_gaze(0.0, 0.0, False)
+                if head_enabled and hasattr(self, "head"):
+                    self.head.update(None)
         self.multimodal.set_pointer(pointer_norm[0] if pointer_norm else 0.5,
                                     pointer_norm[1] if pointer_norm else 0.5,
                                     pointer_norm is not None)
@@ -310,6 +367,11 @@ class AppCore(QObject):
         if self._pending_confirm and now - self._pending_confirm_at > 20:
             self._pending_confirm = None
 
+        # lighting / environment estimate (every ~90 frames ≈ 3 s)
+        if frame is not None and self._frame_index % 90 == 0:
+            self.env_report = self.env_quality.estimate(frame)
+
+        self.perf.note_frame((time.monotonic() - tick0) * 1000.0)
         self._frame_index += 1
         _ = fps
 
@@ -365,6 +427,18 @@ class AppCore(QObject):
         if ev.kind in mouse_events:
             self._execute_mouse_event(ev)
             return
+        # a gesture can trigger a user-defined macro before normal handling
+        macro = self.macros.find_gesture(ev.kind)
+        if macro is not None:
+            self.perf.note_command()
+            self.history.record(source="macro",
+                                action=f"Gesture macro '{macro.name}'",
+                                status=STATUS_OK)
+            self.toasts.emit(self.demo.simulate(f"macro '{macro.name}'") if self.demo.enabled
+                             else f"Running macro '{macro.name}'")
+            self._event("MACRO", f"Gesture trigger '{ev.kind}' → {macro.name}")
+            self.macros.run(macro)
+            return
         # symbolic gesture → intentional, context-aware action
         intent = self.intent_engine.from_gesture(ev, self._context_cache)
         if intent is not None:
@@ -375,6 +449,17 @@ class AppCore(QObject):
             self._route_intent(intent)
 
     def _execute_mouse_event(self, ev: ge.GestureEvent) -> None:
+        if self.demo.enabled:
+            label = ev.kind
+            if ev.x or ev.y:
+                label += f" @{int(ev.x)},{int(ev.y)}"
+            if ev.kind in (ge.MOVE, ge.DRAG_UPDATE) and self._frame_index % 30 != 0:
+                return
+            self.history.record(source="gesture", action=label,
+                                status=STATUS_SIMULATED, simulated=True)
+            self.toasts.emit(self.demo.simulate(label))
+            self._event("DEMO", f"Simulated gesture: {label}")
+            return
         x, y = int(ev.x), int(ev.y)
         if ev.kind == ge.MOVE:
             self.air_mouse.apply()
@@ -386,36 +471,42 @@ class AppCore(QObject):
         if ev.kind == ge.DRAG_START:
             mouse_control.move_to(x, y)
             self.holder.start()
-            self._action_note("DRAG START")
+            self._log_mouse("DRAG START", ev.kind)
             return
         if ev.kind == ge.DRAG_END:
             self.holder.stop()
-            self._action_note("DRAG END")
+            self._log_mouse("DRAG END", ev.kind)
             return
         if ev.kind == ge.LEFT_CLICK:
             if not self._gaze_gate_ok():
                 return
             mouse_control.click_left(x, y)
             self.holder.stop()
-            self._action_note(f"LEFT CLICK @{x},{y}")
+            self._log_mouse(f"LEFT CLICK @{x},{y}", ev.kind)
             return
         if ev.kind == ge.DOUBLE_CLICK:
             if not self._gaze_gate_ok():
                 return
             mouse_control.double_click(x, y)
-            self._action_note("DOUBLE CLICK")
+            self.holder.stop()
+            self._log_mouse("DOUBLE CLICK", ev.kind)
             return
         if ev.kind == ge.RIGHT_CLICK:
             mouse_control.click_right(x, y)
-            self._action_note("RIGHT CLICK")
+            self._log_mouse("RIGHT CLICK", ev.kind)
             return
         if ev.kind == ge.SCROLL_V:
             mouse_control.scroll(ev.amount)
-            self._action_note(f"SCROLL V {ev.amount:+d}")
+            self._log_mouse(f"SCROLL V {ev.amount:+d}", ev.kind)
             return
         if ev.kind == ge.SCROLL_H:
             mouse_control.scroll(ev.amount, horizontal=True)
-            self._action_note(f"SCROLL H {ev.amount:+d}")
+            self._log_mouse(f"SCROLL H {ev.amount:+d}", ev.kind)
+
+    def _log_mouse(self, label: str, kind: str) -> None:
+        self.history.record(source="gesture", action=label, status=STATUS_OK)
+        self.perf.note_command()
+        self._action_note(label)
 
     def _gaze_gate_ok(self) -> bool:
         if not (self.settings.cursor.gaze_gate_clicks and self.multimodal.state.gaze_active):
@@ -423,29 +514,71 @@ class AppCore(QObject):
         return self.multimodal.state.gaze_pointer_match >= 0.55
 
     # ---- intent routing ------------------------------------------------
-    def _route_intent(self, intent: Intent) -> None:
-        if intent.needs_confirmation and intent.action in ("CLOSE_WINDOW", "CLOSE_TAB"):
+    def _route_intent(self, intent: Intent) -> str:
+        if self.demo.enabled and intent.action not in DEMO_EXEMPT_ACTIONS:
+            label = intent.describe() or intent.action
+            self.history.record(source=intent.source, action=label,
+                                params=intent.params,
+                                status=STATUS_SIMULATED, simulated=True)
+            self.toasts.emit(self.demo.simulate(label))
+            self._event("DEMO", f"Simulated action: {intent.action}")
+            self.intent_raised.emit(intent)
+            return OUT_SIMULATED
+        if not self._can_execute():
+            self.safety.audit(intent.action, "BLOCKED", "control disabled")
+            return OUT_BLOCKED
+        decision = self.safety.decide(intent.action, intent.needs_confirmation)
+        if decision.requires_confirmation:
+            self.safety.audit(intent.action, "CONFIRMING", decision.reason)
             self._pending_confirm = intent
             self._pending_confirm_at = time.monotonic()
             self.request_confirmation.emit(intent)
-            return
+            return OUT_PENDING
+        return self._execute_routed(intent)
+
+    def _execute_routed(self, intent: Intent) -> str:
         if intent.action == "COPILOT":
             self.intent_raised.emit(intent)
             self._event("COPILOT", intent.params.get("hint", "copilot suggestion"))
-            return
+            return OUT_EXECUTED
         ok = self._execute_intent(intent)
+        self.safety.audit(intent.action, "OK" if ok else "FAILED", intent.describe())
         if ok:
+            self.history.record(source=intent.source,
+                                action=intent.describe() or intent.action,
+                                params=intent.params, status=STATUS_OK)
             self.intent_raised.emit(intent)
             self._event("ACTION", intent.describe())
-        self._action_note(intent.describe())
+            self.perf.note_command()
+            self._action_note(intent.describe())
+            return OUT_EXECUTED
+        self.history.record(source=intent.source, action=intent.action,
+                            params=intent.params, status=STATUS_FAILED)
+        return OUT_FAILED
+
+    def _macro_execute(self, intent: Intent) -> bool:
+        """Run one macro step through the normal gates.
+
+        Returns False (halting the macro) when the step needs a user prompt,
+        is blocked, or failed -- so a confirmation never races ahead of the
+        rest of the macro sequence.
+        """
+        outcome = self._route_intent(intent)
+        return outcome in (OUT_EXECUTED, OUT_SIMULATED)
 
     def confirm_pending(self) -> None:
         if self._pending_confirm:
-            self._execute_intent(self._pending_confirm)
+            intent = self._pending_confirm
             self._pending_confirm = None
+            self.safety.audit(intent.action, "CONFIRMED", "user accepted prompt")
+            self._execute_routed(intent)
 
     def reject_pending(self) -> None:
+        if self._pending_confirm:
+            self.safety.audit(self._pending_confirm.action, "REJECTED",
+                              "user declined prompt")
         self._pending_confirm = None
+        self._pending_confirm_at = 0.0
 
     def _execute_intent(self, intent: Intent) -> bool:
         a = intent.action
@@ -671,13 +804,19 @@ class AppCore(QObject):
             return
         vi = vc.parse(text, self.settings.voice.language)
         if vi.intent == vc.NONE_INTENT:
-            self._event("VOICE", f"Heard (no command): {text}")
+            self._voice_fallback(text, vi.language)
             return
         self.multimodal.on_voice(vi)
         intent = self.intent_engine.from_voice(vi, self._context_cache)
         if intent is None:
             self._event("VOICE", f"Heard (unmapped): {text}")
             return
+        # allow the active profile to override voice intent routing
+        vm = self.profiles.active.voice_map
+        if vm and vi.intent in vm:
+            intent = Intent(action=vm[vi.intent], params=dict(intent.params),
+                            confidence=intent.confidence, source="voice",
+                            description=vm[vi.intent])
         if intent.action in ("EMERGENCY_STOP", "PAUSE_CONTROL", "RESUME_CONTROL",
                              "HANDS_BUSY_ON", "HANDS_BUSY_OFF"):
             intent.needs_confirmation = False
@@ -690,6 +829,36 @@ class AppCore(QObject):
     def set_dictation(self, on: bool) -> None:
         self._dictating = on
         self._event("INFO", f"dictation {'on' if on else 'off'}")
+
+    def _voice_fallback(self, text: str, language: str) -> None:
+        """Phrase wasn't a built-in command: try custom commands, macros,
+        then surface an AI plan suggestion (no execution)."""
+        cc = self.custom_commands.match(text, language)
+        if cc is not None:
+            intent = Intent(action=cc.action, params=dict(cc.params), source="custom",
+                            description=f"Custom command '{cc.phrase}' → {cc.action}")
+            self._event("VOICE", f"Custom command: {text} → {cc.action}")
+            self._route_intent(intent)
+            return
+        macro = self.macros.find_voice(text)
+        if macro is not None:
+            self.perf.note_command()
+            self.history.record(source="macro",
+                                action=f"Voice macro '{macro.name}'",
+                                status=STATUS_OK)
+            self._event("VOICE", f"Macro triggered: {text} → {macro.name}")
+            self.toasts.emit(self.demo.simulate(f"macro '{macro.name}'") if self.demo.enabled
+                             else f"Running macro '{macro.name}'")
+            self.macros.run(macro)
+            return
+        now = time.monotonic()
+        if now - self._last_plan_time > 5.0:
+            self._last_plan_time = now
+            plan = self.planner.plan(text)
+            if not plan.is_empty():
+                self.plan_preview.emit(plan)
+                self._event("INFO", f"AI plan suggested: {plan.description}")
+        self._event("VOICE", f"Heard (no command): {text}")
 
     # =====================================================================
     # controls / privacy
@@ -912,14 +1081,12 @@ class AppCore(QObject):
         gestures = []
         for r in rows:
             try:
-                templates = [np.frombuffer(t, dtype=np.float32) for t in r["templates"]
-                             if isinstance(t, bytes)]
-                g = CustomGesture(name=r["name"], action=r["action"],
-                                  action_label=r["action_label"], templates=templates)
-                gestures.append(g)
-                templates_valid = all(len(t) == 24 * 42 for t in templates)
-                if not templates_valid:
+                g = CustomGesture.from_db(r)
+                valid = all(isinstance(t, np.ndarray) and t.shape == (24, 42)
+                            for t in g.templates)
+                if not valid:
                     log.warning("custom gesture %s template size mismatch", r["name"])
+                gestures.append(g)
             except Exception as e:
                 log.warning("custom gesture load failed: %s", e)
         self._custom = gestures
@@ -998,6 +1165,19 @@ class AppCore(QObject):
         s.calibration = "ready" if self.calibration.calibrated else "none"
         mm = self.multimodal.state
         s.multimodal_hint = mm.copilot_hint
+        s.demo_mode = self.demo.enabled
+        s.safety_level = self.safety.confirmation_level
+        s.head_enabled = self.settings.head.enabled
+        env = self.env_report
+        s.lighting = env.lighting if env else "unknown"
+        s.brightness = env.brightness if env else 0.0
+        s.contrast = env.contrast if env else 0.0
+        perf = self.perf.snapshot()
+        s.perf = perf
+        s.cmd_per_minute = perf["commands_per_minute"]
+        s.gesture_latency_ms = perf["gesture_latency_ms"]
+        s.voice_latency_ms = perf["voice_latency_ms"]
+        s.history_count = len(self.history)
         if self.air_mouse.current_screen:
             s.cursor_x, s.cursor_y = self.air_mouse.current_screen
         s.diag = {
@@ -1007,6 +1187,9 @@ class AppCore(QObject):
             "profile": self.profiles.active.id, "context": s.active_context,
             "voice_status": s.voice_status, "pinch_hold": self.holder.active,
             "custom_gestures": len(self._rematcher.gestures),
+            "demo": self.demo.enabled,
+            "safety": self.safety.confirmation_level,
+            "lighting": s.lighting,
             "camera_state": (self.camera.error if self.camera.error
                              else ("ok" if self.camera.is_running else "off")),
         }
@@ -1040,6 +1223,167 @@ class AppCore(QObject):
     def set_profile(self, pid: str) -> None:
         self.profiles.set_active(pid)
         self.profile_changed.emit(pid)
+
+    # =====================================================================
+    # v2.0 demo mode
+    # =====================================================================
+    def set_demo_mode(self, on: bool) -> bool:
+        self.demo.set_enabled(bool(on))
+        self.settings.demo.start_in_demo = self.demo.enabled
+        try:
+            self.settings.save()
+        except Exception:
+            pass
+        self.demo_changed.emit(self.demo.enabled)
+        self._event("INFO", f"DEMO MODE {'ON' if self.demo.enabled else 'OFF'}")
+        return self.demo.enabled
+
+    def toggle_demo(self) -> bool:
+        return self.set_demo_mode(not self.demo.enabled)
+
+    def is_demo(self) -> bool:
+        return self.demo.enabled
+
+    # =====================================================================
+    # v2.0 history / analytics / perf
+    # =====================================================================
+    def get_history(self, n: int = 30) -> list:
+        return self.history.recent(n)
+
+    def get_analytics(self) -> dict:
+        return self.history.analytics()
+
+    def clear_history(self) -> None:
+        self.history.clear()
+
+    def get_perf(self) -> dict:
+        return self.perf.snapshot()
+
+    def get_env(self) -> dict | None:
+        return self.env_report.as_dict() if self.env_report else None
+
+    def run_test_lab(self) -> list:
+        results = self.test_lab.run_all()
+        return [{"name": r.name, "ok": r.ok, "detail": r.detail,
+                 "duration_ms": round(r.duration_ms, 1)} for r in results]
+
+    # =====================================================================
+    # v2.0 macros (persisted)
+    # =====================================================================
+    def list_macros(self) -> list:
+        return self.macros.to_list()
+
+    def add_macro(self, data: dict) -> str | None:
+        err = self.macros.add(Macro.from_dict(data))
+        if err is None:
+            self._save_macros()
+        return err
+
+    def update_macro(self, data: dict) -> str | None:
+        m = Macro.from_dict(data)
+        ok = self.macros.update(m)
+        if ok:
+            self._save_macros()
+        return None if ok else "macro not found"
+
+    def delete_macro(self, name: str) -> bool:
+        ok = self.macros.remove(name)
+        if ok:
+            self._save_macros()
+        return ok
+
+    def run_macro(self, name: str) -> bool:
+        m = self.macros.get(name)
+        if m is not None:
+            self.history.record(source="macro", action=f"Run macro '{name}'",
+                                status=STATUS_OK)
+            self._event("INFO", f"Running macro '{name}'")
+        return self.macros.run_by_name(name)
+
+    def _load_macros(self) -> None:
+        try:
+            self.macros.load_list(self.db.get_kv("macros_v1", []) or [])
+        except Exception as e:
+            log.warning("macros load failed: %s", e)
+
+    def _save_macros(self) -> None:
+        try:
+            self.db.set_kv("macros_v1", self.macros.to_list())
+        except Exception as e:
+            log.warning("macros save failed: %s", e)
+
+    # =====================================================================
+    # v2.0 custom commands (persisted)
+    # =====================================================================
+    def list_custom_commands(self) -> list:
+        return self.custom_commands.to_list()
+
+    def add_custom_command(self, data: dict) -> str | None:
+        err = self.custom_commands.add(CustomCommand.from_dict(data))
+        if err is None:
+            self._save_custom_commands()
+        return err
+
+    def delete_custom_command(self, phrase: str) -> bool:
+        ok = self.custom_commands.remove(phrase)
+        if ok:
+            self._save_custom_commands()
+        return ok
+
+    def _load_custom_commands(self) -> None:
+        try:
+            self.custom_commands.load_list(self.db.get_kv("custom_commands_v1", []) or [])
+        except Exception as e:
+            log.warning("custom commands load failed: %s", e)
+
+    def _save_custom_commands(self) -> None:
+        try:
+            self.db.set_kv("custom_commands_v1", self.custom_commands.to_list())
+        except Exception as e:
+            log.warning("custom commands save failed: %s", e)
+
+    # =====================================================================
+    # v2.0 AI planner
+    # =====================================================================
+    def plan_request(self, text: str):
+        plan = self.planner.plan(text)
+        if not plan.is_empty():
+            self.plan_preview.emit(plan)
+        return plan
+
+    def execute_plan(self, plan) -> bool:
+        """Run a confirmed plan: each step still passes Safety + demo gates."""
+        if plan is None or plan.is_empty():
+            return False
+        steps = [{"action": s.action, "params": dict(s.params)}
+                 for s in plan.steps]
+        self.history.record(source="ai", action=f"Plan: {plan.description}",
+                            status=STATUS_OK)
+        self.perf.note_command()
+        return self.macros.run_steps(steps, source="ai")
+
+    def reject_plan(self) -> None:
+        self._event("INFO", "AI plan declined by user")
+
+    # =====================================================================
+    # v2.0 safety + head settings
+    # =====================================================================
+    def set_confirmation_level(self, level: str) -> None:
+        self.safety.set_confirmation_level(level)
+        self.settings.safety.confirmation_level = level
+        try:
+            self.settings.save()
+        except Exception:
+            pass
+        self._event("INFO", f"Confirmation level: {level}")
+
+    def set_head_enabled(self, on: bool) -> None:
+        self.settings.head.enabled = bool(on)
+        try:
+            self.settings.save()
+        except Exception:
+            pass
+        self._event("INFO", f"Head control {'enabled' if on else 'disabled'}")
 
     def _engine_event_tap(self, ev: ge.GestureEvent) -> None:
         pass

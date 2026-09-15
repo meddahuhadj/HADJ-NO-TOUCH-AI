@@ -43,9 +43,26 @@ class AirMouse:
             mouse_control.move_to(self.current_screen[0], self.current_screen[1])
 
     def large_cursor(self, on: bool) -> None:
+        """Swap the system arrow cursor for a scaled 48px version (and back).
+
+        This is a real accessibility feature: Windows replaces the shared
+        cursor resource, so every app sees the enlarged pointer. Restoring
+        via SPI_SETCURSORS reloads the default system cursors, undoing the
+        swap without keeping a stale handle.
+        """
         try:
             import ctypes
-            ctypes.windll.user32.SystemParametersInfoW(0x0071, 0, 10 if on else 1, 0)
+            user32 = ctypes.windll.user32
+            if on:
+                hcur = user32.LoadCursorW(None, 32512)          # IDC_ARROW/OCR_NORMAL
+                if not hcur:
+                    return
+                scaled = user32.CopyImage(hcur, 2, 48, 48, 0x4000)  # IMAGE_CURSOR, LR_COPYFROMRESOURCE
+                if not scaled:
+                    return
+                user32.SetSystemCursor(scaled, 32512)
+            else:
+                user32.SystemParametersInfoW(0x0057, 0, None, 0)  # SPI_SETCURSORS
         except Exception:
             pass
 

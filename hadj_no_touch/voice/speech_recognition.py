@@ -275,11 +275,11 @@ class VoskSpeechEngine(SpeechEngine):
 
 
 class SapiSpeechEngine(SpeechEngine):
-    """Experimental Windows SAPI-based dictation (fully offline).
+    """Windows SAPI dictation — NOT AVAILABLE in this build.
 
-    Uses the legacy Windows Speech API shared recognizer over pywin32 COM.
-    This is marked EXPERIMENTAL: availability depends on the Windows
-    speech runtime and audio input being configured on the machine.
+    The shared SAPI recognizer loop is not implemented yet, so this engine
+    honestly reports itself as unavailable. Selecting it in settings falls
+    back to the default online engine; no silent no-op is started.
     """
 
     name = "sapi"
@@ -289,11 +289,9 @@ class SapiSpeechEngine(SpeechEngine):
         super().__init__(on_text, language)
 
     def available(self) -> bool:
-        try:
-            import win32com.client  # noqa: F401
-            return True
-        except Exception:
-            return False
+        log.info("SAPI recognition is not implemented in this build; "
+                 "falling back to the default speech engine")
+        return False
 
 
 class SpeechManager:
