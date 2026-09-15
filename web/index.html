@@ -35,11 +35,16 @@
         </span>
       </a>
 
-      <ul class="nav-links" role="list">
+<ul class="nav-links" role="list">
         <li><a href="#how">How it works</a></li>
         <li><a href="#gestures">Gestures</a></li>
         <li><a href="#voice">Voice</a></li>
         <li><a href="#modes">Modes</a></li>
+        <li><a href="#macro">Macros</a></li>
+        <li><a href="#planner">Planner</a></li>
+        <li><a href="#gaze">Gaze</a></li>
+        <li><a href="#headlab">Head</a></li>
+        <li><a href="#testlab">Test lab</a></li>
         <li><a href="#privacy">Privacy</a></li>
         <li><a href="#download">Download</a></li>
       </ul>
@@ -499,12 +504,40 @@
           </div>
         </div>
 
-        <div class="voice-callout glass reveal">
+<div class="voice-callout glass reveal">
           <span class="callout-ic" aria-hidden="true">♪</span>
           <div>
             <h3>Voice-first “hands busy” mode</h3>
             <p>When your hands are full — gloves, tools, a plate — voice alone can drive the machine.
             The same intent engine, zero gestures required. <span class="flag-beta">FR / AR at beta level</span></p>
+          </div>
+        </div>
+
+        <div class="voice-lab glass reveal">
+          <div class="voice-lab-head">
+            <span class="led led-green"><i aria-hidden="true"></i>VOICE ENGINE · ON-DEVICE</span>
+            <span class="topbar-mid" id="vsim-status">idle</span>
+            <span class="topbar-scale">INTENT MAPPER</span>
+          </div>
+          <div class="voice-lab-body">
+            <div class="vs-terminal" id="vs-terminal" role="log" aria-label="Voice recognition and intent transcript"></div>
+            <div class="vs-input-row">
+              <button type="button" class="vs-mic" id="vs-mic" data-demo-target="vs-mic" aria-label="Simulate speaking a command">🎙</button>
+              <input type="text" class="vs-input" id="vs-input" placeholder="Type a command — e.g. “open chrome”" autocomplete="off" aria-label="Type a voice command">
+              <button type="button" class="btn btn-solid vs-go" id="vs-go">Run</button>
+            </div>
+            <div class="vs-chips" role="list" aria-label="Suggested commands">
+              <button type="button" class="chip-cmd" data-vscmd="open chrome">open chrome</button>
+              <button type="button" class="chip-cmd" data-vscmd="next track">next track</button>
+              <button type="button" class="chip-cmd" data-vscmd="scroll down">scroll down</button>
+              <button type="button" class="chip-cmd" data-vscmd="volume up">volume up</button>
+              <button type="button" class="chip-cmd" data-vscmd="open settings">open settings</button>
+              <button type="button" class="chip-cmd" data-vscmd="freeze">freeze</button>
+            </div>
+            <div class="vs-volume" aria-hidden="true"><span>VOL</span>
+              <div class="vs-vol-bar"><i id="vs-vol-fill"></i></div>
+              <b id="vs-vol-num">40%</b>
+            </div>
           </div>
         </div>
       </div>
@@ -635,17 +668,347 @@
               <p>That’s the whole system. Every action above is the same intent pipeline the demo plane
               shows: gesture or voice → intent engine → Windows control layer.</p>
             </div>
-            <p class="fig-cap">Wheel over this panel to scroll it. <strong>Space</strong> then wheel = big palm-mode steps.</p>
+<p class="fig-cap">Wheel over this panel to scroll it. <strong>Space</strong> then wheel = big palm-mode steps.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ============ PRIVACY ============ -->
+    <!-- ============ GESTURE ACADEMY ============ -->
+    <section class="section" id="academy" aria-labelledby="academy-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">06 / Gesture academy</p>
+          <h2 id="academy-title">Learn the moves. Right here, live.</h2>
+          <p class="lede">Eight short lessons, one per core gesture. Your mouse stands in for the air-pointer —
+          <strong>hold left ≈ pinch</strong>. Finish them all and you’ve rehearsed the whole vocabulary.</p>
+        </div>
+
+        <div class="academy glass reveal">
+          <div class="academy-top">
+            <span class="led led-green"><i aria-hidden="true"></i>ACADEMY · COURSE 01</span>
+            <span class="topbar-mid" id="academy-lesson-name">POINT</span>
+            <span class="topbar-scale" id="academy-progress">1 / 8</span>
+          </div>
+          <div class="academy-stage" id="academy-stage" aria-label="Interactive gesture training stage"></div>
+          <div class="academy-prompts">
+            <p class="academy-instruct" id="academy-instruct"></p>
+            <p class="academy-hint" id="academy-hint"></p>
+          </div>
+          <ol class="academy-curriculum" id="academy-curriculum" role="list" aria-label="Course progress"></ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ VIRTUAL DESKTOP ============ -->
+    <section class="section" id="desktop" aria-labelledby="desktop-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">07 / Virtual desktop</p>
+          <h2 id="desktop-title">Pinch an icon. Open the world.</h2>
+          <p class="lede">A miniature Windows desktop running the same gesture vocabulary — pinch-click tiles
+          to open windows, pinch-and-hold the title bar to drag them, pinch the ✕ to close.</p>
+        </div>
+
+        <div class="desk glass reveal">
+          <div class="desk-top">
+            <span class="led"><i aria-hidden="true"></i>HADJ-OS · VIRTUAL DESK</span>
+            <span class="topbar-mid" id="desk-window-count">0 windows</span>
+            <span class="topbar-scale">PINCH · DRAG · CLOSE</span>
+          </div>
+          <div class="desk-screen">
+            <div class="desk-zone" id="desk-zone" role="application" aria-label="Virtual desktop — hold to pinch-click">
+              <div class="desk-icons">
+                <button type="button" class="app-ic" data-app="explorer" data-demo-target="desk-open" aria-label="Open Files"><span class="ai-box">🗀</span><span>Files</span></button>
+                <button type="button" class="app-ic" data-app="browser" data-demo-target="desk-open" aria-label="Open Browser"><span class="ai-box">🌐</span><span>Browser</span></button>
+                <button type="button" class="app-ic" data-app="player" data-demo-target="desk-open" aria-label="Open Player"><span class="ai-box">🎵</span><span>Player</span></button>
+                <button type="button" class="app-ic" data-app="settings" data-demo-target="desk-open" aria-label="Open Settings"><span class="ai-box">⚙</span><span>Settings</span></button>
+                <button type="button" class="app-ic" data-app="terminal" data-demo-target="desk-open" aria-label="Open Terminal"><span class="ai-box">&gt;_</span><span>Terminal</span></button>
+              </div>
+              <div class="desk-windows" id="desk-windows"></div>
+              <div class="start-menu" id="start-menu" hidden>
+                <button type="button" class="sm-item" data-app="explorer">🗀 Files</button>
+                <button type="button" class="sm-item" data-app="browser">🌐 Browser</button>
+                <button type="button" class="sm-item" data-app="player">🎵 Player</button>
+                <button type="button" class="sm-item" data-app="settings">⚙ Settings</button>
+                <button type="button" class="sm-item" data-app="terminal">&gt;_ Terminal</button>
+              </div>
+            </div>
+            <div class="desk-taskbar">
+              <button type="button" class="tb-start" data-demo-target="desk-start" aria-label="Start menu">◆ START</button>
+              <div class="desk-tray" id="desk-tray" role="toolbar" aria-label="Running windows"></div>
+              <span class="tb-clock" id="tb-clock" aria-hidden="true">--:--</span>
+            </div>
+          </div>
+<p class="fig-cap desk-cap">Icon = pinch-click · title bar = pinch-hold &amp; drag · ✕ = close ·
+          <strong>Start</strong> = everything in one place.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MACRO STUDIO ============ -->
+    <section class="section" id="macro" aria-labelledby="macro-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">08 / Macro Studio</p>
+          <h2 id="macro-title">One trigger. A whole routine.</h2>
+          <p class="lede">Chain intents into a named macro, fire it with a voice phrase, a gesture or
+          a button — and watch every step pass the same safety gate all actions already do.</p>
+        </div>
+
+        <div class="macro-studio glass reveal">
+          <div class="macro-top">
+            <span class="led led-green"><i aria-hidden="true"></i>MACRO STUDIO · SEQUENCE</span>
+            <span class="topbar-mid" id="macro-status">idle</span>
+            <span class="topbar-scale">TRIGGER · STEPS · FIRE</span>
+          </div>
+
+          <div class="macro-grid">
+            <div class="macro-build">
+              <fieldset class="macro-field">
+                <legend>Trigger</legend>
+                <div class="macro-triggers" id="macro-trigger" role="radiogroup" aria-label="Macro trigger type">
+                  <button type="button" class="mt-btn is-on" data-trigger="voice" role="radio" aria-checked="true">🎙 VOICE</button>
+                  <button type="button" class="mt-btn" data-trigger="gesture" role="radio" aria-checked="false">✋ GESTURE</button>
+                  <button type="button" class="mt-btn" data-trigger="button" role="radio" aria-checked="false">▦ BUTTON</button>
+                </div>
+                <p class="macro-trigger-readout" id="macro-trigger-val">Say <kbd>“macro present”</kbd> and the whole routine runs.</p>
+              </fieldset>
+
+              <fieldset class="macro-field">
+                <legend>Steps</legend>
+                <ol class="macro-steps" id="macro-steps" role="list" aria-label="Macro steps"></ol>
+                <p class="macro-steps-empty" id="macro-steps-empty">No steps yet — add them from the palette below.</p>
+              </fieldset>
+            </div>
+
+            <div class="macro-side">
+              <fieldset class="macro-field">
+                <legend>Action palette · click to append</legend>
+                <div class="macro-palette" role="list" aria-label="Action palette">
+                  <button type="button" class="mp-action" data-action="open-app">Open app</button>
+                  <button type="button" class="mp-action" data-action="next-track">Next track</button>
+                  <button type="button" class="mp-action" data-action="toggle-play">Play/pause</button>
+                  <button type="button" class="mp-action" data-action="scroll">Scroll down</button>
+                  <button type="button" class="mp-action" data-action="volume">Volume up</button>
+                  <button type="button" class="mp-action" data-action="close-win">Close app</button>
+                  <button type="button" class="mp-action mp-action-danger" data-action="freeze">Freeze (critical)</button>
+                </div>
+              </fieldset>
+
+              <div class="macro-presets" role="list" aria-label="Example macro presets">
+                <button type="button" class="chip chip-cmd" data-preset="present">Present mode</button>
+                <button type="button" class="chip chip-cmd" data-preset="media">Media time</button>
+                <button type="button" class="chip chip-cmd" data-preset="work">Work setup</button>
+              </div>
+
+              <div class="macro-actions">
+                <button type="button" class="btn btn-solid" id="macro-clear">Clear</button>
+                <button type="button" class="btn btn-primary" id="macro-fire">
+                  <span class="btn-ic" aria-hidden="true">▶</span> Fire macro
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="macro-runway" id="macro-runway" aria-live="polite" aria-label="Macro execution progress"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AI PLANNER ============ -->
+    <section class="section" id="planner" aria-labelledby="planner-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">09 / AI Planner</p>
+          <h2 id="planner-title">Ask in plain words. Get a plan you can see.</h2>
+          <p class="lede">The on-device rule planner turns a request into explicit, registered actions —
+          nothing ad-hoc, every step exists in the action registry before it is allowed to fire.</p>
+        </div>
+
+        <div class="planner glass reveal">
+          <div class="planner-top">
+            <span class="led led-green"><i aria-hidden="true"></i>PLANNER · ON-DEVICE</span>
+            <span class="topbar-mid" id="planner-status">ready</span>
+            <span class="topbar-scale">REGISTERED ACTIONS ONLY</span>
+          </div>
+
+          <div class="planner-body">
+            <div class="planner-input-row">
+              <label class="sr-only" for="plan-input">Describe what you want to do</label>
+              <input type="text" id="plan-input" class="vs-input" autocomplete="off"
+                     placeholder="e.g. “prepare my presentation” · “switch to work setup” · “media mode”">
+              <button type="button" class="btn btn-solid" id="plan-go">Plan</button>
+            </div>
+            <div class="vs-chips" role="list" aria-label="Example requests">
+              <button type="button" class="chip-cmd" data-plan="prepare my presentation">prepare my presentation</button>
+              <button type="button" class="chip-cmd" data-plan="switch to work setup">switch to work setup</button>
+              <button type="button" class="chip-cmd" data-plan="movie time">movie time</button>
+              <button type="button" class="chip-cmd" data-plan="read a document">read a document</button>
+              <button type="button" class="chip-cmd" data-plan="run a health check">run a health check</button>
+              <button type="button" class="chip-cmd" data-plan="quiet for a moment">quiet for a moment</button>
+            </div>
+
+            <div class="plan-board" id="plan-board" aria-live="polite">
+              <p class="plan-empty" id="plan-empty">Describe a routine above — the planner builds a preview
+              plan with only registered actions. You approve every step before it runs.</p>
+            </div>
+
+            <div class="plan-footer" id="plan-footer" hidden>
+              <span class="plan-note" id="plan-note"></span>
+              <button type="button" class="btn btn-primary" id="plan-run">
+                <span class="btn-ic" aria-hidden="true">▶</span> Run plan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GAZE LAB ============ -->
+    <section class="section" id="gaze" aria-labelledby="gaze-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">10 / Gaze lab · experimental</p>
+          <h2 id="gaze-title">Control with a glance. <span class="flag-beta">Experimental</span></h2>
+          <p class="lede">Iris position from the face mesh drives a gaze point that confirms clicks.
+          Off by default in the desktop app — here, your cursor plays the eyes so you can feel the flow.</p>
+        </div>
+
+        <div class="gaze-lab glass reveal">
+          <div class="gaze-top">
+            <span class="led led-green"><i aria-hidden="true"></i>GAZE LAB · IRIS TRACK</span>
+            <span class="topbar-mid" id="gaze-status">gaze_ready</span>
+            <span class="topbar-scale" id="gaze-coords">0.00 · 0.00</span>
+          </div>
+
+          <div class="gaze-body">
+            <div class="gaze-stage" id="gaze-stage" aria-label="Gaze tracking stage — your cursor simulates the eyes">
+              <canvas id="gaze-canvas" aria-hidden="true"></canvas>
+              <div class="gaze-legend" aria-hidden="true">cursor = gaze · dwell to confirm</div>
+            </div>
+
+            <div class="gaze-hud" role="status" aria-label="Gaze tracking readout">
+              <div class="hud-cell"><span class="hud-label">GAZE X</span><span class="hud-val tabnum" id="gaze-x">0.00</span></div>
+              <div class="hud-cell"><span class="hud-label">GAZE Y</span><span class="hud-val tabnum" id="gaze-y">0.00</span></div>
+              <div class="hud-cell"><span class="hud-label">CONF</span><span class="hud-val tabnum" id="gaze-conf">0.00</span></div>
+              <div class="hud-cell hud-wide"><span class="hud-label">DWELL</span>
+                <span class="hud-val tabnum" id="gaze-dwell">0ms</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="gaze-controls">
+            <p class="gaze-hint">Gaze <strong>confirms dark</strong> icons when you hold still ~0.9s. Pinch,
+            voice and gaze share the same click target below.</p>
+            <div class="gaze-targets" role="list" aria-label="Gaze-confirmable controls">
+              <button type="button" class="tgt-btn" id="gaze-btn" data-demo-target="gaze-btn" style="width:auto;min-width:180px">
+                GAZE CONFIRM
+              </button>
+            </div>
+            <div class="gaze-toggles" role="group" aria-label="Gaze demo mode">
+              <button type="button" class="sc-badge is-on" id="gaze-mode-on" aria-pressed="true">● GAZE ON</button>
+              <button type="button" class="sc-badge" id="gaze-mode-off" aria-pressed="false">● GAZE OFF</button>
+              <span class="sc-level"><b>experimental</b> · off by default</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+<!-- ============ HEAD LAB ============ -->
+    <section class="section" id="headlab" aria-labelledby="headlab-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">11 / Head lab · experimental</p>
+          <h2 id="headlab-title">Turn your head. Change a slide. <span class="flag-beta">Experimental</span></h2>
+          <p class="lede">The nose tip on the face mesh becomes a direction that has to be <strong>held</strong>
+          — not glanced. Hold left/right turns pages or tracks, up/down is volume or zoom depending on the
+          context. Here your cursor plays the nose.</p>
+        </div>
+
+        <div class="headlab glass reveal">
+          <div class="headlab-top">
+            <span class="led led-green"><i aria-hidden="true"></i>HEAD LAB · NOSE TRACK</span>
+            <span class="topbar-mid" id="head-status">neutral</span>
+            <span class="topbar-scale" id="head-fired">last: —</span>
+          </div>
+
+          <div class="headlab-body">
+            <div class="headlab-stage" id="head-stage" aria-label="Head tracking stage — your cursor simulates the nose">
+              <canvas id="head-canvas" aria-hidden="true"></canvas>
+              <div class="headlab-legend" aria-hidden="true">cursor = nose · hold a direction to fire</div>
+            </div>
+
+            <div class="headlab-tunes">
+              <label class="hl-tune" for="head-sens">Sensitivity
+                <span id="head-sens-val">0.12</span>
+                <input type="range" id="head-sens" min="0.05" max="0.3" step="0.01" value="0.12">
+              </label>
+              <label class="hl-tune" for="head-hold">Hold (ms)
+                <span id="head-hold-val">300</span>
+                <input type="range" id="head-hold" min="100" max="1200" step="50" value="300">
+              </label>
+            </div>
+
+            <div class="headlab-context" role="group" aria-label="Active context for head actions">
+              <span class="hc-label">Context</span>
+              <button type="button" class="chip-cmd is-on" data-head-context="presentation" aria-pressed="true">Presentation</button>
+              <button type="button" class="chip-cmd" data-head-context="media" aria-pressed="false">Media</button>
+              <button type="button" class="chip-cmd" data-head-context="pdf" aria-pressed="false">PDF</button>
+              <button type="button" class="chip-cmd" data-head-context="browser" aria-pressed="false">Browser</button>
+            </div>
+
+            <div class="headlab-hud" role="status" aria-label="Head tracking readout">
+              <div class="hud-cell"><span class="hud-label">DIR</span><span class="hud-val tabnum" id="head-dir">NEUTRAL</span></div>
+              <div class="hud-cell"><span class="hud-label">CONF</span><span class="hud-val tabnum" id="head-conf">0.00</span></div>
+              <div class="hud-cell hud-wide"><span class="hud-label">HOLD</span>
+                <span class="hud-val tabnum" id="head-hold-now">0ms</span>
+              </div>
+            </div>
+
+            <div class="headlab-map" id="head-map" role="list" aria-label="Head direction mapping for the active context"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TEST LAB ============ -->
+    <section class="section" id="testlab" aria-labelledby="testlab-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">12 / Test lab</p>
+          <h2 id="testlab-title">Self-diagnostics, honest results.</h2>
+          <p class="lede">The desktop app runs the same suite on demand: simulated pinch, voice and head
+          inputs against every subsystem. A check that can’t run is <strong>skipped</strong> with a reason —
+          never silently passed.</p>
+        </div>
+
+        <div class="testlab glass reveal">
+          <div class="testlab-top">
+            <span class="led led-green"><i aria-hidden="true"></i>TEST LAB · SELF-DIAG</span>
+            <span class="topbar-mid" id="test-status">0 run</span>
+            <span class="topbar-scale">SIMULATED INPUTS · NO HARDWARE</span>
+          </div>
+
+          <div class="testlab-body">
+            <ol class="testlab-results" id="test-results" role="list" aria-label="Test results"></ol>
+            <div class="testlab-summary" id="test-summary" aria-live="polite"></div>
+            <div class="testlab-actions">
+              <button type="button" class="btn btn-solid" id="test-clear">Clear</button>
+              <button type="button" class="btn btn-primary" id="test-run">
+                <span class="btn-ic" aria-hidden="true">▶</span> Run all tests
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+      <!-- ============ PRIVACY ============ -->
     <section class="section" id="privacy" aria-labelledby="privacy-title">
       <div class="container">
         <div class="section-head reveal">
-          <p class="eyebrow">06 / Privacy</p>
+          <p class="eyebrow">13 / Privacy</p>
           <h2 id="privacy-title">Never leaves this machine.</h2>
           <p class="lede">Video frames, audio and intent logs stay on-device. There is no account, no
           sync, no analytics beacon to phone home to.</p>
@@ -685,7 +1048,7 @@
     <section class="section" id="safety" aria-labelledby="safety-title">
       <div class="container">
         <div class="section-head reveal">
-          <p class="eyebrow">07 / Safety</p>
+          <p class="eyebrow">14 / Safety</p>
           <h2 id="safety-title">A kill switch that is always on tap.</h2>
           <p class="lede">Contactless control is powerful; it’s also engineered to stay out of your way.
           These are not optional extras.</p>
@@ -704,7 +1067,7 @@
           freezes until you release. Nothing moves without that release.</p>
         </div>
 
-        <div class="safety-grid">
+<div class="safety-grid">
           <article class="safety-card glass reveal">
             <h3>Jump rejection</h3>
             <p>Sudden, unnaturally fast motion is discarded, not acted on. Debounce and dead-man logic
@@ -720,6 +1083,32 @@
             <p>Drag-to-delete, shutdown, format — anything destructive asks once before it happens. A
             confirmation is a second, deliberate pinch.</p>
           </article>
+        </div>
+
+        <div class="safety-console glass reveal">
+          <div class="sc-top">
+            <div class="sc-badges">
+              <button type="button" class="sc-badge" id="sc-mode-real" aria-pressed="true">● REAL</button>
+              <button type="button" class="sc-badge" id="sc-mode-demo" aria-pressed="false">● DEMO</button>
+              <span class="sc-level">confirm level · SMART</span>
+            </div>
+            <span class="topbar-scale">AUDIT TRAIL · LOCAL</span>
+          </div>
+          <div class="sc-grid">
+            <div class="sc-log" id="sc-log" role="log" aria-label="Safety audit log">
+              <p class="sc-log-empty">— no actions yet. Try a gesture, a voice command, or the academy —</p>
+            </div>
+            <div class="sc-side">
+              <div class="sc-gauge">
+                <div class="sc-gauge-num" id="sc-gauge-num">0.00</div>
+                <div class="sc-gauge-bar"><i id="sc-gauge-fill"></i></div>
+                <div class="sc-gauge-label">CONFIDENCE · LAST GATED INTENT</div>
+              </div>
+              <button type="button" class="sc-stop" id="sc-stop" data-demo-target="sc-stop">
+                <span class="sc-stop-led" aria-hidden="true"></span> EMERGENCY STOP · CTRL+ALT+H
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -743,7 +1132,7 @@
     <section class="section" id="faq" aria-labelledby="faq-title">
       <div class="container container-narrow">
         <div class="section-head reveal">
-          <p class="eyebrow">08 / FAQ</p>
+          <p class="eyebrow">15 / FAQ</p>
           <h2 id="faq-title">Straight answers.</h2>
         </div>
 
@@ -804,7 +1193,7 @@
     <section class="section" id="download" aria-labelledby="download-title">
       <div class="container container-narrow">
         <div class="section-head reveal">
-          <p class="eyebrow">09 / Download</p>
+          <p class="eyebrow">16 / Download</p>
           <h2 id="download-title">Get HADJ NO-TOUCH AI.</h2>
           <p class="lede">Free, open-source, and runs entirely on your machine. No account required.</p>
         </div>
@@ -891,11 +1280,16 @@
             <span class="brand-sub">NO-TOUCH AI</span>
           </span>
         </a>
-        <ul class="footer-links" role="list" aria-label="Quick links">
+<ul class="footer-links" role="list" aria-label="Quick links">
           <li><a href="#how">How it works</a></li>
           <li><a href="#gestures">Gestures</a></li>
           <li><a href="#voice">Voice</a></li>
           <li><a href="#modes">Modes</a></li>
+          <li><a href="#macro">Macros</a></li>
+          <li><a href="#planner">Planner</a></li>
+          <li><a href="#gaze">Gaze</a></li>
+          <li><a href="#headlab">Head</a></li>
+          <li><a href="#testlab">Test lab</a></li>
           <li><a href="#privacy">Privacy</a></li>
           <li><a href="#safety">Safety</a></li>
           <li><a href="#faq">FAQ</a></li>
@@ -908,13 +1302,25 @@
       <div class="footer-bottom">
         <p>HADJ NO-TOUCH AI · contactless computer control for Windows</p>
         <p class="footer-meta">
-          <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>v2.0-beta</span>
+<span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>v2.0-beta</span>
           <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>gaze &amp; custom gestures experimental</span>
           <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>PWA · offline ready</span>
+          <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>Macro Studio</span>
+          <span class="chip chip-tiny"><span class="chip-dot" aria-hidden="true"></span>Head lab · Test lab</span>
         </p>
       </div>
     </div>
   </footer>
+
+  <div class="freeze-overlay" id="freeze-overlay" hidden>
+    <div class="fo-card" role="alertdialog" aria-label="Control paused">
+      <span class="fo-led" aria-hidden="true"></span>
+      <strong>CONTROL PAUSED</strong>
+      <p data-freeze-sub>Emergency stop — gestures and voice frozen</p>
+      <button type="button" class="btn btn-solid fo-resume" id="fo-resume">Resume control</button>
+      <span class="fo-meta">CTRL + ALT + H anytime · auto-resumes in ~2.5s</span>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
