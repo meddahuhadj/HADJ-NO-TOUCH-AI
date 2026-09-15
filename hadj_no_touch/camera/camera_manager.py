@@ -65,6 +65,7 @@ class CameraManager:
         self._last_read = 0.0
         self._frame_counter = 0
         self._fps = 0.0
+        self._latest_frame_at = 0.0
         self.error: Optional[str] = None
         self.callback = None  # callable(Frame) invoked per delivered frame
 
@@ -78,7 +79,12 @@ class CameraManager:
 
     @property
     def is_healthy(self) -> bool:
-        return self.is_running and self._frame_counter > 0 and self.error is None
+        # Green only while frames keep arriving; a camera that stalled (right
+        # after a single frame) reads as red so the user sees the truth.
+        return (self.is_running
+                and self._frame_counter > 0
+                and self.error is None
+                and (time.monotonic() - self._latest_frame_at) < 2.0)
 
     # ---- lifecycle ---------------------------------------------------------
     def _configure_cap(self, cap) -> None:
@@ -264,6 +270,7 @@ class CameraManager:
             with self._lock:
                 self._frame = Frame(bgr=frame, grabbed_at=t0, index=self._frame_counter)
                 self._frame_counter += 1
+                self._latest_frame_at = t0
                 prev = self._last_read
                 self._last_read = t0
                 if prev:

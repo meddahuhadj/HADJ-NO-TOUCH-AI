@@ -11,6 +11,7 @@ Startup is staged so the window appears almost instantly:
 
 from __future__ import annotations
 
+import ctypes
 import os
 import sys
 
@@ -137,9 +138,51 @@ class _StagedStartup:
         self.splash.close()
 
 
+def _claim_single_instance() -> bool:
+    """Return True when this is the first running instance.
+
+    Multiple HADJ windows (e.g. old ZIP copies in Downloads) fight over the
+    same webcam/microphone, which shows up as "camera green, FPS 0, others
+    red". A named mutex guarantees exactly one instance per user session.
+    """
+    try:
+        k32 = ctypes.windll.kernel32
+        k32.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_long, ctypes.c_wchar_p]
+        k32.CreateMutexW.restype = ctypes.c_void_p
+        handle = k32.CreateMutexW(None, False, "Local\\HADJ_NO_TOUCH_AI_SINGLE")
+        if not handle:
+            return True
+        if k32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+            k32.CloseHandle(handle)
+            return False
+        global _SINGLE_INSTANCE_HANDLE
+        _SINGLE_INSTANCE_HANDLE = handle  # keep open for the app lifetime
+        return True
+    except Exception:
+        return True  # never block in weird environments
+
+
+_SINGLE_INSTANCE_HANDLE = None
+
+
 def main() -> int:
     _bootstrap()
     _check_python()
+
+    if not _claim_single_instance():
+        # Inform briefly, then auto-exit so no zombie process lingers.
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QMessageBox
+        app = QApplication(sys.argv)
+        box = QMessageBox(
+            QMessageBox.Icon.Information, "HADJ NO-TOUCH AI",
+            "HADJ NO-TOUCH AI is already running — check the system tray.\n\n"
+            "L'application est déjà ouverte — regardez la barre des tâches.")
+        box.setModal(False)
+        box.show()
+        QTimer.singleShot(4000, app.quit)
+        app.exec()
+        return 0
 
     from PySide6.QtWidgets import QApplication
 
