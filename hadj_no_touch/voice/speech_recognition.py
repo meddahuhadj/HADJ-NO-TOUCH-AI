@@ -340,6 +340,14 @@ class SpeechManager:
         if self.engine:
             self.engine.stop()
 
+    def restart(self) -> bool:
+        """Stop the active engine and rebuild it with the current settings
+        (e.g. after a language change), then restart listening."""
+        if self.engine:
+            self.engine.stop()
+            self.engine = None
+        return bool(self.start())
+
 
 def default_engine_name() -> str:
     return SETTINGS.voice.engine

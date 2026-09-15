@@ -373,6 +373,24 @@ class SettingsCenterDialog(QDialog):
         sl.addWidget(QLabel("Demo mode blocks every real OS action and simulates it loudly."))
         lay.addWidget(g_safe)
 
+        g_voice = QGroupBox("Voice recognition")
+        vl = QVBoxLayout(g_voice)
+        rv = QHBoxLayout()
+        rv.addWidget(QLabel("Language"))
+        self.v_lang = QComboBox()
+        self.v_lang.addItem("English (en-US)", "en-US")
+        self.v_lang.addItem("Français (fr-FR)", "fr-FR")
+        self.v_lang.addItem("العربية (ar-SA)", "ar-SA")
+        idx = self.v_lang.findData(self.core.settings.voice.language)
+        self.v_lang.setCurrentIndex(max(0, idx))
+        rv.addWidget(self.v_lang)
+        rv.addStretch(1)
+        vl.addLayout(rv)
+        vl.addWidget(QLabel(
+            "Recognized commands switch language (open/next/volume… in EN, FR or AR). "
+            "Applied on save — the voice engine restarts with the new language."))
+        lay.addWidget(g_voice)
+
         g_head = QGroupBox("Head control (FaceMesh)")
         hl = QVBoxLayout(g_head)
         self.h_enabled = QCheckBox("Enable head-direction actions")
@@ -436,6 +454,9 @@ class SettingsCenterDialog(QDialog):
         self.core.set_confirmation_level(conf)
         self.core.set_gaze_enabled(self.g_enabled.isChecked())
         s = self.core.settings
+        new_lang = self.v_lang.currentData() or "en-US"
+        if new_lang != s.voice.language:
+            self.core.set_voice_language(new_lang)
         s.head.enabled = self.h_enabled.isChecked()
         s.head.sensitivity = self.h_sens.value()
         s.head.hold_ms = self.h_hold.value()

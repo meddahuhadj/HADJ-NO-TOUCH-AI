@@ -1237,6 +1237,17 @@ class AppCore(QObject):
         self.settings.save()
         self._event("INFO", f"gaze tracking {'enabled' if on else 'disabled'}")
 
+    def set_voice_language(self, lang: str) -> None:
+        """Update the voice-recognition language and apply it live."""
+        self.settings.voice.language = lang
+        try:
+            self.settings.save()
+        except Exception:
+            pass
+        if self.voice:
+            self.voice.restart()
+        self._event("INFO", f"Voice language set to {lang}")
+
     def set_profile(self, pid: str) -> None:
         self.profiles.set_active(pid)
         self.profile_changed.emit(pid)
