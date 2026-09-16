@@ -1738,7 +1738,7 @@
         gBtn.classList.remove("demo-arm");
         gBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window }));
         bus.emit({ type: "action", source: "gaze", action: "GAZE_CLICK", target: "gaze-btn", risk: "safe", decision: "allow", conf: 0.83, ts: Date.now() });
-        if (gStatus) gStatus.textContent = "gaze_" + (gazeFired % 2 ? "confirmed" : "ready");
+        if (gStatus) gStatus.textContent = __t(gazeFired % 2 ? "gaze_confirmed" : "gaze_ready");
       }
     }
 
@@ -1832,21 +1832,21 @@
       r.className = "hm-row";
       const d = document.createElement("span");
       d.className = "hm-dir";
-      d.textContent = "HEAD " + dir;
+      d.textContent = __t("HEAD " + dir);
       const a = document.createElement("span");
       a.className = "hm-arrow";
       a.textContent = arrow;
       const t = document.createElement("span");
       t.className = "hm-act";
       t.dataset.hmAct = act;
-      t.textContent = act === "—" ? "not mapped" : act;
+      t.textContent = act === "—" ? __t("not mapped") : act;
       r.append(d, a, t);
       return r;
     });
     hMap.append.apply(hMap, rows);
     const hint = document.createElement("p");
     hint.className = "hm-hint";
-    hint.textContent = "Sensitivity " + sens.toFixed(2) + " · hold " + hold + " ms · cooldown " + headCooldown + " ms";
+    hint.textContent = __tf("Sensitivity {s} · hold {h} ms · cooldown {c} ms", { s: sens.toFixed(2), h: hold, c: headCooldown });
     hMap.append(hint);
   };
 
@@ -1856,7 +1856,8 @@
       b.classList.toggle("is-on", on);
       b.setAttribute("aria-pressed", String(on));
     });
-    if (hStatus) hStatus.textContent = name + " · ready";
+    if (hStatus) hStatus.textContent = __t(name) + " · " + __t("ready");
+    if (hStatus) hStatus.dataset.i18n = "ready";
     hHeadMap(name);
   };
   hCtxBtns.forEach((b) => b.addEventListener("click", () => hSetContext(b.dataset.headContext)));
@@ -1890,8 +1891,9 @@
     if (!action) return;
     headLastFire = performance.now();
     bus.emit({ type: "action", source: "head", action, target: name, risk: "safe", decision: "allow", conf, ts: Date.now() });
-    if (hFired) hFired.textContent = "last: " + action;
-    if (hStatus) hStatus.textContent = name + " · fired " + action;
+    if (hFired) hFired.textContent = __t("last: ") + action;
+    if (hStatus) hStatus.textContent = __t(name) + " · " + __t("fired ") + action;
+    if (hStatus) hStatus.dataset.i18n = "hold";
     if (hHoldNow) { hHoldNow.textContent = held + "ms"; hHoldNow.classList.remove("is-fired"); void hHoldNow.offsetWidth; hHoldNow.classList.add("is-fired"); }
     const actRow = hMap.querySelector('[data-hm-act="' + action + '"]');
     if (actRow) {
@@ -1953,12 +1955,12 @@
     }
     headLastConf = conf;
 
-    if (hDir) hDir.textContent = dir === "NEUTRAL" ? "NEUTRAL" : "HEAD " + dir.slice(5);
+    if (hDir) hDir.textContent = dir === "NEUTRAL" ? __t("HEAD NEUTRAL") : __t("HEAD " + dir.slice(5));
     if (hConf) hConf.textContent = conf.toFixed(2);
     if (hHoldNow) hHoldNow.textContent = Math.round(Math.min(headHoldMs, (hHold ? parseFloat(hHold.value) : 300))) + "ms";
     if (hStatus) {
-      if (dir !== "NEUTRAL") hStatus.textContent = "hold to fire…";
-      else if (!hStatus.textContent.endsWith("ready")) hStatus.textContent = "neutral";
+      if (dir !== "NEUTRAL") { hStatus.textContent = __t("hold to fire…"); hStatus.dataset.i18n = "hold"; }
+      else if (hStatus.dataset.i18n !== "ready") { hStatus.textContent = __t("neutral") + " · " + __t("ready"); hStatus.dataset.i18n = "ready"; }
     }
 
     // halo pulse when a direction is being held
@@ -2218,7 +2220,7 @@
     if (testRun) testRun.disabled = true;
     testResults.innerHTML = "";
     if (testSummary) testSummary.innerHTML = "";
-    if (testStatus) testStatus.textContent = "running…";
+    if (testStatus) testStatus.textContent = __t("running…");
     let passed = 0, skipped = 0, failed = 0;
     for (const t of TL_TESTS) {
       const ok = await runTestRow(t);
@@ -2226,9 +2228,14 @@
       else if (ok === null) skipped += 1;
       else failed += 1;
     }
-    if (testStatus) testStatus.textContent = TL_TESTS.length + " run";
+    if (testStatus) testStatus.textContent = TL_TESTS.length + " " + __t("run");
     if (testSummary) {
-      testSummary.innerHTML = "Passed <b>" + passed + "</b> · Skipped <b class=\"skip\">" + skipped + "</b> · Failed <b class=\"fail\">" + failed + "</b> · " + TL_TESTS.length + " total — honest results, simulated inputs.";
+      testSummary.innerHTML = __tf("Passed {p} · Skipped {s} · Failed {f} · {t} total — honest results, simulated inputs.", {
+        p: "<b>" + passed + "</b>",
+        s: "<b class=\"skip\">" + skipped + "</b>",
+        f: "<b class=\"fail\">" + failed + "</b>",
+        t: TL_TESTS.length,
+      });
     }
     if (testRun) testRun.disabled = false;
   };
@@ -2237,7 +2244,7 @@
   if (testClear) testClear.addEventListener("click", () => {
     testResults.innerHTML = "";
     if (testSummary) testSummary.innerHTML = "";
-    if (testStatus) testStatus.textContent = "0 run";
+    if (testStatus) testStatus.textContent = __t("0 run");
   });
 
   /* ---------- Safety console ---------- */
