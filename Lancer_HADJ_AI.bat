@@ -1,2 +1,2 @@
 @echo off
-start "" "D:\Travail\HAJ NO TOUCH Instll\HADJ-NO-TOUCH-AI.exe"
+start "" "C:\Users\User\OneDrive\Desktop\HADJ-NO-TOUCH-AI-Windows\HADJ-NO-TOUCH-AI.exe"
