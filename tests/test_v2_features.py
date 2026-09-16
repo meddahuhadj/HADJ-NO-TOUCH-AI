@@ -5,6 +5,8 @@ plus their wiring inside AppCore.
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import pytest
 
@@ -43,11 +45,25 @@ class TestSafety:
         assert not eng.decide("EMERGENCY_STOP").requires_confirmation
         assert not eng.decide("PAUSE_CONTROL").requires_confirmation
 
-    def test_unknown_action_allowed_but_safe(self) -> None:
+    def test_unknown_action_denied_by_default(self) -> None:
         from hadj_no_touch.safety import SafetyEngine
         d = SafetyEngine().decide("TOTALLY_UNKNOWN_XYZ")
-        assert d.allowed
-        assert d.risk == "safe"
+        assert not d.allowed
+        assert d.reason
+
+    def test_allowlist_restricts_and_clears(self) -> None:
+        from hadj_no_touch.safety import SafetyEngine
+        eng = SafetyEngine(allowed_actions=["LEFT_CLICK"])
+        assert eng.decide("LEFT_CLICK").allowed
+        assert not eng.decide("NEXT_SLIDE").allowed
+        eng.set_allowed_actions(None)
+        assert eng.decide("NEXT_SLIDE").allowed
+
+    def test_laser_pointer_registered_safe(self) -> None:
+        from hadj_no_touch.safety import ActionRegistry
+        reg = ActionRegistry()
+        assert reg.known("LASER_POINTER")
+        assert reg.risk("LASER_POINTER") == "safe"
 
     def test_audit_ring(self) -> None:
         from hadj_no_touch.safety import SafetyEngine
@@ -182,6 +198,14 @@ class TestPlanner:
     def test_unknown_text_empty(self) -> None:
         plan = self._planner().plan("asdfgh completely gibberish")
         assert plan.is_empty()
+
+    def test_french_and_arabic_plans(self) -> None:
+        fr = [s.action for s in self._planner().plan("prépare ma présentation").steps]
+        assert "START_PRESENTATION" in fr
+        ar = [s.action for s in self._planner().plan("تجهيز عرض تقديمي").steps]
+        assert "START_PRESENTATION" in ar
+        work_ar = [s.action for s in self._planner().plan("بيئة عمل").steps]
+        assert "PROFILE_SWITCH" in work_ar
 
 
 class TestCustomCommands:
@@ -330,6 +354,57 @@ class TestAppIntegration:
         core._execute_mouse_event(ge.GestureEvent(kind=ge.LEFT_CLICK, x=10, y=20))
         assert any("[DEMO]" in t for t in toasts)
         core.demo.set_enabled(False)
+
+    def test_unknown_action_blocked_by_safety_gate(self) -> None:
+        """Register-only execution: an unregistered action can never run."""
+        from hadj_no_touch.core.app import OUT_BLOCKED
+        core = self._core()
+        warns: list = []
+        core.event_logged.connect(lambda kind, msg: warns.append(msg)
+                                  if kind == "WARN" else None)
+        from hadj_no_touch.ai.intent_engine import Intent
+        result = core._route_intent(Intent(action="TOTALLY_UNKNOWN_XYZ",
+                                           source="test"))
+        assert result == OUT_BLOCKED
+        assert warns and any("blocked" in w.lower() for w in warns)
+        rec = core.history.recent()
+        assert rec and rec[0]["status"] == "FAILED"
+
+    def test_custom_gesture_name_goes_through_safety(self) -> None:
+        """A custom gesture firing an unregistered action must be blocked,
+        not executed via the raw bypass."""
+        from hadj_no_touch.gestures.custom_gestures import CustomGesture
+        core = self._core()
+        warns: list = []
+        core.event_logged.connect(lambda kind, msg: warns.append(msg)
+                                  if kind == "WARN" else None)
+        core._fire_custom_gesture(CustomGesture(
+            name="pinky_tap", action="TOTALLY_UNKNOWN_XYZ", action_label=""))
+        assert warns and any("blocked" in w.lower() for w in warns)
+        rec = core.history.recent()
+        assert rec and rec[0]["status"] == "FAILED"
+
+    def test_laser_pointer_toggles_really(self) -> None:
+        core = self._core()
+        toasts: list = []
+        core.toasts.connect(toasts.append)
+        from hadj_no_touch.ai.intent_engine import Intent
+        core._route_intent(Intent(action="LASER_POINTER", source="test"))
+        assert core._laser_mode is True
+        core._route_intent(Intent(action="LASER_POINTER", source="test"))
+        assert core._laser_mode is False
+
+    def test_hand_present_goes_stale(self) -> None:
+        """hand_present must expire once the hand is no longer seen."""
+        core = self._core()
+        core._last_hand_detected = True
+        core._last_hand_detected_at = time.monotonic() - 5.0
+        assert core._last_hand_seen() is False
+        core._emit_status(snapshot_time=time.monotonic())
+        assert core._status.hand_present is False
+        core._last_hand_detected_at = time.monotonic()
+        core._emit_status(snapshot_time=time.monotonic())
+        assert core._status.hand_present is True
 
     def test_macro_halts_on_confirmation_step(self) -> None:
         """A macro must stop at a step that asks for confirmation instead of

@@ -320,7 +320,7 @@ class TestLabDialog(QDialog):
         super().__init__(parent)
         self.core = core
         self.setWindowTitle("HADJ Test Lab")
-        self.resize(560, 480)
+        self.resize(560, 520)
         self.setStyleSheet(DARK)
         lay = QVBoxLayout(self)
         head = QHBoxLayout()
@@ -334,6 +334,49 @@ class TestLabDialog(QDialog):
         lay.addWidget(self.results, 1)
         self.summary = QLabel("")
         lay.addWidget(self.summary)
+
+        live = QFrame()
+        live.setStyleSheet("background:#0e1b2b; border:1px solid #223d5c; border-radius:8px;")
+        ll = QVBoxLayout(live)
+        ll.addWidget(QLabel("Live gesture accuracy (real measured counters from your session)"))
+        self.live_stats = QLabel("—")
+        self.live_stats.setWordWrap(True)
+        ll.addWidget(self.live_stats)
+        lrow = QHBoxLayout()
+        b_refresh = QPushButton("Refresh")
+        b_refresh.clicked.connect(self._refresh_live)
+        b_reset = QPushButton("Reset counters")
+        b_reset.clicked.connect(self._reset_live)
+        lrow.addStretch(1)
+        lrow.addWidget(b_refresh)
+        lrow.addWidget(b_reset)
+        ll.addLayout(lrow)
+        lay.addWidget(live)
+
+    def showEvent(self, ev) -> None:
+        super().showEvent(ev)
+        self._refresh_live()
+
+    def _refresh_live(self) -> None:
+        st = self.core.test_lab.live_stats()
+        prec = st["click_precision"]
+        clicks = st["clicks"]
+        if prec is None:
+            prec_txt = "n/a (no clicks yet)"
+            clean_txt = "—"
+        else:
+            prec_txt = f"{prec:.0%} ({st['precision_label']})"
+            clean_txt = f"{st['clicks_clean']}/{clicks}"
+        self.live_stats.setText(
+            f"Clicks delivered: <b>{clicks}</b>  ·  clean (≤12% drift): <b>{clean_txt}</b>\n"
+            f"Click precision: <b>{prec_txt}</b>  ·  avg drift: "
+            f"{st['click_drift_avg'] if st['click_drift_avg'] is not None else '—'}\n"
+            f"False triggers: <b>{st['false_triggers']}</b>  ·  session FPS: {st['fps']:.0f}  ·  "
+            f"gesture latency: {st['gesture_latency_ms'] if st['gesture_latency_ms'] is not None else '—'} ms")
+
+    def _reset_live(self) -> None:
+        self.core.reset_live_metrics()
+        self._refresh_live()
 
     def run(self) -> None:
         self.results.clear()
@@ -349,6 +392,7 @@ class TestLabDialog(QDialog):
         failed = sum(1 for r in rows if r.get("ok") is False)
         self.summary.setText(f"Passed {passed} · Skipped {skipped} · Failed {failed}")
         self.btn_run.setEnabled(True)
+        self._refresh_live()
 
 
 class SettingsCenterDialog(QDialog):
@@ -438,6 +482,38 @@ class SettingsCenterDialog(QDialog):
         dl.addWidget(self.d_start)
         lay.addWidget(g_demo)
 
+        g_voice = QGroupBox("Voice engine & privacy")
+        vl = QVBoxLayout(g_voice)
+        vl.addWidget(QLabel("Recognition engine"))
+        self.v_engine = QComboBox()
+        self.v_engine.addItem("Google — online recognition (works out of the box)", "google")
+        self.v_engine.addItem("Vosk — fully local, audio stays on your device", "vosk")
+        self.v_engine.addItem("SAPI — fully local (currently unavailable in this build)", "sapi")
+        idx = self.v_engine.findData(self.core.settings.voice.engine)
+        self.v_engine.setCurrentIndex(max(0, idx))
+        vl.addWidget(self.v_engine)
+        vl.addWidget(QLabel("Vosk model folder (only used when Vosk is selected)"))
+        self.v_vosk_path = QLineEdit(self.core.settings.voice.vosk_model_path)
+        self.v_vosk_path.setPlaceholderText("e.g. C:\\vosk-models\\vosk-model-en-us-0.22")
+        vl.addWidget(self.v_vosk_path)
+        vl.addWidget(QLabel(
+            "Google sends mic audio to Google for recognition and needs internet; the "
+            "badge in the header says AUDIO ONLINE while it is active. Vosk/SAPI never "
+            "send audio anywhere — the badge says AUDIO LOCAL."))
+        lay.addWidget(g_voice)
+
+        g_sense = QGroupBox("Sensitivity profile")
+        sl2 = QVBoxLayout(g_sense)
+        sl2.addWidget(QLabel("Simple sensitivity dial (applies on top of the active mode)"))
+        self.s_sense = QComboBox()
+        self.s_sense.addItem("Low — slower, smoother, more forgiving", "low")
+        self.s_sense.addItem("Medium — balanced", "medium")
+        self.s_sense.addItem("High — fast, small gestures go far", "high")
+        idx = self.s_sense.findData(self.core.settings.sensitivity)
+        self.s_sense.setCurrentIndex(max(0, idx))
+        sl2.addWidget(self.s_sense)
+        lay.addWidget(g_sense)
+
         row = QHBoxLayout()
         b_save = QPushButton("Save")
         b_save.setObjectName("ok")
@@ -465,6 +541,11 @@ class SettingsCenterDialog(QDialog):
         self.core.head.sensitivity = self.h_sens.value()
         self.core.head.hold_ms = self.h_hold.value()
         self.core.head.cooldown_ms = self.h_cool.value()
+        eng = self.v_engine.currentData() or "google"
+        if s.voice.engine != eng:
+            self.core.set_voice_engine(eng)
+        s.voice.vosk_model_path = self.v_vosk_path.text().strip()
+        self.core.set_sensitivity(self.s_sense.currentData() or "medium")
         try:
             s.save()
         except Exception:

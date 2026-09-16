@@ -23,6 +23,10 @@ class InteractionPlane:
         self.screen_h = 1080
         self._cur: tuple[float, float] | None = None
         self._last_target: tuple[float, float] | None = None
+        # Number of consecutive frames a far-away target must persist before it
+        # is accepted as a genuine repositioning (not a one-frame tracking glitch).
+        self._jump_confirm_frames = 3
+        self._jump_rejects = 0
 
     def set_screen_size(self, w: int, h: int) -> None:
         self.screen_w = max(1, w)
@@ -61,13 +65,24 @@ class InteractionPlane:
         target_px = self.to_pixels(target_norm)
 
         cs = self.cursor_settings
-        # large jumps = tracking glitch; reject (ratio from gesture settings)
+        # Large jumps = tracking glitch. Use a true Manhattan distance
+        # (abs(dx) + abs(dy), NOT abs(dx + dy), which lets opposite-sign
+        # diagonal jumps cancel out). A far target must persist for several
+        # consecutive frames before it is accepted as a genuine repositioning.
         if self._cur is not None:
-            delta = abs(target_px[0] - self._cur[0] + target_px[1] - self._cur[1])
+            dx = target_px[0] - self._cur[0]
+            dy = target_px[1] - self._cur[1]
+            delta = abs(dx) + abs(dy)
             max_jump = (self.screen_w + self.screen_h) / 2 * SETTINGS.gestures.max_cursor_jump_ratio
             if delta > max_jump:
-                self._last_target = None
-                return None
+                self._jump_rejects += 1
+                if self._jump_rejects < self._jump_confirm_frames:
+                    self._last_target = None
+                    return None
+                # Persisted far target: it is a deliberate hand repositioning.
+                self._jump_rejects = 0
+            else:
+                self._jump_rejects = 0
 
         # dead zone: ignore sub-pixel tremor
         if self._cur is not None and self._last_target is not None:
@@ -91,6 +106,7 @@ class InteractionPlane:
     def reset(self) -> None:
         self._cur = None
         self._last_target = None
+        self._jump_rejects = 0
 
 
 def np_clip(v: float, lo: float = 0.0, hi: float = 1.0) -> float:

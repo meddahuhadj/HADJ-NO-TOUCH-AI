@@ -338,6 +338,50 @@ class MainWindow(QMainWindow):
                 f"Camera unavailable ({self.core.camera_error_hint}).\n\n"
                 "Gestures are offline but voice can still be used.")
         self._first_run_calibration()
+        self._first_run_voice_choice()
+
+    def _first_run_voice_choice(self) -> None:
+        """Ask once, at first launch, which speech engine to use — so the
+        default (Google, online) is a conscious choice, never a surprise.
+        Upgrades (existing config file) are treated as already decided."""
+        try:
+            from ..config import default_config_path
+            voice = self.core.settings.voice
+            if not voice.enabled:
+                return
+            if voice.engine_choice_made:
+                return
+            if default_config_path().exists():
+                voice.engine_choice_made = True
+                try:
+                    self.core.settings.save()
+                except Exception:
+                    pass
+                return
+        except Exception:
+            return
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle("Voice privacy")
+        box.setText("How should voice recognition run?")
+        box.setInformativeText(
+            "Google (default): mic audio is sent to Google's servers for "
+            "recognition — it works immediately but needs internet.\n"
+            "Vosk (local): audio never leaves this device, but you must configure "
+            "a Vosk model in Settings → Voice for it to work.\n\n"
+            "You can switch at any time. The header badge always shows "
+            "AUDIO ONLINE / AUDIO LOCAL.")
+        b_local = box.addButton("Local (Vosk) — audio stays on device",
+                                QMessageBox.ButtonRole.YesRole)
+        b_google = box.addButton("Keep Google — works out of the box",
+                                 QMessageBox.ButtonRole.NoRole)
+        box.setDefaultButton(QMessageBox.StandardButton.No)
+        box.exec()
+        if box.clickedButton() is b_local:
+            self.core.set_voice_engine("vosk")
+        else:
+            self.core.set_voice_engine("google")
 
     def _first_run_calibration(self) -> None:
         try:

@@ -117,7 +117,8 @@ class AppCore(QObject):
 
         # ---- v2.0 engines ---------------------------------------------------
         self.safety = SafetyEngine(ActionRegistry(),
-                                   confirmation_level=SETTINGS.safety.confirmation_level)
+                                   confirmation_level=SETTINGS.safety.confirmation_level,
+                                   allowed_actions=SETTINGS.safety.allowed_actions)
         self.demo = DemoMode(SETTINGS.demo.start_in_demo)
         self.history = ActionHistory()
         self.perf = PerformanceMonitor()
@@ -193,10 +194,14 @@ class AppCore(QObject):
         self._last_preview_time = 0.0
         self._last_status_time = 0.0
         self._frame_index = 0
+        self._frame_ts = time.monotonic()
         self._processing_fps = 0.0
         self._status = StatusSnapshot()
         self._context_cache = self.context_engine.snapshot()
         self.camera_error_hint = ""
+        self._last_hand_detected = False
+        self._last_hand_detected_at = 0.0
+        self._laser_mode = False
 
         self.calibration_active = False  # flipped by the calibration wizard
 
@@ -207,6 +212,8 @@ class AppCore(QObject):
     # =====================================================================
     def start(self) -> bool:
         self._running.set()
+        # Apply the simple user sensitivity dial on top of the active profile.
+        self.settings.apply_sensitivity()
         cam_ok = self.camera.start()
         if not cam_ok:
             self.camera_error_hint = self.camera.error or "camera unavailable"
@@ -262,6 +269,7 @@ class AppCore(QObject):
 
     def _process_tick(self) -> None:
         tick0 = time.monotonic()
+        self._frame_ts = tick0
         frame_obj = None
         try:
             frame_obj = self.camera.read()
@@ -297,6 +305,8 @@ class AppCore(QObject):
             if hands:
                 hand = self._choose_hand(hands)
         self._last_hand_detected = hand is not None
+        if hand is not None:
+            self._last_hand_detected_at = time.monotonic()
 
         # fingertip → virtual interaction plane
         if hand is not None and self.settings.cursor.enabled:
@@ -312,6 +322,10 @@ class AppCore(QObject):
 
         for ev in events:
             self._dispatch_gesture_event(ev)
+
+        # real click-precision metrics: drain drift samples emitted this tick
+        for drift in self.engine.drain_click_drifts():
+            self.perf.note_click(drift)
 
         # custom gesture matching
         if hand is not None and privacy_ok and self._rematcher.gestures:
@@ -337,6 +351,11 @@ class AppCore(QObject):
                 if gaze_active:
                     self.gaze.update(face)
                     gx, gy = self.gaze.direction()
+                    # Raw tracker output is in [-1,1]; the multimodal matcher
+                    # compares gaze with the pointer in screen-normalized [0,1]
+                    # coordinates, so convert here (fixes the old mismatch that
+                    # made the experimental gaze gate effectively never fire).
+                    gx, gy = (gx + 1.0) / 2.0, (gy + 1.0) / 2.0
                     self.multimodal.set_gaze(gx, gy, True)
                 if head_enabled:
                     hev = self.head.update(face.landmarks_norm)
@@ -413,6 +432,10 @@ class AppCore(QObject):
                     cv2.line(view, tuple(pts[i]), tuple(pts[j]), (0, 200, 255), 1)
                 idx = tuple(pts[8])
                 cv2.circle(view, idx, 6, (0, 230, 120), -1)
+                if self._laser_mode:
+                    cv2.circle(view, idx, 16, (0, 0, 255), 3)
+                    cv2.putText(view, "LASER", (8, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                                (0, 0, 255), 2)
             g = self.engine.confirmed_gesture
             if self.engine.locked:
                 g = "LOCKED"
@@ -432,6 +455,11 @@ class AppCore(QObject):
     # =====================================================================
     def _dispatch_gesture_event(self, ev: ge.GestureEvent) -> None:
         self.multimodal.on_gesture(ev)
+        # Real end-to-end gesture latency for discrete actions: time from when
+        # this camera frame entered processing until the event dispatch.
+        if ev.kind not in (ge.MOVE, ge.DRAG_UPDATE):
+            self.perf.note_gesture(
+                (time.monotonic() - self._frame_ts) * 1000.0)
         if not self.privacy.can_act():
             return
         mouse_events = {ge.MOVE, ge.DRAG_UPDATE, ge.LEFT_CLICK, ge.DOUBLE_CLICK,
@@ -528,6 +556,7 @@ class AppCore(QObject):
 
     # ---- intent routing ------------------------------------------------
     def _route_intent(self, intent: Intent) -> str:
+        self.multimodal.on_intent(intent)
         if self.demo.enabled and intent.action not in DEMO_EXEMPT_ACTIONS:
             label = intent.describe() or intent.action
             self.history.record(source=intent.source, action=label,
@@ -541,6 +570,14 @@ class AppCore(QObject):
             self.safety.audit(intent.action, "BLOCKED", "control disabled")
             return OUT_BLOCKED
         decision = self.safety.decide(intent.action, intent.needs_confirmation)
+        if not decision.allowed:
+            # Deny-by-default: an unregistered action (typo, bloated macro,
+            # future AI-generated command) must never reach the executor.
+            self.safety.audit(intent.action, "BLOCKED", decision.reason)
+            self.history.record(source=intent.source, action=intent.action,
+                                params=intent.params, status=STATUS_FAILED)
+            self._event("WARN", f"Action blocked by safety: {intent.action}")
+            return OUT_BLOCKED
         if decision.requires_confirmation:
             self.safety.audit(intent.action, "CONFIRMING", decision.reason)
             self._pending_confirm = intent
@@ -721,6 +758,16 @@ class AppCore(QObject):
                 threading.Timer(1.5, self.engine.resume).start()
             elif a == "FIST_LOCK":
                 self._safety_note("Interaction lock toggled")
+            elif a == "LASER_POINTER":
+                # Real laser-pointer mode: while it is on, the fingertip keeps
+                # driving the real cursor (usable to point at a projected
+                # slide) and the HADJ preview shows a laser dot overlay.
+                self._laser_mode = not self._laser_mode
+                mode = "ON" if self._laser_mode else "OFF"
+                self._event("ACTION", f"Laser pointer {mode}")
+                self.toasts.emit(
+                    f"Laser pointer {mode} — finger moves the cursor"
+                    if self._laser_mode else "Laser pointer off")
             else:
                 return False
             return True
@@ -790,8 +837,10 @@ class AppCore(QObject):
         elif name == "screenshot":
             self._screenshot()
         elif name:
+            # Route through the normal gate so demo simulation, denial and
+            # confirmation apply to custom gestures too — never a raw bypass.
             intent = Intent(action=name.upper(), params={}, source="custom")
-            self._execute_intent(intent)
+            self._route_intent(intent)
 
     def _open_documents(self, kind: str = "") -> None:
         import os
@@ -815,14 +864,17 @@ class AppCore(QObject):
             keyboard_control.type_text(text + " ")
             self.toasts.emit(f"Dictated: {text}")
             return
+        t0 = time.monotonic()
         vi = vc.parse(text, self.settings.voice.language)
         if vi.intent == vc.NONE_INTENT:
             self._voice_fallback(text, vi.language)
+            self.perf.note_voice((time.monotonic() - t0) * 1000.0)
             return
         self.multimodal.on_voice(vi)
         intent = self.intent_engine.from_voice(vi, self._context_cache)
         if intent is None:
             self._event("VOICE", f"Heard (unmapped): {text}")
+            self.perf.note_voice((time.monotonic() - t0) * 1000.0)
             return
         # allow the active profile to override voice intent routing
         vm = self.profiles.active.voice_map
@@ -838,6 +890,8 @@ class AppCore(QObject):
         elif intent.action == "COPILOT":
             intent = self.multimodal.copilot_assess(vi, self._context_cache, None)
         self._route_intent(intent)
+        # Real voice latency: recognition callback -> parsed intent routed.
+        self.perf.note_voice((time.monotonic() - t0) * 1000.0)
 
     def set_dictation(self, on: bool) -> None:
         self._dictating = on
@@ -915,6 +969,7 @@ class AppCore(QObject):
         self.engine.locked = True
         self.holder.stop()
         self.air_mouse.reset()
+        self._laser_mode = False
         self.emergency_changed.emit()
         self._event("WARN", "EMERGENCY STOP — control disabled (CTRL+ALT+H)")
 
@@ -1151,9 +1206,13 @@ class AppCore(QObject):
     def _emit_status(self, snapshot_time: float, cpu_baseline_ok: bool = True) -> None:
         s = self._status
         s.camera_active = self.camera.is_healthy
-        s.hand_tracking_active = self.hand_tracker.available
+        # Honest states: "tracking active" means the model is available AND the
+        # camera is actually delivering frames — never model-exists-only.
+        s.hand_tracking_active = (self.hand_tracker.available
+                                  and self.camera.is_healthy)
         s.gaze_ready = (self.settings.tracking.gaze_enabled
-                        and self.face_tracker.available)
+                        and self.face_tracker.available
+                        and self.camera.is_healthy)
         s.tracking_paused = self.privacy.tracking_paused
         s.voice_ready = bool(self.voice.engine and self.voice.engine.status in ("listening", "recognizing"))
         s.gaze_active = self.multimodal.state.gaze_active
@@ -1161,19 +1220,27 @@ class AppCore(QObject):
         s.control_enabled = ind["control"]
         s.emergency = ind["emergency"]
         s.privacy_mode = ind["privacy"]
-        s.hand_present = getattr(self, "_last_hand_detected", False) or self._last_hand_seen()
+        # A hand only counts as "present" while it has been seen in the last
+        # second — never frozen-on after the first detection.
+        seen_recently = (time.monotonic() - self._last_hand_detected_at) < 1.0 \
+            if self._last_hand_detected else False
+        s.hand_present = self._last_hand_detected and seen_recently
         s.hand_confidence = self.engine.raw_confidence if s.hand_present else 0.0
         s.gesture = "LOCKED" if self.engine.locked else self.engine.confirmed_gesture
         s.gesture_confidence = self.engine.raw_confidence
         s.fps = self.camera.fps
         s.tracking_fps = self._processing_fps
-        s.latency_ms = 1000.0 * (0.02 if cpu_baseline_ok else 0.05)
+        perf = self.perf.snapshot()
+        # Real measured frame-processing latency (ms), never a fabricated value.
+        s.latency_ms = round(perf["frame_ms"] or 0.0, 1)
         s.cpu = self._cpu()
         s.memory_mb = self._mem()
         s.active_profile = self.profiles.active.name
         s.active_app = self._context_cache.exe
         s.active_context = self._context_cache.description
         s.voice_status = self.voice.engine.status if self.voice.engine else "idle"
+        s.voice_engine = self.voice.engine.name if self.voice.engine else ""
+        s.audio_online = bool(self.voice.engine and not self.voice.engine.offline)
         s.last_voice = self.voice.last_text
         s.recognized_text = self.voice.last_text
         s.last_intent = self.intent_engine.last.describe() if self.intent_engine.last else ""
@@ -1183,16 +1250,18 @@ class AppCore(QObject):
         s.demo_mode = self.demo.enabled
         s.safety_level = self.safety.confirmation_level
         s.head_enabled = self.settings.head.enabled
+        s.laser_mode = self._laser_mode
         env = self.env_report
         s.lighting = env.lighting if env else "unknown"
         s.brightness = env.brightness if env else 0.0
         s.contrast = env.contrast if env else 0.0
-        perf = self.perf.snapshot()
         s.perf = perf
         s.cmd_per_minute = perf["commands_per_minute"]
         s.gesture_latency_ms = perf["gesture_latency_ms"]
         s.voice_latency_ms = perf["voice_latency_ms"]
         s.history_count = len(self.history)
+        s.click_count = perf.get("clicks", 0)
+        s.click_precision = perf.get("click_precision")
         if self.air_mouse.current_screen:
             s.cursor_x, s.cursor_y = self.air_mouse.current_screen
         s.diag = {
@@ -1201,6 +1270,8 @@ class AppCore(QObject):
             "gaze_xy": list(mm.gaze_xy), "gaze_match": mm.gaze_pointer_match,
             "profile": self.profiles.active.id, "context": s.active_context,
             "voice_status": s.voice_status, "pinch_hold": self.holder.active,
+            "voice_engine": s.voice_engine, "audio_online": s.audio_online,
+            "clicks": s.click_count, "click_precision": s.click_precision,
             "custom_gestures": len(self._rematcher.gestures),
             "demo": self.demo.enabled,
             "safety": self.safety.confirmation_level,
@@ -1213,8 +1284,10 @@ class AppCore(QObject):
         self.status_updated.emit(s.filled())
 
     def _last_hand_seen(self) -> bool:
-        # cheap heuristic from engine activity
-        return self.engine.raw_gesture not in ("",) or bool(self.engine.confirmed_gesture != ge.REST)
+        # A hand is "seen" only if one was detected within the last second.
+        if not self._last_hand_detected:
+            return False
+        return (time.monotonic() - self._last_hand_detected_at) < 1.0
 
     def _cpu(self) -> float:
         if HAVE_PSUTIL:
@@ -1412,6 +1485,48 @@ class AppCore(QObject):
         except Exception:
             pass
         self._event("INFO", f"Head control {'enabled' if on else 'disabled'}")
+
+    def set_voice_engine(self, engine: str) -> bool:
+        """Switch the voice engine to google | vosk | sapi and restart it.
+
+        Returns True if the engine is available, False otherwise (no silent
+        fallback: if a local engine was requested but can't run, voice is off).
+        """
+        valid = {"google", "vosk", "sapi"}
+        if engine not in valid:
+            self._event("WARN", f"Unknown voice engine requested: {engine}")
+            return False
+        self.voice.stop()
+        self.settings.voice.engine = engine
+        self.settings.voice.engine_choice_made = True
+        try:
+            self.settings.save()
+        except Exception:
+            pass
+        self.voice.engine = None
+        ok = False if not self.settings.voice.enabled else bool(self.voice.start())
+        name = self.voice.engine.name if self.voice.engine else "none"
+        online = "online" if (self.voice.engine and not self.voice.engine.offline) else "local"
+        self._event("INFO", f"Voice engine: {name} ({online})")
+        return ok
+
+    def reset_live_metrics(self) -> None:
+        """Reset the live click/false-trigger counters (Test Lab)."""
+        self.perf.reset_counters()
+        self._event("INFO", "Live gesture metrics reset")
+
+    def set_sensitivity(self, level: str) -> None:
+        """Set the simple low/medium/high sensitivity profile."""
+        if level not in self.settings.SENSITIVITY_SETS:
+            self._event("WARN", f"Unknown sensitivity profile: {level}")
+            return
+        self.settings.sensitivity = level
+        self.settings.apply_sensitivity()
+        self._event("INFO", f"Sensitivity profile: {level}")
+        try:
+            self.settings.save()
+        except Exception:
+            pass
 
     def _engine_event_tap(self, ev: ge.GestureEvent) -> None:
         pass

@@ -29,7 +29,19 @@ py -3.12 main.py
 ```
 
 On first launch the calibration wizard maps your webcam fingertip onto the
-screen. Recalibrate any time from the dashboard or tray.
+screen. Recalibrate any time from the dashboard or tray. The first launch also
+asks once how voice recognition should run (online Google vs local Vosk) — the
+answer is saved and changeable at any time in Settings Center.
+
+## Configuration matérielle minimale
+
+- Windows 10 / 11 x64, Python 3.10–3.12 (MediaPipe does not support 3.13 yet).
+- Any standard UVC webcam (≥ 640×480 @ 30 fps recommended). A built-in laptop
+  camera works; dim or backlit rooms degrade tracking — the dashboard's
+  *Lighting* dot estimates the conditions live.
+- Microphone for the voice layer (optional). A dedicated GPU is **not**
+  required: MediaPipe runs on CPU and modest integrated graphics.
+- No installer pack: run `py -3.12 main.py` (dev) or the packaged EXE.
 
 ## Pipeline
 
@@ -136,19 +148,50 @@ decline it, and each approved step still goes through the Safety Engine.
 
 ## Privacy
 
-Camera and microphone processing is **local by default**. No camera frames
-are uploaded or recorded. Toggle camera / mic, pause tracking, enable
-privacy mode (blurred preview) or clear all local data from the dashboard.
+Camera processing is **local by default** — no camera frames are uploaded or
+recorded. Toggle camera / mic, pause tracking, enable privacy mode (blurred
+preview) or clear all local data from the dashboard.
+
+Voice privacy depends on the selected engine:
+
+- **Google Web Speech** (the default `engine: "google"`) sends your spoken
+  phrase to Google's servers for recognition — it is **not** local. Use it
+  only when that trade-off is acceptable.
+- **Vosk** (set `engine: "vosk"` + a `vosk_model_path`) and **SAPI**
+  (system speech recognizer) run recognition locally on your machine.
+
+The interface makes the choice visible, never implicit:
+
+- **First launch** asks once which engine to use; it is never silently
+  switched behind your back.
+- A dashboard badge shows **`🎙 AUDIO ONLINE`** in amber while any cloud engine
+  (Google) is active, and **`🎙 AUDIO LOCAL`** in green for Vosk/SAPI.
+- If you choose a *local* engine but it can't run (e.g. no Vosk model), the
+  app **disables voice instead of silently falling back to Google** — no audio
+  leaves the machine against your preference, and Settings Center explains what
+  to configure.
+
+Everything you choose is reported honestly in the dashboard status — an
+engine that is unavailable is shown as unavailable, never simulated.
 
 ## Some features marked
 
 - Gaze tracking, custom-gesture recording, Vosk/SAPI offline voice,
   laser-pointer mode are **experimental / optional** but real; SAPI is
   reported honestly as unavailable on this build rather than faked.
+- Laser-pointer mode moves the real cursor (as a physical pointer laser
+  would) while active — it does not draw on screen contents; a red marker
+  overlay on the camera preview confirms the mode.
+- Unknown or unregistered actions are **blocked by default** instead of
+  being executed, so a typo, bloated macro or future AI command can never
+  fire an arbitrary action.
 - Smart-home & robot control are reserved future work and shown as
   “Coming Soon” rather than fakes.
 
 ## Tests & Test Lab
+
+Field-test protocol and the release/verification steps live in
+[`CHECKLISTS.md`](CHECKLISTS.md).
 
 ```powershell
 py -3.12 -m pytest tests
@@ -158,7 +201,10 @@ The in-app **Test Lab** (dashboard → 🧪 Test Lab) runs the same simulated-in
 checks live: gesture classifier, gesture engine, Safety registry, demo mode,
 macros, planner, custom commands, head control, history — and reports
 hardware-dependent tests (camera, models, voice engine) as honestly
-**skipped** when the machine can't provide them.
+**skipped** when the machine can't provide them. It also shows **live gesture
+accuracy counters** measured from your real session — clicks delivered, drift
+from the pinch anchor, click-precision %, false triggers, session FPS and
+latency — with a reset button for repeatable before/after tuning.
 
 ## Web / PWA
 

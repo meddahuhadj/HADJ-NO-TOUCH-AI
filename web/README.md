@@ -52,12 +52,18 @@ python make_icons.py      # or: py -3.12 make_icons.py
 
 The "Download for Windows" / "Run on Windows" buttons link to the packaged ZIP hosted
 as a GitHub Release asset (Vercel's Hobby tier caps uploads at 100&nbsp;MB, the binary
-is ~260&nbsp;MB):
+is ~205&nbsp;MB):
 
 - Repo: <https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI>
 - Release `v2.0-beta` asset:
   `https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v2.0-beta/HADJ-NO-TOUCH-AI-Windows.zip`
 - SHA-256: `CAF27A9BE6B7CABE747A2FF817D9B5CA83142F6472F7C15D56EB20D29D98F188`
+  (also published as a `.sha256` sidecar next to the ZIP)
+
+Voice caveat (keep the PWA copy honest): the desktop app defaults to Google Web Speech
+for speech recognition, so the default voice path is cloud. Switching the voice engine to
+Vosk or SAPI makes recognition fully local. Camera frames and the intent engine are always
+local.
 
 Rebuild the desktop binary with `build_app.py` (PyInstaller), republish the release with
 `gh release create`, then update the `href` in `index.html`.

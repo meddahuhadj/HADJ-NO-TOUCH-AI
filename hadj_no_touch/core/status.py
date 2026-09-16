@@ -37,6 +37,8 @@ class StatusSnapshot:
     active_context: str = ""
 
     voice_status: str = "idle"
+    voice_engine: str = ""          # google | vosk | sapi | ""
+    audio_online: bool = False      # True → mic audio goes to a cloud service
     last_voice: str = ""
     recognized_text: str = ""
     last_intent: str = ""
@@ -47,6 +49,7 @@ class StatusSnapshot:
     demo_mode: bool = False
     safety_level: str = "smart"
     head_enabled: bool = False
+    laser_mode: bool = False
 
     lighting: str = "unknown"
     brightness: float = 0.0
@@ -56,6 +59,8 @@ class StatusSnapshot:
     gesture_latency_ms: float = 0.0
     voice_latency_ms: float = 0.0
     history_count: int = 0
+    click_count: int = 0
+    click_precision: float | None = None
     perf: dict = field(default_factory=dict)
 
     diag: dict = field(default_factory=dict)

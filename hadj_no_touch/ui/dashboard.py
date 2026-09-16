@@ -61,8 +61,13 @@ class Dashboard(QWidget):
         self.demo_badge.setStyleSheet(
             "font-size: 13px; font-weight: bold; color: #ff6b6b; background: #2a1515;"
             "border: 1px solid #b33636; border-radius: 8px; padding: 3px 10px;")
+        self.audio_badge = QLabel("🎙 —")
+        self.audio_badge.setStyleSheet(
+            "font-size: 13px; font-weight: bold; color: #8a8a9a; background: #191922;"
+            "border: 1px solid #44445a; border-radius: 8px; padding: 3px 10px;")
         header.addWidget(title)
         header.addStretch(1)
+        header.addWidget(self.audio_badge)
         header.addWidget(self.demo_badge)
         header.addWidget(tagline)
         root.addLayout(header)
@@ -236,6 +241,7 @@ class Dashboard(QWidget):
         self.dot_env.label.setText(f"Lighting: {s.lighting.title()}")
 
         self.set_demo_badge(s.demo_mode)
+        self.set_audio_badge(s.audio_online, s.voice_engine)
         self.gesture_big.setText(self._pretty_gesture(s.gesture, s.gesture_confidence))
         if s.action:
             self.action_label.setText(f"⚡ {s.action}")
@@ -276,6 +282,24 @@ class Dashboard(QWidget):
             self.btn_demo.blockSignals(True)
             self.btn_demo.setChecked(bool(on))
             self.btn_demo.blockSignals(False)
+
+    def set_audio_badge(self, online: bool, engine: str = "") -> None:
+        """Honest microphone-privacy badge: when the active engine sends mic
+        audio to a cloud service (Google), say so out loud."""
+        if not engine:
+            text = "🎙 VOICE OFF"
+            style = ("font-size: 12px; font-weight: bold; color: #8a8a9a; background: #191922;"
+                     "border: 1px solid #44445a; border-radius: 8px; padding: 3px 8px;")
+        elif online:
+            text = f"🎙 AUDIO ONLINE · {engine.upper()}"
+            style = ("font-size: 12px; font-weight: bold; color: #ffb35c; background: #2a2115;"
+                     "border: 1px solid #b3802a; border-radius: 8px; padding: 3px 8px;")
+        else:
+            text = f"🎙 AUDIO LOCAL · {engine.upper()}"
+            style = ("font-size: 12px; font-weight: bold; color: #37d67a; background: #13251a;"
+                     "border: 1px solid #2a9d5a; border-radius: 8px; padding: 3px 8px;")
+        self.audio_badge.setText(text)
+        self.audio_badge.setStyleSheet(style)
 
     def _camera_tooltip(self, s: StatusSnapshot) -> str:
         if s.camera_active:

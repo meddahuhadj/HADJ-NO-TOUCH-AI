@@ -86,6 +86,7 @@ NEXT_DIAGNOSTIC = "NEXT_DIAGNOSTIC"
 PREV_DIAGNOSTIC = "PREV_DIAGNOSTIC"
 PAUSE_INTERACTION = "PAUSE_INTERACTION"
 FIST_LOCK = "FIST_LOCK"
+LASER_POINTER = "LASER_POINTER"
 LIGHT_CONTROL = "LIGHT_CONTROL"  # reserved for future smart-home
 
 SENSITIVE_ACTIONS = {CLOSE_WINDOW, CLOSE_TAB, EMERGENCY_STOP}
@@ -269,7 +270,9 @@ class IntentEngine:
             confidence=vi.confidence,
             source="voice",
             description=f"Voice: {vi.raw_text!r} → {action}",
-            needs_confirmation=action in SENSITIVE_ACTIONS and False,
+            # Voice-close actions ask first. Emergency touches safety paths in
+            # the app core that force confirmation off; this flag only marks.
+            needs_confirmation=action in SENSITIVE_ACTIONS,
         )
         return self.last
 

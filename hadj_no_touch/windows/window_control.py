@@ -129,10 +129,12 @@ _TERMINAL_EXES = {"cmd.exe", "powershell.exe", "windowsterminal.exe", "pwsh.exe"
 _FILEMANAGER_EXES = {"explorer.exe"}
 
 
-def context_category() -> str:
-    """Categorize the active application: browser / media / pdf / presentation / editor /
-    terminal / files / office / imaging / other."""
-    _, exe = foreground_window_info()
+def context_category(exe: str | None = None) -> str:
+    """Categorize an application exe name (defaults to the foreground window):
+    browser / media / pdf / presentation / editor / terminal / files / office /
+    imaging / other."""
+    if not exe:
+        _, exe = foreground_window_info()
     exe = (exe or "").lower()
     if exe in _BROWSER_EXES:
         return "browser"

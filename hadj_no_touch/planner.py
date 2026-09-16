@@ -57,7 +57,9 @@ class ActionPlanner:
         steps: list[Intent] = []
         desc = ""
 
-        if _contains(text, "present", "slides", "slide show", "powerpoint", "ppt"):
+        if _contains(text, "present", "slides", "slide show", "powerpoint", "ppt",
+                     "présentation", "diaporama",
+                     "عرض", "شرائح", "بوربوينت"):
             if s := self._step("PROFILE_SWITCH", {"profile": "presentation"}):
                 steps.append(s)
             if s := self._step("OPEN_APP", {"app": "powerpnt"}):
@@ -66,7 +68,9 @@ class ActionPlanner:
                 steps.append(s)
             desc = "Prepare presentation: presentation profile, PowerPoint, start slideshow."
 
-        elif _contains(text, "work", "workspace", "work mode", "coding", "develop", "code"):
+        elif _contains(text, "work", "workspace", "work mode", "coding", "develop", "code",
+                       "travail", "développement", "développer",
+                       "العمل", "بيئة", "تطوير", "كود"):
             if s := self._step("PROFILE_SWITCH", {"profile": "developer"}):
                 steps.append(s)
             if s := self._step("OPEN_APP", {"app": "chrome"}):
@@ -75,27 +79,37 @@ class ActionPlanner:
                 steps.append(s)
             desc = "Work setup: developer profile, browser and editor."
 
-        elif _contains(text, "relax", "movie", "film", "video", "listen", "music", "media"):
+        elif _contains(text, "relax", "movie", "film", "video", "listen", "music", "media",
+                       "musique", "vidéo", "film", "écouter",
+                       "فيلم", "موسيقى", "أفلام", "استرخاء"):
             if s := self._step("PROFILE_SWITCH", {"profile": "media"}):
                 steps.append(s)
             desc = "Media mode: switch to the media profile."
 
-        elif _contains(text, "document", "pdf", "read", "reader", "book"):
+        elif _contains(text, "document", "pdf", "read", "reader", "book",
+                       "document", "lecture", "livre",
+                       "مستند", "قراءة", "كتاب"):
             if s := self._step("PROFILE_SWITCH", {"profile": "pdf"}):
                 steps.append(s)
             desc = "Document mode: switch to the PDF / reading profile."
 
-        elif _contains(text, "health check", "test", "diagnostic", "verify"):
+        elif _contains(text, "health check", "test", "diagnostic", "verify",
+                       "test", "diagnostic", "vérifier", "santé",
+                       "فحص", "اختبار", "تشخيص"):
             if s := self._step("CALIBRATE"):
                 steps.append(s)
             desc = "Diagnostics: run a full calibration & self-check."
 
-        elif _contains(text, "quiet", "not now", "pause", "stop control", "sleep mode"):
+        elif _contains(text, "quiet", "not now", "pause", "stop control", "sleep mode",
+                       "calme", "pause", "arrêter", "repos",
+                       "هادئ", "توقف", "إيقاف"):
             if s := self._step("PAUSE_CONTROL"):
                 steps.append(s)
             desc = "Pause control until you resume."
 
-        elif _contains(text, "help", "usage", "what can"):
+        elif _contains(text, "help", "usage", "what can",
+                       "aide", "aider",
+                       "مساعدة"):
             if s := self._step("HELP"):
                 steps.append(s)
             desc = "Open the quick help / onboarding."
@@ -104,7 +118,8 @@ class ActionPlanner:
 
 
 def _normalize(text: str) -> str:
-    return re.sub(r"[^a-z0-9 ]+", " ", str(text or "").lower())
+    # Keep unicode letters (accented French, Arabic) — only punctuation vanishes.
+    return re.sub(r"[^\w\s]+", " ", str(text or ""), flags=re.UNICODE).lower()
 
 
 def _contains(text: str, *tokens: str) -> bool:

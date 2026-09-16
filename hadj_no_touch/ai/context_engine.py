@@ -45,8 +45,8 @@ class ApplicationContext:
 class ContextEngine:
     def snapshot(self) -> ApplicationContext:
         title, exe = window_control.foreground_window_info()
-        cat = window_control.context_category()
+        cat = window_control.context_category(exe)
         return ApplicationContext(category=cat, exe=exe, title=title)
 
     def categorize(self, exe: str) -> str:
-        return window_control.context_category()
+        return window_control.context_category(exe)

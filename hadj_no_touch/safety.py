@@ -6,9 +6,10 @@ A small, explicit gate in front of every action that touches the computer:
     CONFIRM   -> ask the user first (close windows / tabs, sensitive moves)
     CRITICAL  -> always an explicit confirmation, never auto-approved
 
-Every AI-produced action must exist in the action registry below; unknown
-actions are treated as safe but are logged, so a typo can never silently run
-something destructive. The planner is restricted to this registry.
+Every action must exist in the action registry below. Unknown actions are
+DENIED by default (never silently allowed), so a typo, a bloated macro or a
+future AI-generated action can never reach the executor without an explicit
+registration. The planner is restricted to this registry.
 """
 
 from __future__ import annotations
@@ -78,6 +79,7 @@ PREDEFINED_ACTIONS: list[ActionSpec] = [
     _safe(ie.END_PRESENTATION, "End presentation", "presentation"),
     _safe(ie.BLACK_SCREEN, "Black screen", "presentation"),
     _safe("PAUSE_PRESENTATION", "Pause presentation (black screen)", "presentation"),
+    _safe("LASER_POINTER", "Toggle laser-pointer cursor mode", "presentation"),
     _safe(ie.NEXT_PAGE, "Next page", "document"),
     _safe(ie.PREV_PAGE, "Previous page", "document"),
     _safe(ie.NEXT_IMAGE, "Next image", "document"),
@@ -174,6 +176,11 @@ class ActionRegistry:
 class SafetyEngine:
     """Evaluates every Intent against the registry + user confirmation level.
 
+    Deny-by-default: an action that is not in the registry is never allowed.
+    An explicit ``allowed_actions`` allowlist (from settings) further restricts
+    the set of actions that may run; the executor alone is still not enough —
+    every action must pass this gate.
+
     ``confirmation_level`` (from settings.safety):
       * "none"   -> CONFIRM actions run without asking; CRITICAL still asks.
       * "smart"  -> CONFIRM and CRITICAL actions ask the user.
@@ -181,9 +188,12 @@ class SafetyEngine:
     """
 
     def __init__(self, registry: ActionRegistry | None = None,
-                 confirmation_level: str = "smart"):
+                 confirmation_level: str = "smart",
+                 allowed_actions: list[str] | None = None):
         self.registry = registry or ActionRegistry()
         self.confirmation_level = confirmation_level
+        # Empty (or None) = everything registered is allowed, as before.
+        self.allowed_actions: set[str] = set(allowed_actions or [])
         self._audit: list[dict] = []
         self._max_audit = 400
 
@@ -192,19 +202,29 @@ class SafetyEngine:
         if level in ("none", "smart", "all"):
             self.confirmation_level = level
 
+    def set_allowed_actions(self, actions: list[str] | None) -> None:
+        """Restrict execution to an explicit allowlist ("" clears it)."""
+        self.allowed_actions = set(actions or [])
+
+    def _is_allowed(self, action: str) -> bool:
+        if not self.registry.known(action):
+            # Deny-by-default: not registered can never run.
+            return False
+        if self.allowed_actions and action not in self.allowed_actions:
+            return False
+        return True
+
     # -- decision ------------------------------------------------------------
     def decide(self, action: str, needs_confirmation: bool = False) -> SafetyDecision:
-        spec = self.registry.spec(action)
-        if spec is None:
-            # Unknown action: never treat it as privileged; keep it allowed
-            # (the executor itself only handles registered ids anyway) but tell.
+        if not self._is_allowed(action):
             return SafetyDecision(
                 action=action,
-                allowed=True,
-                risk=RISK_SAFE,
+                allowed=False,
+                risk=RISK_CRITICAL if action in ("SHUTDOWN", "RESTART") else RISK_SAFE,
                 requires_confirmation=False,
-                reason="unregistered action treated as safe",
+                reason="action not in the registry/allowlist — denied by default",
             )
+        spec = self.registry.spec(action)
         risk = spec.risk
         level = self.confirmation_level
         if risk == RISK_CRITICAL:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import threading
+from typing import ClassVar
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
@@ -85,7 +86,8 @@ class CursorSettings:
 class VoiceSettings:
     enabled: bool = True
     language: str = "en-US"
-    engine: str = "google"
+    engine: str = "google"  # google | vosk | sapi
+    engine_choice_made: bool = False  # first-run chooser shown / accepted
     continuous: bool = True
     push_to_talk: bool = False
     vosk_model_path: str = ""
@@ -135,8 +137,36 @@ class Settings:
     active_profile: str = "personal"
     auto_switch_profile: bool = True
     calibration_points: list = field(default_factory=list)
+    # simple user-facing sensitivity profile: low | medium | high
+    sensitivity: str = "medium"
 
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+
+    SENSITIVITY_SETS: ClassVar[dict] = {
+        "low": {"smoothing": 0.50, "speed": 0.80, "dead_zone": 0.020,
+                "pinch_dwell_click_ms": 280, "gesture_confidence": 0.60},
+        "medium": {"smoothing": 0.35, "speed": 1.00, "dead_zone": 0.015,
+                   "pinch_dwell_click_ms": 220, "gesture_confidence": 0.55},
+        "high": {"smoothing": 0.22, "speed": 1.30, "dead_zone": 0.008,
+                 "pinch_dwell_click_ms": 180, "gesture_confidence": 0.50},
+    }
+
+    def apply_sensitivity(self) -> None:
+        """Apply the simple low/medium/high profile to the cursor + pinch knobs.
+
+        Per-profile values (still applied by ProfileManager) win for the other
+        gesture knobs; this is the user-level dial on top of them.
+        """
+        with self._lock:
+            profile = self.SENSITIVITY_SETS.get(self.sensitivity)
+            if profile is None:
+                self.sensitivity = "medium"
+                profile = self.SENSITIVITY_SETS["medium"]
+            for key, val in profile.items():
+                if key in ("smoothing", "speed", "dead_zone"):
+                    setattr(self.cursor, key, val)
+                elif key in ("pinch_dwell_click_ms", "gesture_confidence"):
+                    setattr(self.gestures, key, val)
 
     def load(self, path: Path | None = None) -> "Settings":
         with self._lock:

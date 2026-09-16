@@ -84,8 +84,9 @@ class GestureEngine:
         self.last_event = GestureEvent(kind=REST)
         self._last_swipe_direction = "right"
 
-        # motion history entries: (t_monotonic, x_norm, y_norm); x<0 => no hand
-        self._positions: deque[tuple[float, float, float]] = deque(maxlen=20)
+        # motion history entries: (t_monotonic, x_norm, y_norm, pose_tag);
+        # pose_tag lets swipe/scroll ignore frames where no pointer gesture ran
+        self._positions: deque[tuple[float, float, float, str]] = deque(maxlen=20)
         self._angles: deque[tuple[float, float]] = deque(maxlen=30)
 
         self._pinch_active = False
@@ -99,8 +100,24 @@ class GestureEngine:
         self._fist_since = 0.0
         self._last_confirmed = REST
         self._gesture_since = 0.0
+        # pinch-anchor drift per delivered click (normalized 0..1), for real
+        # click-precision metrics consumed by the Test Lab / dashboard.
+        self._click_drifts: list[float] = []
+        self._norm_scale = 1
 
     # ---- helpers -----------------------------------------------------------
+    def _record_click(self, p: tuple[float, float]) -> None:
+        """Measure how far the delivered click landed from the pinch anchor."""
+        if self._pinch_anchor is not None:
+            dx = p[0] - self._pinch_anchor[0]
+            dy = p[1] - self._pinch_anchor[1]
+            self._click_drifts.append(math.hypot(dx, dy) / max(1, self._norm_scale))
+
+    def drain_click_drifts(self) -> list[float]:
+        """Return pending click drifts since the last drain and clear them."""
+        drifts = self._click_drifts
+        self._click_drifts = []
+        return drifts
     def _can_fire(self, kind: str, cooldown_ms: int) -> bool:
         now = time.monotonic()
         min_gap = max(cooldown_ms / 1000.0,
@@ -137,6 +154,7 @@ class GestureEngine:
 
         cfg = self.settings
         now = time.monotonic()
+        self._norm_scale = max(1, frame_w, frame_h)
 
         if self.locked:
             if hands:
@@ -158,6 +176,8 @@ class GestureEngine:
         if not hands:
             self._reset_states()
             self.confirmed_gesture = REST
+            self.raw_gesture = ""
+            self.raw_confidence = 0.0
             self._positions.clear()
             return events
 
@@ -173,9 +193,10 @@ class GestureEngine:
         self.confirmed_gesture = g
 
         idx_norm = primary.landmarks_norm[8]
-        self._positions.append((now, float(idx_norm[0]), float(idx_norm[1])))
-        if not self._movement_allowed(g):
-            self._positions.append((now, -1.0, -1.0))
+        # Tag every motion sample with the confirmed pose so swipe and scroll
+        # only ever consider frames where the matching gesture was active
+        # (a fast hand in a fist / rest pose must never fire a swipe).
+        self._positions.append((now, float(idx_norm[0]), float(idx_norm[1]), g))
 
         # ---- circular gestures ---------------------------------------------
         if g in (OPEN_PALM, POINT, TWO_FINGER) and res.confidence > cfg.gesture_confidence:
@@ -184,7 +205,7 @@ class GestureEngine:
                 events.append(self._cast(evt))
 
         # ---- swipes ---------------------------------------------------------
-        events.extend(self._check_swipe(res))
+        events.extend(self._check_swipe(res, g))
 
         # ---- pinch -> left click / double / drag ----------------------------
         if g == PINCH:
@@ -277,10 +298,14 @@ class GestureEngine:
             return best
         return REST
 
-    def _check_swipe(self, res: GestureResult) -> list[GestureEvent]:
+    def _check_swipe(self, res: GestureResult, confirmed: str) -> list[GestureEvent]:
         cfg = self.settings
         now = time.monotonic()
-        recent = [p for p in self._positions if p[1] >= 0 and now - p[0] <= 0.45]
+        # Only motion samples recorded while a pointer-like pose was confirmed
+        # may contribute to a swipe -- never fist / rigid / resting frames.
+        recent = [p for p in self._positions
+                  if p[1] >= 0 and p[3] in (POINT, TWO_FINGER)
+                  and now - p[0] <= 0.45]
         if len(recent) < 6:
             return []
         x0, y0 = recent[0][1], recent[0][2]
@@ -305,7 +330,9 @@ class GestureEngine:
     def _scroll_from_motion(self):
         cfg = self.settings
         now = time.monotonic()
-        recent = [p for p in self._positions if p[1] >= 0 and now - p[0] <= 0.25]
+        # Only open-palm frames may feed vertical scrolling.
+        recent = [p for p in self._positions
+                  if p[1] >= 0 and p[3] == OPEN_PALM and now - p[0] <= 0.25]
         if len(recent) < 4:
             return None
         y0 = recent[0][2]
@@ -381,11 +408,13 @@ class GestureEngine:
             if self._last_click_time and now - self._last_click_time < click_window:
                 if self._can_fire(DOUBLE_CLICK, cfg.gesture_cooldown_ms):
                     self._last_click_time = 0.0
+                    self._record_click(p)
                     events.append(self._cast(GestureEvent(kind=DOUBLE_CLICK, x=p[0], y=p[1],
                                                           confidence=res.confidence)))
             else:
                 if self._can_fire(LEFT_CLICK, cfg.gesture_cooldown_ms):
                     self._last_click_time = now
+                    self._record_click(p)
                     events.append(self._cast(GestureEvent(kind=LEFT_CLICK, x=p[0], y=p[1],
                                                           confidence=res.confidence)))
         self._pinch_active = False

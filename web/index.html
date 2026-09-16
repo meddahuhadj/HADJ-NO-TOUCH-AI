@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>HADJ NO-TOUCH AI — Control the computer without touching it</title>
-  <meta name="description" content="HADJ NO-TOUCH AI turns your webcam into a virtual interaction plane. Hand gestures, voice and gaze drive Windows — hands-free, private, 100% offline.">
+  <meta name="description" content="HADJ NO-TOUCH AI turns your webcam into a virtual interaction plane. Hand gestures, voice and gaze drive Windows — hands-free, private, camera frames stay local.">
   <meta name="theme-color" content="#060912">
   <meta name="color-scheme" content="dark">
   <meta name="mobile-web-app-capable" content="yes">
@@ -69,14 +69,14 @@
       <div class="container hero-grid">
 
         <div class="hero-copy">
-          <p class="eyebrow reveal">Contactless computer control · 100% local</p>
+          <p class="eyebrow reveal">Contactless computer control · Camera-local</p>
           <h1 class="hero-title reveal" id="hero-title" style="--d:.05s">
             Control the computer <span class="grad-text">without touching it.</span>
           </h1>
           <p class="hero-sub reveal" style="--d:.12s">
             HADJ NO-TOUCH AI turns your webcam into a virtual interaction plane.
             Hand gestures, voice and gaze drive Windows — hands-free, private,
-            and yours. No sensors, no cloud, no touching.
+            and yours. No sensors, no touching — camera frames stay on your machine.
           </p>
 
           <div class="hero-cta reveal" style="--d:.2s">
@@ -91,15 +91,16 @@
             <p><strong>Windows 10 / 11 (x64)</strong> · packaged as a native desktop app, downloaded as a ZIP
             from GitHub Releases. Needs only a webcam + microphone — MediaPipe and the intent engine run
             locally, on this machine.</p>
-            <p class="note-meta">After install, the app stays offline: no telemetry, no account, no download
-            servers at runtime. Verify the binary with
-            <code>SHA-256&nbsp;93b27a64df6a5e57b2367ccacde3aba5fc28f406ac2c1917445923b79530641c</code>.</p>
+            <p class="note-meta">After install there is no telemetry and no account, and the app downloads
+            nothing at runtime. Note: voice recognition uses Google's cloud API by default — pick Vosk or
+            SAPI for fully local recognition. Verify the binary with
+            <code>SHA-256&nbsp;CAF27A9BE6B7CABE747A2FF817D9B5CA83142F6472F7C15D56EB20D29D98F188</code>.</p>
           </div>
 
           <ul class="trust-chips" role="list" aria-label="Product facts">
             <li class="chip reveal" style="--d:.26s"><span class="chip-dot" aria-hidden="true"></span>EN / FR / AR voice</li>
             <li class="chip reveal" style="--d:.32s"><span class="chip-dot" aria-hidden="true"></span>Webcam only</li>
-            <li class="chip reveal" style="--d:.38s"><span class="chip-dot" aria-hidden="true"></span>100% offline</li>
+            <li class="chip reveal" style="--d:.38s"><span class="chip-dot" aria-hidden="true"></span>Camera stays local</li>
             <li class="chip reveal" style="--d:.44s"><span class="chip-dot" aria-hidden="true"></span>Privacy-first</li>
           </ul>
         </div>
@@ -169,8 +170,8 @@
         <div class="section-head reveal">
           <p class="eyebrow">01 / Pipeline</p>
           <h2 id="how-title">From webcam to Windows<br>control in one line of motion.</h2>
-          <p class="lede">Four local stages. Nothing leaves your machine — every frame is handled on-device
-          by bundled models and the runtime you already have.</p>
+          <p class="lede">Four local stages. Camera frames never leave your machine — every frame is handled
+          on-device by bundled models and the runtime you already have.</p>
         </div>
 
         <ol class="pipe" role="list">
@@ -178,8 +179,9 @@
             <span class="pipe-no">01</span>
             <span class="pipe-tag">MediaPipe input layer</span>
             <h3>Webcam + Mic</h3>
-            <p>Your camera and microphone stream frames and audio locally. Resolution and rate adapt to the
-            machine so tracking stays smooth.</p>
+            <p>Your camera streams frames locally into the tracking layer; the microphone feeds the voice
+            engine (Google by default, or Vosk/SAPI for on-device recognition). Resolution and rate adapt to
+            the machine so tracking stays smooth.</p>
             <span class="pipe-node" aria-hidden="true"></span>
           </li>
           <li class="pipe-card glass reveal" style="--d:.07s">
@@ -455,7 +457,8 @@
         <div class="section-head reveal">
           <p class="eyebrow">03 / Voice layer</p>
           <h2 id="voice-title">Say it. Or just point.</h2>
-          <p class="lede">A local intent engine maps spoken phrases onto the same intents as gestures.
+          <p class="lede">A local intent engine maps recognized phrases onto the same intents as gestures.
+          Recognition itself runs on Google's cloud by default, or fully local with Vosk/SAPI.
           Example commands, three languages, one vocabulary.</p>
         </div>
 
@@ -660,10 +663,11 @@
                 shoulder, not the palm — small wrist work, big screen travel.</li>
                 <li><strong>Pinch to click.</strong> Index + thumb closing. Hold to grab, release to drop.</li>
                 <li><strong>Scroll.</strong> Open palm, glide vertically. Wheel-speed follows hand height.</li>
-                <li><strong>Voice.</strong> Say “open chrome”. The intent engine runs locally; commands match
-                intents, not raw audio, so accents are fine.</li>
+                <li><strong>Voice.</strong> Say “open chrome”. Recognition stays on-device when you pick the Vosk or
+                SAPI engine (the default Google engine needs internet); the intent engine then maps the phrase
+                locally, so accents are fine.</li>
                 <li><strong>Emergency stop.</strong> Press <kbd>CTRL</kbd>+<kbd>ALT</kbd>+<kbd>H</kbd> any time
-                — every control freezes until release.</li>
+                — everything freezes. Press it again to resume.</li>
               </ol>
               <p>That’s the whole system. Every action above is the same intent pipeline the demo plane
               shows: gesture or voice → intent engine → Windows control layer.</p>
@@ -1010,7 +1014,8 @@
         <div class="section-head reveal">
           <p class="eyebrow">13 / Privacy</p>
           <h2 id="privacy-title">Never leaves this machine.</h2>
-          <p class="lede">Video frames, audio and intent logs stay on-device. There is no account, no
+          <p class="lede">Video frames and intent logs stay on-device. Audio does too on the Vosk/SAPI engines;
+          the default Google engine sends your phrase to Google for recognition. There is no account, no
           sync, no analytics beacon to phone home to.</p>
         </div>
 
@@ -1018,8 +1023,10 @@
           <article class="privacy-card glass reveal">
             <span class="mode-num">P.01</span>
             <h3>Local processing</h3>
-            <p>MediaPipe models and the intent engine run on this computer. Frames are handled and discarded
-            in memory — no cloud round-trip exists, because there is no cloud.</p>
+            <p>MediaPipe models and the intent engine run on this computer. Camera frames are handled and
+            discarded in memory and never leave your machine. Mic audio is the one exception: the default
+            voice engine (Google Web Speech) sends your spoken phrase to Google's servers; the Vosk and SAPI
+            engines keep recognition fully on-device.</p>
           </article>
           <article class="privacy-card glass reveal" style="--d:.07s">
             <span class="mode-num">P.02</span>
@@ -1040,7 +1047,8 @@
             fits in a few files and forgets in a tap.</p>
           </article>
         </div>
-        <p class="privacy-footnote reveal">Optional — 100% local: no sensors, no telemetry, no account.</p>
+        <p class="privacy-footnote reveal">Optional — 100% local video processing: no sensors, no telemetry, no
+          account. (Voice recognition: local on Vosk/SAPI, cloud by default on Google.)</p>
       </div>
     </section>
 
@@ -1063,8 +1071,8 @@
               <span class="stop-keys">CTRL + ALT + H</span>
             </span>
           </div>
-          <p class="stop-caption">Press and hold on screen or keyboard. Every gesture and voice control
-          freezes until you release. Nothing moves without that release.</p>
+          <p class="stop-caption">Press <strong>CTRL + ALT + H</strong> (or the on-screen button). Every gesture and
+          voice control freezes immediately — press the same key again to resume. Nothing moves in between.</p>
         </div>
 
 <div class="safety-grid">
@@ -1140,8 +1148,10 @@
           <details class="faq glass reveal" open>
             <summary>Is my webcam footage sent anywhere?</summary>
             <div class="faq-body">
-              <p>No. Frames stay in memory on your machine and are used only to derive landmarks. There is
-              no upload path, no server, no account. The PWA page you’re on right now also runs fully
+              <p>No — camera frames stay in memory on your machine and are used only to derive landmarks.
+              There is no upload path for video, no server, no account. The one exception is mic audio:
+              the default voice engine (Google Web Speech) sends your phrase to Google for recognition; the
+              Vosk and SAPI engines keep it on-device. The PWA page you’re on right now also runs fully
               offline after first load; the camera is never touched by the page.</p>
             </div>
           </details>
@@ -1156,7 +1166,9 @@
           <details class="faq glass reveal">
             <summary>Does it work fully offline?</summary>
             <div class="faq-body">
-              <p>Yes. Models, voice packs and the intent engine are bundled with the installer. This page
+              <p>Almost — with one nuance. Tracking, gestures, the intent engine and gaze all run fully
+              offline with the bundled MediaPipe models. Voice recognition is fully offline when you select
+              the Vosk or SAPI engine; the default Google engine needs an internet connection. This page
               is a PWA — after the first visit it can be installed and run from the local service-worker
               cache with no connection at all.</p>
             </div>
@@ -1195,7 +1207,8 @@
         <div class="section-head reveal">
           <p class="eyebrow">16 / Download</p>
           <h2 id="download-title">Get HADJ NO-TOUCH AI.</h2>
-          <p class="lede">Free, open-source, and runs entirely on your machine. No account required.</p>
+          <p class="lede">Free, open-source, and runs on your machine. No account required. (Voice recognition
+          is cloud by default — local on the Vosk/SAPI engines.)</p>
         </div>
 
         <div class="download-hero glass reveal">
@@ -1208,7 +1221,7 @@
                href="https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v2.0-beta/HADJ-NO-TOUCH-AI-Windows.zip">
               <span class="btn-ic win-ic" aria-hidden="true">▣</span> Download for Windows
             </a>
-            <p class="download-hero-meta">Windows 10 / 11 (x64) · ~150 MB ZIP · No installer needed</p>
+            <p class="download-hero-meta">Windows 10 / 11 (x64) · ~205 MB ZIP · No installer needed</p>
           </div>
         </div>
 
@@ -1240,8 +1253,9 @@
           <div class="download-card glass reveal" style="--d:.14s">
             <h3>Verify the Download</h3>
             <p class="verify-text">SHA-256 checksum for integrity verification:</p>
-            <code class="verify-hash">93b27a64df6a5e57b2367ccacde3aba5fc28f406ac2c1917445923b79530641c</code>
-            <p class="verify-how">Verify with PowerShell:<br><code>Get-FileHash .\HADJ-NO-TOUCH-AI-Windows.zip -Algorithm SHA256</code></p>
+            <code class="verify-hash">CAF27A9BE6B7CABE747A2FF817D9B5CA83142F6472F7C15D56EB20D29D98F188</code>
+            <p class="verify-how">A <code>.sha256</code> sidecar file with the same digest is published
+            alongside the ZIP. Verify with PowerShell:<br><code>Get-FileHash .\HADJ-NO-TOUCH-AI-Windows.zip -Algorithm SHA256</code></p>
           </div>
 
           <div class="download-card glass reveal" style="--d:.21s">
@@ -1249,7 +1263,7 @@
             <ul class="inside-list" role="list">
               <li><code>HADJ-NO-TOUCH-AI.exe</code> — main application</li>
               <li><code>Lancer_HADJ_AI.bat</code> — launcher script</li>
-              <li>MediaPipe models &amp; voice packs</li>
+              <li>MediaPipe models (Vosk voice pack optional)</li>
               <li>13 auto-detect profiles</li>
               <li>EN / FR / AR voice commands</li>
             </ul>
@@ -1264,7 +1278,7 @@
               <span class="btn-ic" aria-hidden="true">⌥</span> GitHub
             </a>
           </div>
-          <p class="download-footer-note">Open source · No telemetry · No account · 100% offline</p>
+          <p class="download-footer-note">Open source · No telemetry · No account · Camera frames stay local</p>
         </div>
       </div>
     </section>

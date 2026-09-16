@@ -120,9 +120,9 @@ COMMANDS: list[dict] = [
                   r"\bdemarre\s+(?:le\s+|la\s+)?(?P<app>[a-z0-9.\- ]+?)\s*$"],
      "param": "app"},
     {"intent": OPEN_APP, "langs": ["ar"],
-     "patterns": [r"افتح\s+(?:لي\s+)?(?P<app>[^ ]+)",
-                  r"شغل\s+(?P<app>[^ ]+)",
-                  r"فتح\s+(?P<app>[^ ]+)"],
+     "patterns": [r"افتح\s+(?:لي\s+)?(?P<app>\S+(?: \S+)*)",
+                  r"شغل\s+(?P<app>\S+(?: \S+)*)",
+                  r"فتح\s+(?P<app>\S+(?: \S+)*)"],
      "param": "app"},
     # --- window actions ------------------------------------------------------
     {"intent": CLOSE_WINDOW, "langs": ["en"],
@@ -317,10 +317,12 @@ COMMANDS: list[dict] = [
     {"intent": TAB_KEY, "langs": ["fr"], "patterns": [r"\bappuie\s+sur\s+tab\b"]},
     {"intent": TAB_KEY, "langs": ["ar"], "patterns": [r"اضغط\s+تبويب"]},
     {"intent": TYPE_TEXT, "langs": ["en"],
-     "patterns": [r"\btype\s+(?P<text>.+)", r"\bwrite\s+(?P<text>.+)", r"\bdictate\s+(?P<text>.+)"],
+     "patterns": [r"\btype\s*:?\s+(?P<text>.+)", r"\bwrite\s+(?P<text>.+)",
+                  r"\bdictate\s+(?P<text>.+)"],
      "param": "text"},
     {"intent": TYPE_TEXT, "langs": ["fr"],
-     "patterns": [r"\b[ée]cris?\s+(?P<text>.+)", r"\btape\s+(?P<text>.+)", r"\bdicte\s+(?P<text>.+)"],
+     "patterns": [r"\b[ée]cris?\s+(?P<text>.+)", r"\btape\s+(?P<text>.+)",
+                  r"\bdicte\s+(?P<text>.+)", r"\bnote\s*:?\s+(?P<text>.+)"],
      "param": "text"},
     {"intent": TYPE_TEXT, "langs": ["ar"],
      "patterns": [r"اكتب\s+(?P<text>.+)"],
@@ -353,11 +355,12 @@ COMMANDS: list[dict] = [
     {"intent": EMERGENCY_STOP, "langs": ["en"],
      "patterns": [r"\bstop\s+(?:all\s+)?(?:no[- ]?touch\s+)?control\b",
                   r"\bemergency\s+stop\b", r"\bdisable\s+the\s+control\b",
-                  r"\bstop\s+everything\b"]},
+                  r"\bstop\s+everything\b", r"\bfreeze\b"]},
     {"intent": EMERGENCY_STOP, "langs": ["fr"],
-     "patterns": [r"\barr[eê]te\s+tout\b", r"\bstop\s+urgent\b", r"\barr[eê]ter\s+le\s+contr[ôo]le\b"]},
+     "patterns": [r"\barr[eê]te\s+tout\b", r"\bstop\s+urgent\b",
+                  r"\barr[eê]ter\s+le\s+contr[ôo]le\b", r"\bbloque\s+tout\b"]},
     {"intent": EMERGENCY_STOP, "langs": ["ar"],
-     "patterns": [r"ايقاف\s+الطوارئ|اوقف\s+الكل"]},
+     "patterns": [r"ايقاف\s+الطوارئ|اوقف\s+الكل|تجمد"]},
     {"intent": HANDS_BUSY_ON, "langs": ["en"],
      "patterns": [r"\bhands\s+busy\s+(?:mode\s+)?on\b", r"\bswitch\s+to\s+hands\s+busy\b",
                   r"\benable\s+hands\s+busy\b", r"\bhands\s+busy\b"]},
@@ -433,8 +436,11 @@ def parse(text: str, language: str = "en") -> VoiceIntent:
 
     best: VoiceIntent | None = None
     best_score = -1.0
+    best_full = False
     best_generic: VoiceIntent | None = None
     best_generic_score = -1.0
+    dictation: VoiceIntent | None = None
+    dictation_score = -1.0
     for cmd in COMMANDS:
         if lang not in cmd["langs"]:
             continue
@@ -461,17 +467,34 @@ def parse(text: str, language: str = "en") -> VoiceIntent:
                 elif cmd["param"] == "profile":
                     label = val.strip().lower().replace(" ", "_")
                     params["profile"] = {"hands_busy": "hands_busy"}.get(label, label)
+            # Confidence reflects how much of the spoken sentence the match
+            # actually covers: a clean full-sentence match is far more
+            # trustworthy than a lone keyword buried in chatter.
+            covered = (m.end() - m.start()) / max(1, len(prepared))
+            full = m.start() == 0 and m.end() == len(prepared)
+            confidence = round(
+                min(0.98, 0.62 + 0.36 * covered) if full
+                else max(0.5, 0.62 + 0.20 * covered), 3)
             candidate = VoiceIntent(intent=cmd["intent"], params=params,
-                                    confidence=0.95, language=lang, raw_text=text)
+                                    confidence=confidence, language=lang, raw_text=text)
             if generic:
                 if score > best_generic_score:
                     best_generic_score = score
                     best_generic = candidate
+                if cmd["param"] == "text" and m.start() == 0 and m.end() == len(prepared):
+                    if score > dictation_score:
+                        dictation_score = score
+                        dictation = candidate
             elif score > best_score:
                 best_score = score
                 best = candidate
+                best_full = m.start() == 0 and m.end() == len(prepared)
     if best is None:
         best = best_generic
+    elif not best_full and dictation is not None:
+        # A full-sentence dictation ("type: call back at 3pm") wins over a
+        # keyword that happens to sit inside the dictated text ("back").
+        best = dictation
     if best is None:
         return VoiceIntent(intent=NONE_INTENT, confidence=0.0, language=lang, raw_text=text)
     return best

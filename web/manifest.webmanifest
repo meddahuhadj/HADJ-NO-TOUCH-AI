@@ -1,7 +1,7 @@
 {
   "name": "HADJ NO-TOUCH AI",
   "short_name": "NO-TOUCH AI",
-  "description": "Control the computer without touching it — hand gestures, voice and gaze for Windows. Privacy-first, 100% local.",
+  "description": "Control the computer without touching it — hand gestures, voice and gaze for Windows. Privacy-first, camera frames stay local.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

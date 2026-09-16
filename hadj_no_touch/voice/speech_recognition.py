@@ -278,8 +278,8 @@ class SapiSpeechEngine(SpeechEngine):
     """Windows SAPI dictation — NOT AVAILABLE in this build.
 
     The shared SAPI recognizer loop is not implemented yet, so this engine
-    honestly reports itself as unavailable. Selecting it in settings falls
-    back to the default online engine; no silent no-op is started.
+    honestly reports itself as unavailable. Selecting it disables voice with a
+    clear warning — never a silent fallback to the online Google engine.
     """
 
     name = "sapi"
@@ -320,11 +320,20 @@ class SpeechManager:
         engine = self._make_engine(self.settings.engine)
         if engine.available():
             self.engine = engine
-        else:
-            fallback = GoogleSpeechEngine(self._text_cb, self.settings.language)
-            self.engine = fallback if fallback.available() else None
-            if self.engine is None:
-                log.warning("No speech engine available")
+            return self.engine
+        if self.settings.engine != "google":
+            # Honest failure: a local choice (vosk/sapi) must never silently
+            # fall back to Google — that would send audio online against the
+            # user's explicit preference. Surface it so the UI can guide the
+            # user to configure a model instead.
+            log.warning("Requested local engine %r unavailable; voice disabled "
+                        "(no silent Google fallback)", self.settings.engine)
+            self.engine = None
+            return None
+        fallback = GoogleSpeechEngine(self._text_cb, self.settings.language)
+        self.engine = fallback if fallback.available() else None
+        if self.engine is None:
+            log.warning("No speech engine available")
         return self.engine
 
     @property

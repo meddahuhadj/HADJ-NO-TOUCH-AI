@@ -49,9 +49,15 @@ def _landmarks(fingers: dict) -> np.ndarray:
     return pts
 
 
-def _hand(fingers: dict, confidence: float = 0.9) -> HandData:
-    return HandData(landmarks_norm=_landmarks(fingers),
-                    landmarks_px=_landmarks(fingers) * 640,
+def _hand(fingers: dict, confidence: float = 0.9,
+          dx: float = 0.0, dy: float = 0.0) -> HandData:
+    lm = _landmarks(fingers)
+    if dx or dy:
+        lm = lm.copy()
+        lm[:, 0] = np.clip(lm[:, 0] + dx, 0.0, 1.0)
+        lm[:, 1] = np.clip(lm[:, 1] + dy, 0.0, 1.0)
+    return HandData(landmarks_norm=lm,
+                    landmarks_px=lm * 640,
                     handedness="Right", confidence=confidence, tracked=True)
 
 
@@ -95,6 +101,7 @@ class TestGestureEngine:
         cfg.pinch_dwell_click_ms = 200
         cfg.pinch_hold_drag_ms = 250
         cfg.gesture_confidence = 0.5
+        cfg.swipe_distance = 0.08
         return ge.GestureEngine(cfg)
 
     def test_pinch_release_fires_left_click(self) -> None:
@@ -180,3 +187,37 @@ class TestGestureEngine:
         # click events are rate-limited by the 300ms cooldown:
         # in ~0.8s we can never exceed a handful of real clicks
         assert clicks <= 6, clicks
+
+    def test_no_swipe_without_pointer_pose(self) -> None:
+        """Fast lateral hand movement while a FIST is confirmed must never
+        count as a swipe -- only POINT/TWO_FINGER motion may."""
+        eng = self._engine()
+        fist_hand = _hand({})  # FIST (all fingers curled)
+        for _ in range(10):
+            eng.update([fist_hand], (0.1, 0.1), 640, 480)
+            evs = eng.update([fist_hand], (0.9, 0.1), 640, 480)
+            assert not any(e.kind in (ge.SWIPE_LEFT, ge.SWIPE_RIGHT,
+                                      ge.SWIPE_UP, ge.SWIPE_DOWN) for e in evs)
+
+    def test_swipe_from_point_pose(self) -> None:
+        """Fast horizontal movement while POINT is confirmed fires a swipe."""
+        eng = self._engine()
+        all_evs: list[str] = []
+        # Move the hand laterally across the frame at POINT confidence for the
+        # whole window (motion samples are tagged with the confirmed pose).
+        for i in range(10):
+            evs = eng.update([_hand({8: "straight"}, dx=0.05 * i, dy=0.0)],
+                             (0.1, 0.5), 640, 480)
+            all_evs += [e.kind for e in evs]
+            time.sleep(0.03)
+        assert ge.SWIPE_RIGHT in all_evs, all_evs
+
+    def test_raw_gesture_cleared_on_no_hands(self) -> None:
+        """An empty frame must reset stale gesture state (no phantom gestures)."""
+        eng = self._engine()
+        eng.update([_hand({8: "straight"})], (0.5, 0.5), 640, 480)
+        assert eng.raw_gesture == POINT
+        eng.update([], None, 640, 480)
+        assert eng.raw_gesture == ""
+        assert eng.raw_confidence == 0.0
+        assert eng.confirmed_gesture == ge.REST

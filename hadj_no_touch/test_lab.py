@@ -95,6 +95,34 @@ class TestLab:
         return {"passed": ok, "skipped": skipped, "failed": failed,
                 "total": len(self._results)}
 
+    def live_stats(self) -> dict:
+        """Real, measured gesture-accuracy numbers from the running session.
+
+        These are honest counters of what actually happened while the user
+        operated the plane (clicks delivered, drift from the pinch anchor,
+        rejected false triggers), not simulated values.
+        """
+        try:
+            p = self.core.perf.snapshot()
+        except Exception:
+            p = {}
+        precision = p.get("click_precision")
+        labels = {0.5: "poor", 0.7: "fair", 0.85: "good", 1.01: "excellent"}
+        quality = "n/a"
+        if precision is not None:
+            quality = next((q for thr, q in labels.items() if precision <= thr),
+                           "excellent")
+        return {
+            "clicks": p.get("clicks", 0),
+            "clicks_clean": p.get("clicks_clean", 0),
+            "click_precision": precision,
+            "precision_label": quality,
+            "click_drift_avg": p.get("click_drift_avg"),
+            "false_triggers": p.get("false_triggers", 0),
+            "fps": p.get("fps", 0.0),
+            "gesture_latency_ms": p.get("gesture_latency_ms"),
+        }
+
     # ------------------------------------------------------------------
     # real checks (no hardware needed)
     # ------------------------------------------------------------------

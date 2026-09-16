@@ -17,12 +17,19 @@ from dataclasses import dataclass, field
 
 
 class PerformanceMonitor:
+    # A click landing within this normalized distance of the pinch anchor is
+    # "clean" — the practical definition of click precision used below.
+    CLEAN_DRIFT = 0.12
+
     def __init__(self, maxlen: int = 120) -> None:
         self._frame_ms = deque(maxlen=maxlen)
         self._gesture_latency = deque(maxlen=maxlen)
         self._voice_latency = deque(maxlen=maxlen)
         self._command_times: deque[float] = deque(maxlen=400)
         self._false_triggers = 0
+        self._clicks = 0
+        self._clicks_clean = 0
+        self._click_drift_sum = 0.0
         self._lock = threading.RLock()
         self._best_fps = 0.0
 
@@ -45,6 +52,23 @@ class PerformanceMonitor:
     def note_false_trigger(self) -> None:
         with self._lock:
             self._false_triggers += 1
+
+    def note_click(self, drift_norm: float) -> None:
+        """Record a delivered click and how far it drifted from the pinch
+        anchor (0..1 normalized screen units). Drift is the honest proxy
+        for click precision."""
+        with self._lock:
+            self._clicks += 1
+            self._click_drift_sum += float(drift_norm)
+            if float(drift_norm) <= self.CLEAN_DRIFT:
+                self._clicks_clean += 1
+
+    def reset_counters(self) -> None:
+        with self._lock:
+            self._false_triggers = 0
+            self._clicks = 0
+            self._clicks_clean = 0
+            self._click_drift_sum = 0.0
 
     def _avg(self, q: deque[float]) -> float | None:
         return round(sum(q) / len(q), 1) if q else None
@@ -70,6 +94,12 @@ class PerformanceMonitor:
                 "voice_latency_ms": self._avg(self._voice_latency),
                 "commands_per_minute": round(len(window), 1),
                 "false_triggers": self._false_triggers,
+                "clicks": self._clicks,
+                "clicks_clean": self._clicks_clean,
+                "click_drift_avg":
+                    round(self._click_drift_sum / self._clicks, 3) if self._clicks else None,
+                "click_precision":
+                    round(self._clicks_clean / self._clicks, 3) if self._clicks else None,
             }
 
 

@@ -57,6 +57,10 @@ class TestEnglish:
     def test_emergency(self) -> None:
         assert vc.parse("emergency stop").intent == vc.EMERGENCY_STOP
 
+    def test_freeze_is_emergency(self) -> None:
+        assert vc.parse("freeze").intent == vc.EMERGENCY_STOP
+        assert vc.parse("stop everything").intent == vc.EMERGENCY_STOP
+
     def test_screenshot(self) -> None:
         assert vc.parse("take a screenshot").intent == vc.SCREENSHOT
 
@@ -104,6 +108,14 @@ class TestFrench:
     def test_garbage(self) -> None:
         assert vc.parse("chatons mignons", language="fr").intent == vc.NONE_INTENT
 
+    def test_bloque_tout_is_emergency(self) -> None:
+        assert vc.parse("bloque tout", language="fr").intent == vc.EMERGENCY_STOP
+
+    def test_note_typing(self) -> None:
+        vi = vc.parse("note : rappeler demain", language="fr")
+        assert vi.intent == vc.TYPE_TEXT
+        assert vi.params.get("text") == "rappeler demain"
+
 
 class TestArabic:
     def test_open_app(self) -> None:
@@ -121,8 +133,34 @@ class TestArabic:
         assert vi.intent == vc.VOLUME_SET
         assert abs(float(vi.params["percent"]) - 70.0) < 1e-6
 
+    def test_open_multi_word_app(self) -> None:
+        vi = vc.parse("افتح متصفح الكروم", language="ar")
+        assert vi.intent == vc.OPEN_APP
+        assert vi.params.get("app") == "متصفح الكروم"
+
     def test_garbage(self) -> None:
         assert vc.parse("كلمة عشوائية جدا", language="ar").intent == vc.NONE_INTENT
+
+    def test_freezing_is_emergency(self) -> None:
+        assert vc.parse("تجمد", language="ar").intent == vc.EMERGENCY_STOP
+
+
+class TestConfidence:
+    """Confidence is derived from how much of the spoken sentence matched a
+    command — a clean full-sentence match outscores a lone keyword in chatter."""
+
+    def test_full_match_high_confidence(self) -> None:
+        assert vc.parse("open chrome").confidence >= 0.9
+        assert vc.parse("next slide").confidence >= 0.9
+
+    def test_chatter_lowers_confidence(self) -> None:
+        full = vc.parse("open chrome").confidence
+        partial = vc.parse("please can you open chrome for me").confidence
+        assert partial < full
+
+    def test_param_extraction_keeps_multiword(self) -> None:
+        vi = vc.parse("type hello world")
+        assert vi.params.get("text") == "hello world"
 
 
 class TestLanguageDispatch:
@@ -134,3 +172,8 @@ class TestLanguageDispatch:
         vi = vc.parse("type hello world")
         assert vi.intent == vc.TYPE_TEXT
         assert vi.params.get("text") == "hello world"
+
+    def test_type_with_colon(self) -> None:
+        vi = vc.parse("type: call back at 3pm")
+        assert vi.intent == vc.TYPE_TEXT
+        assert vi.params.get("text") == "call back at 3pm"

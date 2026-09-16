@@ -7,6 +7,7 @@ Used for the "AI Copilot" behaviour and for gaze-confirmed pointer actions
 from __future__ import annotations
 
 import time
+from collections import deque
 from dataclasses import dataclass, field
 
 from ..logging_setup import get_logger
@@ -39,16 +40,20 @@ class MultimodalState:
 class MultimodalEngine:
     def __init__(self):
         self.state = MultimodalState()
-        self._gaze_recent: list[tuple[float, float, float]] = []
+        self._gaze_recent: deque[tuple[float, float, float]] = deque()
 
     # ---- inputs ---------------------------------------------------
     def set_gaze(self, gx: float, gy: float, active: bool) -> None:
+        """Record a gaze estimate in *screen-normalized* [0,1] space, i.e. the
+        same coordinate space as the pointer, so gaze/pointer matching is
+        meaningful. The caller is responsible for converting raw tracker
+        output into [0,1] before calling this."""
         self.state.gaze_xy = (float(gx), float(gy))
         self.state.gaze_active = active
         now = time.monotonic()
         self._gaze_recent.append((float(gx), float(gy), now))
         while self._gaze_recent and now - self._gaze_recent[0][2] > 0.8:
-            self._gaze_recent.pop(0)
+            self._gaze_recent.popleft()
 
     def set_pointer(self, px: float, py: float, active: bool) -> None:
         self.state.pointer_xy = (float(px), float(py))
