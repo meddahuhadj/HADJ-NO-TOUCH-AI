@@ -5,6 +5,8 @@ All camera access is mocked: no physical webcam is touched.
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import pytest
 
@@ -242,4 +244,28 @@ class TestReconnect:
         m = CameraManager(CameraSettings(index=0))
         m._cap = FakeCap(opened=True)
         assert m._reopen() is False
+        assert m.error is not None
+
+
+class TestHealthRecovery:
+    def test_transient_read_error_recovers_on_next_frame(self) -> None:
+        """A single failed read must not stick the camera red forever:
+        once a frame is delivered again, is_healthy reflects reality."""
+        m = CameraManager(CameraSettings(index=0))
+        m._running.set()
+        m._cap = object()  # is_running only needs _cap non-None for health
+        m.handle_read_error()
+        assert m.is_healthy is False
+
+        m._deliver_frame(_textured_frame(), t0=time.monotonic())
+        assert m.error is None
+        assert m.is_healthy is True
+
+    def test_persistent_failure_stays_red(self) -> None:
+        """A camera that keeps failing must stay red (honest health)."""
+        m = CameraManager(CameraSettings(index=0))
+        m._running.set()
+        m._cap = object()
+        m.handle_read_error()
+        assert m.is_healthy is False
         assert m.error is not None

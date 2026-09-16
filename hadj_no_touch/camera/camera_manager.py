@@ -267,20 +267,32 @@ class CameraManager:
             if is_frame_usable(frame):
                 last_useful = t0
             frame = cv2.flip(frame, 1).copy()
-            with self._lock:
-                self._frame = Frame(bgr=frame, grabbed_at=t0, index=self._frame_counter)
-                self._frame_counter += 1
-                self._latest_frame_at = t0
-                prev = self._last_read
-                self._last_read = t0
-                if prev:
-                    self._fps = 0.9 * self._fps + 0.1 * (1.0 / max(0.001, t0 - prev))
-            if self.callback:
-                try:
-                    self.callback(self._frame)
-                except Exception as e:
-                    log.warning("camera callback error: %s", e)
+            self._deliver_frame(frame, t0)
             next_t = t0 + frame_interval
+
+    def _deliver_frame(self, frame, t0: float) -> None:
+        """Publish a freshly captured frame and refresh health.
+
+        A transient read hiccup must not keep the camera "unhealthy" forever:
+        once frames are flowing again, health reflects the real state (green).
+        Real/persistent failures make the reopen path set error again with a
+        precise message.
+        """
+        with self._lock:
+            self._frame = Frame(bgr=frame, grabbed_at=t0, index=self._frame_counter)
+            self._frame_counter += 1
+            self._latest_frame_at = t0
+            prev = self._last_read
+            self._last_read = t0
+            if prev:
+                self._fps = 0.9 * self._fps + 0.1 * (1.0 / max(0.001, t0 - prev))
+            if self.error:
+                self.error = None
+        if self.callback:
+            try:
+                self.callback(self._frame)
+            except Exception as e:
+                log.warning("camera callback error: %s", e)
 
     def handle_read_error(self) -> None:
         self.error = "Failed to read frame from camera"
