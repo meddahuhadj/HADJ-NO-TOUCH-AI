@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 from ..core.app import AppCore
 from ..interaction.calibration import SCREEN_ANCHORS, CalibrationManager
 from ..logging_setup import get_logger
+from ..i18n import tr
 
 log = get_logger("ui.calibration")
 
@@ -39,7 +40,7 @@ class CalibrationWizard(QDialog):
     def __init__(self, core: AppCore, parent=None):
         super().__init__(parent)
         self.core = core
-        self.setWindowTitle("HADJ \u2014 Calibration Wizard")
+        self.setWindowTitle(tr("HADJ — Calibration Wizard"))
         self.setMinimumSize(560, 440)
         self._timer = QTimer(self)
         self._timer.setInterval(33)  # ~30 Hz
@@ -47,19 +48,19 @@ class CalibrationWizard(QDialog):
 
         lay = QVBoxLayout(self)
 
-        title = QLabel("\U0001f3af Virtual Interaction Plane \u2014 Calibration")
+        title = QLabel(tr("\U0001f3af Virtual Interaction Plane \u2014 Calibration"))
         title.setStyleSheet("font-size: 17px; font-weight: bold; color: #7cc3ff;")
         lay.addWidget(title)
 
-        note = QLabel(
+        note = QLabel(tr(
             "A standard webcam provides an estimated spatial mapping \u2014 this creates a "
             "virtual/contactless interaction plane, not a physical touchscreen."
-        )
+        ))
         note.setWordWrap(True)
         note.setStyleSheet("color: #9fc7e8; font-size: 11px;")
         lay.addWidget(note)
 
-        self.preview = QLabel("Starting camera preview\u2026")
+        self.preview = QLabel(tr("Starting camera preview\u2026"))
         self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview.setMinimumSize(480, 300)
         self.preview.setStyleSheet(
@@ -70,7 +71,7 @@ class CalibrationWizard(QDialog):
         prog = QHBoxLayout()
         self.stage_labels: list[QLabel] = []
         for i, name in enumerate(ANCHOR_NAMES):
-            lbl = QLabel(name)
+            lbl = QLabel(tr(name))
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setStyleSheet("color: #5f7ea0; font-size: 11px; border: 1px solid #223d5c;"
                               "border-radius: 6px; padding: 4px 2px;")
@@ -84,11 +85,11 @@ class CalibrationWizard(QDialog):
         lay.addWidget(self.hint)
 
         btns = QHBoxLayout()
-        self.btn_confirm = QPushButton("✔ Confirm point")
+        self.btn_confirm = QPushButton(tr("✔ Confirm point"))
         self.btn_confirm.clicked.connect(self._confirm)
-        self.btn_skip = QPushButton("Skip (estimate)")
+        self.btn_skip = QPushButton(tr("Skip (estimate)"))
         self.btn_skip.clicked.connect(self._skip)
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton(tr("Cancel"))
         self.btn_cancel.clicked.connect(self._cancel)
         btns.addWidget(self.btn_confirm)
         btns.addWidget(self.btn_skip)
@@ -124,16 +125,16 @@ class CalibrationWizard(QDialog):
         if core.calibration.done:
             self._timer.stop()
             QMessageBox.information(
-                self, "Calibration",
-                "Calibration complete and saved locally.\n"
-                "Move your fingertip \u2014 the cursor should follow. "
-                "Recalibrate any time from the dashboard.")
+                self, tr("Calibration"),
+                tr("Calibration complete and saved locally.\n"
+                   "Move your fingertip \u2014 the cursor should follow. "
+                   "Recalibrate any time from the dashboard."))
             self.accept()
 
     def _draw_preview(self, stage: int) -> None:
         f = self.core.camera.read()
         if f is None or f.bgr is None:
-            self.preview.setText("No camera frame available")
+            self.preview.setText(tr("No camera frame available"))
             return
         try:
             import cv2
@@ -175,7 +176,7 @@ class CalibrationWizard(QDialog):
                 Qt.TransformationMode.SmoothTransformation))
         except Exception as e:
             log.debug("preview draw failed: %s", e)
-            self.preview.setText("Preview unavailable")
+            self.preview.setText(tr("Preview unavailable"))
 
     def _update_ui(self, stage: int) -> None:
         for i, lbl in enumerate(self.stage_labels):
@@ -191,9 +192,9 @@ class CalibrationWizard(QDialog):
                 lbl.setStyleSheet("color: #5f7ea0; border: 1px solid #223d5c;"
                                   "border-radius: 6px; padding: 4px 2px; font-size: 11px;")
         if stage < len(STAGE_TEXTS):
-            self.hint.setText(STAGE_TEXTS[stage])
+            self.hint.setText(tr(STAGE_TEXTS[stage]))
         else:
-            self.hint.setText("Mapped \u2014 verifying cursor\u2026")
+            self.hint.setText(tr("Mapped \u2014 verifying cursor\u2026"))
 
     # ---- buttons ---------------------------------------------------------
     def _confirm(self) -> None:

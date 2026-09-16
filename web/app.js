@@ -44,7 +44,7 @@
     if (freezeOverlay) {
       freezeOverlay.hidden = false;
       const sub = freezeOverlay.querySelector("[data-freeze-sub]");
-      if (sub) sub.textContent = label || "Emergency stop — gestures and voice frozen";
+      if (sub) sub.textContent = __t(label || "Emergency stop — gestures and voice frozen");
     }
     if (duration) {
       window.setTimeout(() => release(), duration);
@@ -166,7 +166,7 @@
     trackIdx = (i + TRACKS.length) % TRACKS.length;
     elapsed = 0;
     if (mediaTitle) mediaTitle.textContent = TRACKS[trackIdx].title;
-    if (mediaCap) mediaCap.textContent = "Now playing a local file — no stream, all on your machine.";
+    if (mediaCap) mediaCap.textContent = __t("Now playing a local file — no stream, all on your machine.");
     paintMedia();
     bus.emit({ type: "action", action: "NEXT_TRACK", target: TRACKS[trackIdx].title, risk: "safe", decision: "allow", conf: 0.93, ts: Date.now() });
   };
@@ -210,8 +210,8 @@
     if (mediaCard) mediaCard.classList.toggle("playing", playing);
     if (mediaCap) {
       mediaCap.textContent = playing
-        ? "Playing — pinch-click again or press the button to pause."
-        : "Paused. Pinch-click play when you’re ready.";
+        ? __t("Playing — pinch-click again or press the button to pause.")
+        : __t("Paused. Pinch-click play when you’re ready.");
     }
     if (playing) requestAnimationFrame(tickMedia);
     paintMedia();
@@ -643,7 +643,7 @@
     row.className = "vs-line " + kind;
     const tag = document.createElement("span");
     tag.className = "vs-tag";
-    tag.textContent = kind === "vs-you" ? "YOU" : kind === "vs-err" ? "ERR" : "ENGINE";
+    tag.textContent = __t(kind === "vs-you" ? "YOU" : kind === "vs-err" ? "ERR" : "ENGINE");
     const val = document.createElement("span");
     val.className = "vs-val";
     val.textContent = text;
@@ -662,7 +662,7 @@
     if (!cmd) return;
     vsLog("vs-you", "“" + cmd + "”");
     if (window.__hadj.frozen) {
-      vsLog("vs-err", "engine frozen — resume control first (RESUME / Ctrl+Alt+H)");
+      vsLog("vs-err", __t("engine frozen — resume control first (RESUME / Ctrl+Alt+H)"));
       return;
     }
 
@@ -673,7 +673,7 @@
       const decision = item.it.action === "FREEZE" ? "freeze" : window.__hadj.demoMode ? "demo" : "allow";
       vsLog(
         decision === "demo" ? "vs-engine-demo" : "vs-engine-ok",
-        (item.it.action + " → " + target).toUpperCase() + (decision === "demo" ? "  [DEMO · real system untouched]" : "")
+        (item.it.action + " → " + target).toUpperCase() + (decision === "demo" ? "  " + __t("[DEMO · real system untouched]") : "")
       );
       bus.emit({ type: "action", source: "voice", action: item.it.action, target: target, risk: item.it.risk, decision: decision, conf: item.it.conf, ts: Date.now() });
 
@@ -697,7 +697,7 @@
         case "VOLUME": {
           vsVol = m[1] === "mute" ? 0 : Math.max(0, Math.min(95, vsVol + (m[1] === "up" ? 12 : -12)));
           vsPaintVol();
-          if (vsStatus) vsStatus.textContent = "volume " + vsVol + "%";
+          if (vsStatus) vsStatus.textContent = __t("volume") + " " + vsVol + "%";
           break;
         }
         case "FREEZE": {
@@ -712,7 +712,7 @@
       if (vsStatus && item.it.action !== "VOLUME") vsStatus.textContent = item.it.action.toLowerCase();
       return;
     }
-    vsLog("vs-err", "no intent matched — try “open chrome”, “next track”, “volume up”, “freeze”");
+    vsLog("vs-err", __t("no intent matched — try “open chrome”, “next track”, “volume up”, “freeze”"));
   };
 
   if (vsGo) vsGo.addEventListener("click", () => vsRun(vsInput.value));
@@ -727,7 +727,7 @@
     vsMic.addEventListener("click", () => {
       if (vsMic.classList.contains("listening")) return;
       vsMic.classList.add("listening");
-      if (vsStatus) vsStatus.textContent = "listening…";
+      if (vsStatus) vsStatus.textContent = __t("listening…");
       window.setTimeout(() => {
         vsMic.classList.remove("listening");
         const chips = $$(".chip-cmd");
@@ -739,7 +739,7 @@
     });
   }
   vsPaintVol();
-  vsLog("vs-engine-ok", "ON-DEVICE VOICE ENGINE READY — responses fire on this page, no cloud");
+  vsLog("vs-engine-ok", __t("ON-DEVICE VOICE ENGINE READY — responses fire on this page, no cloud"));
 
   /* ---------- Gesture academy ---------- */
 
@@ -817,7 +817,7 @@
         const el = document.createElement("button");
         el.type = "button";
         el.className = "a-btn";
-        el.textContent = "CLICK ME";
+        el.textContent = __t("CLICK ME");
         return el;
       },
       tick(el, p) {
@@ -837,7 +837,7 @@
         const el = document.createElement("button");
         el.type = "button";
         el.className = "a-btn";
-        el.textContent = "OPEN FOLDER";
+        el.textContent = __t("OPEN FOLDER");
         return el;
       },
       tick(el, p) {
@@ -862,10 +862,10 @@
         wrap.className = "a-drag";
         wrap.style.left = "14%";
         wrap.style.top = "26%";
-        wrap.textContent = "WINDOW";
+        wrap.textContent = __t("WINDOW");
         const drop = document.createElement("div");
         drop.className = "a-drop";
-        drop.textContent = "DROP";
+        drop.textContent = __t("DROP");
         const out = document.createElement("div");
         out.appendChild(wrap);
         out.appendChild(drop);
@@ -958,7 +958,7 @@
         wrap.innerHTML = "<i></i>";
         const lbl = document.createElement("span");
         lbl.className = "a-center-label";
-        lbl.textContent = "PALM SENSOR — PRESS SPACE";
+        lbl.textContent = __t("PALM SENSOR — PRESS SPACE");
         const out = document.createElement("div");
         out.appendChild(wrap);
         out.appendChild(lbl);
@@ -973,7 +973,7 @@
         const el = document.createElement("button");
         el.type = "button";
         el.className = "a-stop";
-        el.innerHTML = '<i class="a-stop-led"></i> EMERGENCY STOP';
+        el.innerHTML = '<i class="a-stop-led"></i> ' + __t("EMERGENCY STOP");
         return el;
       },
       tick(el, p) {
@@ -1020,11 +1020,11 @@
     const o = document.createElement("div");
     o.className = "a-complete";
     const last = acIdx + 1 >= acLessons.length;
-    o.innerHTML = "<strong>✓ " + L.name + " complete</strong><p>" + (last ? "Course finished — the full vocabulary is yours." : "next up →") + "</p>";
+    o.innerHTML = "<strong>✓ " + __t(L.name) + " " + __t("complete") + "</strong><p>" + (last ? __t("Course finished — the full vocabulary is yours.") : __t("next up →")) + "</p>";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn btn-solid";
-    btn.textContent = last ? "Restart course" : "Continue";
+    btn.textContent = last ? __t("Restart course") : __t("Continue");
     btn.addEventListener("click", () => setupLesson(last ? 0 : acIdx + 1));
     o.appendChild(btn);
     acStage.appendChild(o);
@@ -1045,8 +1045,9 @@
     acStage.appendChild(el);
     if (acName) acName.textContent = L.name;
     if (acProg) acProg.textContent = (i + 1) + " / " + acLessons.length;
-    if (acInstruct) acInstruct.textContent = L.desc;
-    if (acHint) acHint.textContent = L.hint;
+    if (acInstruct) acInstruct.textContent = __t(L.desc);
+    if (acHint) acHint.textContent = __t(L.hint);
+    if (acName) acName.textContent = __t(L.name);
     paintCur();
   };
 
@@ -1324,14 +1325,14 @@
       idx.textContent = String(i + 1).padStart(2, "0");
       const nm = document.createElement("span");
       nm.className = "mp-name";
-      nm.textContent = def.name;
+      nm.textContent = __t(def.name);
       const rk = document.createElement("span");
       rk.className = "mp-risk" + (def.risk === "critical" ? " is-critical" : "");
       rk.textContent = def.risk;
       const del = document.createElement("button");
       del.type = "button";
       del.className = "mp-del";
-      del.setAttribute("aria-label", "Remove step " + def.name);
+      del.setAttribute("aria-label", __t("Remove step ") + def.name);
       del.textContent = "✕";
       del.addEventListener("click", () => {
         if (macroRunning) return;
@@ -1342,7 +1343,7 @@
       macroEls.steps.appendChild(li);
     });
     if (macroEls.empty) macroEls.empty.hidden = macroSteps.length > 0;
-    if (macroEls.status) macroEls.status.textContent = macroSteps.length ? macroSteps.length + " steps loaded" : "idle";
+    if (macroEls.status) macroEls.status.textContent = macroSteps.length ? macroSteps.length + __t(" steps loaded") : __t("idle");
   };
 
   // trigger radio
@@ -1380,8 +1381,8 @@
       if (!p) return;
       macroSteps = p.steps.slice();
       macroRenderSteps();
-      macroSetStatus(p.label + " preset loaded");
-      vsLog("vs-engine-ok", "MACRO PRESET loaded → " + p.label.toUpperCase());
+      macroSetStatus(__t(p.label) + __t(" preset loaded"));
+      vsLog("vs-engine-ok", __t("MACRO PRESET loaded → ") + p.label.toUpperCase());
     });
   });
 
@@ -1393,7 +1394,7 @@
       macroTimers = [];
       macroRenderSteps();
       if (macroEls.runway) macroEls.runway.innerHTML = "";
-      macroSetStatus("cleared");
+      macroSetStatus(__t("cleared"));
     });
   }
 
@@ -1401,15 +1402,15 @@
     macroEls.fire.addEventListener("click", () => {
       if (macroRunning) return;
       if (!macroSteps.length) {
-        macroSetStatus("add steps first", "is-err");
-        vsLog("vs-err", "MACRO empty — add at least one step from the palette");
+        macroSetStatus(__t("add steps first"), "is-err");
+        vsLog("vs-err", __t("MACRO empty — add at least one step from the palette"));
         return;
       }
       macroRunning = true;
       macroEls.fire.disabled = true;
       if (macroEls.runway) macroEls.runway.innerHTML = "";
-      macroSetStatus("firing…");
-      vsLog("vs-engine-ok", "MACRO RUN → " + macroSteps.length + " steps (trigger " + macroTrigger.toUpperCase() + ")");
+      macroSetStatus(__t("firing…"));
+      vsLog("vs-engine-ok", __t("MACRO RUN → ") + macroSteps.length + __t(" steps") + " (trigger " + macroTrigger.toUpperCase() + ")");
 
       macroSteps.forEach((key, i) => {
         const t = window.setTimeout(() => {
@@ -1439,7 +1440,7 @@
             macroEls.runway.appendChild(pill);
           }
           if (i === macroSteps.length - 1) {
-            macroSetStatus(ok ? "complete — all steps gated & fired" : "stopped at a denied step");
+            macroSetStatus(ok ? __t("complete — all steps gated & fired") : __t("stopped at a denied step"));
             macroRunning = false;
             macroEls.fire.disabled = false;
           }
@@ -1493,12 +1494,12 @@
   const planStepRisk = (a) => PLAN_RISK[a] || "safe";
   const planDescFor = (a, p) => {
     const map = {
-      PROFILE_SWITCH: "Switch profile → " + p,
-      OPEN_APP: "Open app → " + p,
-      START_PRESENTATION: "Start slideshow",
-      CALIBRATE: "Run calibration & self-check",
-      PAUSE_CONTROL: "Pause all control",
-      HELP: "Show help / onboarding",
+      PROFILE_SWITCH: __t("Switch profile → ") + p,
+      OPEN_APP: __t("Open app → ") + p,
+      START_PRESENTATION: __t("Start slideshow"),
+      CALIBRATE: __t("Run calibration & self-check"),
+      PAUSE_CONTROL: __t("Pause all control"),
+      HELP: __t("Show help / onboarding"),
     };
     return (map[a] || a) + (p && !map[a] ? " · " + p : "");
   };
@@ -1510,7 +1511,7 @@
     planBoard.innerHTML = "";
     const reqEl = document.createElement("p");
     reqEl.className = "plan-request";
-    reqEl.innerHTML = "Request: <b>" + escapeHtml(req) + "</b> — " + steps.length + " step" + (steps.length === 1 ? "" : "s");
+    reqEl.innerHTML = __t("Request") + ": <b>" + escapeHtml(req) + "</b> — " + steps.length + __t(steps.length === 1 ? " step" : " steps");
     planBoard.appendChild(reqEl);
     const list = document.createElement("ol");
     list.className = "plan-steps";
@@ -1537,7 +1538,7 @@
     planBoard.appendChild(list);
     const d = document.createElement("p");
     d.className = "plan-desc";
-    d.textContent = desc;
+    d.textContent = __t(desc);
     planBoard.appendChild(d);
     if (planFooter) planFooter.hidden = false;
   };
@@ -1546,24 +1547,24 @@
     const text = (raw || "").trim();
     if (!text) return;
     const t = text.toLowerCase().replace(/\s+/g, " ");
-    vsLog("vs-you", "PLAN: “" + text + "”");
+    vsLog("vs-you", __t("PLAN: “") + text + "”");
     if (window.__hadj.frozen) {
-      vsLog("vs-err", "planner frozen — resume control first");
+      vsLog("vs-err", __t("planner frozen — resume control first"));
       return;
     }
     for (const r of PLAN_RULES) {
       if (!r.tokens.some((tok) => t.indexOf(tok) > -1)) continue;
       renderPlan(text, r.desc, r.steps);
       bus.emit({ type: "action", source: "planner", action: "PLAN", target: text, risk: "safe", decision: "allow", conf: 0.92, ts: Date.now() });
-      if (planStatus) planStatus.textContent = "planned ✓";
+      if (planStatus) planStatus.textContent = __t("planned ✓");
       return;
     }
     if (planEmpty) planEmpty.hidden = false;
     planBoard.innerHTML = "";
     currentPlan = [];
     if (planFooter) planFooter.hidden = true;
-    vsLog("vs-err", "no routine matched — try “prepare my presentation”, “work setup”, “movie time”");
-    if (planStatus) planStatus.textContent = "no match";
+    vsLog("vs-err", __t("no routine matched — try “prepare my presentation”, “work setup”, “movie time”"));
+    if (planStatus) planStatus.textContent = __t("no match");
   };
 
   const runPlan = () => {
@@ -1573,7 +1574,7 @@
     if (planRun) planRun.disabled = true;
     planTimers.forEach((t) => clearTimeout(t));
     planTimers = [];
-    if (planNote) planNote.textContent = "Executing…";
+    if (planNote) planNote.textContent = __t("Executing…");
     currentPlan.forEach((st, i) => {
       const t = window.setTimeout(() => {
         const a = st[0], p = st[1];
@@ -1583,7 +1584,7 @@
           cur.classList.add("ps-running");
           window.setTimeout(() => cur.classList.add("ps-done"), 380);
         }
-        vsLog("vs-engine-ok", "PLAN STEP → " + a + (p ? " " + p : ""));
+        vsLog("vs-engine-ok", __t("PLAN STEP → ") + a + (p ? " " + p : ""));
         bus.emit({ type: "action", source: "planner", action: a, target: p || "system", risk: planStepRisk(a), decision: "allow", conf: 0.9, ts: Date.now() });
         if (a === "OPEN_APP") {
           if (p === "chrome" || p === "browser") openApp("browser");
@@ -1595,8 +1596,8 @@
           if (n) n.click();
         }
         if (i === currentPlan.length - 1) {
-          vsLog("vs-engine-ok", "PLAN complete — every step was registered & gated");
-          if (planNote) planNote.textContent = "Done — plan approved, steps gated by the Safety Engine.";
+          vsLog("vs-engine-ok", __t("PLAN complete — every step was registered & gated"));
+          if (planNote) planNote.textContent = __t("Done — plan approved, steps gated by the Safety Engine.");
           planRunning = false;
           if (planRun) planRun.disabled = false;
         }
@@ -2289,6 +2290,15 @@
   setMode(true);
 
   if (scStop) scStop.addEventListener("click", () => window.__hadj.nextFreeze(2500));
+
+  /* ---------- Language switch: re-paint dynamic zones ---------- */
+
+  if (window.HADJ_I18N) {
+    window.HADJ_I18N.onChange(() => {
+      if (typeof setupLesson === "function" && typeof acIdx === "number") setupLesson(acIdx);
+      if (typeof paintCur === "function") paintCur();
+    });
+  }
 
   /* ---------- Service worker ---------- */
 

@@ -49,7 +49,15 @@
         <li><a href="#download">Download</a></li>
       </ul>
 
-      <div class="nav-actions">
+<div class="nav-actions">
+        <label class="lang-wrap">
+          <span class="sr-only">Language</span>
+          <select id="lang-select" aria-label="Language" title="Language">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="ar">العربية</option>
+          </select>
+        </label>
         <button type="button" class="btn btn-ghost btn-install" id="install-btn" hidden>
           <span class="btn-ic" aria-hidden="true">↓</span> Install
         </button>
@@ -526,7 +534,7 @@
             <div class="vs-terminal" id="vs-terminal" role="log" aria-label="Voice recognition and intent transcript"></div>
             <div class="vs-input-row">
               <button type="button" class="vs-mic" id="vs-mic" data-demo-target="vs-mic" aria-label="Simulate speaking a command">🎙</button>
-              <input type="text" class="vs-input" id="vs-input" placeholder="Type a command — e.g. “open chrome”" autocomplete="off" aria-label="Type a voice command">
+              <input type="text" class="vs-input" id="vs-input" placeholder="Type a command — e.g. “open chrome”" autocomplete="off" aria-label="Type a voice command" data-i18n-attrs="placeholder" data-i18n-keep="open chrome">
               <button type="button" class="btn btn-solid vs-go" id="vs-go">Run</button>
             </div>
             <div class="vs-chips" role="list" aria-label="Suggested commands">
@@ -1336,6 +1344,7 @@
     </div>
   </div>
 
+<script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

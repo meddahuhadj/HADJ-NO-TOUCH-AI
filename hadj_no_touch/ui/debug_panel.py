@@ -17,13 +17,14 @@ from PySide6.QtWidgets import (
 
 from ..core.status import StatusSnapshot
 from ..config import data_dir
+from ..i18n import tr, trf
 
 
 class DebugPanel(QWidget):
     def __init__(self, app, parent=None):
         super().__init__(parent)
         self.app = app
-        self.setWindowTitle("HADJ Debug Panel")
+        self.setWindowTitle(tr("HADJ Debug Panel"))
         self.setMinimumSize(560, 460)
         self._recording = False
         self._lines: list[str] = []
@@ -31,7 +32,7 @@ class DebugPanel(QWidget):
 
     def _build(self) -> None:
         lay = QVBoxLayout(self)
-        grid = QGroupBox("Pipeline")
+        grid = QGroupBox(tr("Pipeline"))
         gl = QGridLayout(grid)
         rows = [
             "FPS", "Tracking FPS", "Latency (ms)", "Camera active", "Hand present",
@@ -43,7 +44,7 @@ class DebugPanel(QWidget):
         ]
         self._cells: dict[str, QLabel] = {}
         for i, name in enumerate(rows):
-            n = QLabel(name)
+            n = QLabel(tr(name))
             n.setStyleSheet("color: #8fb4dd;")
             v = QLabel("—")
             v.setStyleSheet("color: #ffffff;")
@@ -52,16 +53,16 @@ class DebugPanel(QWidget):
             self._cells[name] = v
         lay.addWidget(grid)
 
-        loggb = QGroupBox("Diagnostics")
+        loggb = QGroupBox(tr("Diagnostics"))
         ll = QVBoxLayout(loggb)
         self.diagnostic_log = QTextEdit()
         self.diagnostic_log.setReadOnly(True)
         self.diagnostic_log.setMaximumHeight(160)
         ll.addWidget(self.diagnostic_log)
         row = QHBoxLayout()
-        self.btn_record = QPushButton("Record diagnostics to file")
+        self.btn_record = QPushButton(tr("Record diagnostics to file"))
         self.btn_record.clicked.connect(self._toggle_record)
-        self.btn_save = QPushButton("Save log now")
+        self.btn_save = QPushButton(tr("Save log now"))
         self.btn_save.clicked.connect(self._save_now)
         row.addWidget(self.btn_record)
         row.addWidget(self.btn_save)
@@ -113,8 +114,8 @@ class DebugPanel(QWidget):
     # ---- diagnostics logging ----------------------------------------------
     def _toggle_record(self) -> None:
         self._recording = not self._recording
-        self.btn_record.setText("Stop diagnostics recording" if self._recording
-                                else "Record diagnostics to file")
+        self.btn_record.setText(tr("Stop diagnostics recording") if self._recording
+                                else tr("Record diagnostics to file"))
         self._lines.clear()
 
     def _save_now(self) -> None:
@@ -127,7 +128,7 @@ class DebugPanel(QWidget):
                     writer = csv.DictWriter(f, fieldnames=list(self._lines[0].keys()))
                     writer.writeheader()
                     writer.writerows(self._lines)
-            QMessageBox.information(self, "Diagnostics",
-                                    f"Diagnostics saved (text only): {path}")
+            QMessageBox.information(self, tr("Diagnostics"),
+                                    trf("Diagnostics saved (text only): {path}", path=path))
         except Exception as e:
-            QMessageBox.warning(self, "Diagnostics", str(e))
+            QMessageBox.warning(self, tr("Diagnostics"), str(e))

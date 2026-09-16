@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from .dashboard import DARK
+from ..i18n import tr, trf
 
 
 def _empty(text: str) -> str:
@@ -24,7 +25,7 @@ class MacroStudioDialog(QDialog):
     def __init__(self, core, parent=None):
         super().__init__(parent)
         self.core = core
-        self.setWindowTitle("Macro Studio & Custom Commands")
+        self.setWindowTitle(tr("Macro Studio & Custom Commands"))
         self.resize(720, 520)
         self.setStyleSheet(DARK)
         self._current = ""
@@ -35,10 +36,10 @@ class MacroStudioDialog(QDialog):
     def _build(self) -> None:
         lay = QVBoxLayout(self)
         tabs = QTabWidget()
-        tabs.addTab(self._build_macros(), "Macros (voice / gesture / button)")
-        tabs.addTab(self._build_commands(), "Custom voice commands")
+        tabs.addTab(self._build_macros(), tr("Macros (voice / gesture / button)"))
+        tabs.addTab(self._build_commands(), tr("Custom voice commands"))
         lay.addWidget(tabs, 1)
-        close = QPushButton("Close")
+        close = QPushButton(tr("Close"))
         close.clicked.connect(self.accept)
         lay.addWidget(close, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -56,33 +57,33 @@ class MacroStudioDialog(QDialog):
         fl = QGridLayout(form)
         self.f_name = QLineEdit()
         self.f_trigger = QComboBox()
-        self.f_trigger.addItem("Voice phrase", "voice")
-        self.f_trigger.addItem("Gesture", "gesture")
-        self.f_trigger.addItem("Button", "button")
+        self.f_trigger.addItem(tr("Voice phrase"), "voice")
+        self.f_trigger.addItem(tr("Gesture"), "gesture")
+        self.f_trigger.addItem(tr("Button"), "button")
         self.f_trigger_value = QLineEdit()
-        self.f_trigger_value.setPlaceholderText("e.g. 'go to work' / CIRCLE_CW / quick_action")
+        self.f_trigger_value.setPlaceholderText(tr("e.g. 'go to work' / CIRCLE_CW / quick_action"))
         self.f_actions = QTextEdit()
         self.f_actions.setPlaceholderText(
-            "One registered action per line, optional key=value params.\n"
-            "Examples:\n"
-            "  OPEN_APP app=chrome\n  PROFILE_SWITCH profile=developer\n  VOLUME_SET percent=50")
+            tr("One registered action per line, optional key=value params.\n"
+               "Examples:\n"
+               "  OPEN_APP app=chrome\n  PROFILE_SWITCH profile=developer\n  VOLUME_SET percent=50"))
         self.f_desc = QLineEdit()
-        self.f_desc.setPlaceholderText("optional description")
-        fl.addWidget(QLabel("Name"), 0, 0)
+        self.f_desc.setPlaceholderText(tr("optional description"))
+        fl.addWidget(QLabel(tr("Name")), 0, 0)
         fl.addWidget(self.f_name, 0, 1)
-        fl.addWidget(QLabel("Trigger"), 1, 0)
+        fl.addWidget(QLabel(tr("Trigger")), 1, 0)
         fl.addWidget(self.f_trigger, 1, 1)
-        fl.addWidget(QLabel("Value"), 2, 0)
+        fl.addWidget(QLabel(tr("Value")), 2, 0)
         fl.addWidget(self.f_trigger_value, 2, 1)
-        fl.addWidget(QLabel("Actions"), 3, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        fl.addWidget(QLabel(tr("Actions")), 3, 0, alignment=Qt.AlignmentFlag.AlignTop)
         fl.addWidget(self.f_actions, 3, 1)
-        fl.addWidget(QLabel("Description"), 4, 0)
+        fl.addWidget(QLabel(tr("Description")), 4, 0)
         fl.addWidget(self.f_desc, 4, 1)
         btns = QHBoxLayout()
-        b_new = QPushButton("New")
-        b_save = QPushButton("Save")
-        b_del = QPushButton("Delete")
-        b_run = QPushButton("Run now")
+        b_new = QPushButton(tr("New"))
+        b_save = QPushButton(tr("Save"))
+        b_del = QPushButton(tr("Delete"))
+        b_run = QPushButton(tr("Run now"))
         b_new.clicked.connect(self._new_macro)
         b_save.clicked.connect(self._save_macro)
         b_del.clicked.connect(self._delete_macro)
@@ -104,23 +105,23 @@ class MacroStudioDialog(QDialog):
         form = QWidget()
         fl = QGridLayout(form)
         self.c_phrase = QLineEdit()
-        self.c_phrase.setPlaceholderText("phrase, e.g. 'boost volume'")
+        self.c_phrase.setPlaceholderText(tr("phrase, e.g. 'boost volume'"))
         self.c_action = QComboBox()
         reg = self.core.safety.registry if hasattr(self.core, "safety") else None
         actions = sorted(reg.ids()) if reg else []
         for a in actions:
             self.c_action.addItem(a, a)
         self.c_params = QLineEdit()
-        self.c_params.setPlaceholderText("optional params: app=chrome, percent=50")
-        fl.addWidget(QLabel("Phrase"), 0, 0)
+        self.c_params.setPlaceholderText(tr("optional params: app=chrome, percent=50"))
+        fl.addWidget(QLabel(tr("Phrase")), 0, 0)
         fl.addWidget(self.c_phrase, 0, 1)
-        fl.addWidget(QLabel("Action"), 1, 0)
+        fl.addWidget(QLabel(tr("Action")), 1, 0)
         fl.addWidget(self.c_action, 1, 1)
-        fl.addWidget(QLabel("Params"), 2, 0)
+        fl.addWidget(QLabel(tr("Params")), 2, 0)
         fl.addWidget(self.c_params, 2, 1)
         btns = QHBoxLayout()
-        b_add = QPushButton("Add")
-        b_del = QPushButton("Remove")
+        b_add = QPushButton(tr("Add"))
+        b_del = QPushButton(tr("Remove"))
         b_add.clicked.connect(self._add_command)
         b_del.clicked.connect(self._delete_command)
         btns.addWidget(b_add)
@@ -190,12 +191,13 @@ class MacroStudioDialog(QDialog):
     def _save_macro(self) -> None:
         name = _empty(self.f_name.text())
         if not name:
-            QMessageBox.warning(self, "Macro Studio", "A macro needs a name.")
+            QMessageBox.warning(self, tr("Macro Studio"), tr("A macro needs a name."))
             return
         actions = self._parse_actions(self.f_actions.toPlainText())
         if not actions:
-            QMessageBox.warning(self, "Macro Studio",
-                                "Add at least one action line, e.g.  OPEN_APP app=chrome")
+            QMessageBox.warning(
+                self, tr("Macro Studio"),
+                tr("Add at least one action line, e.g.  OPEN_APP app=chrome"))
             return
         data = {
             "name": name,
@@ -241,7 +243,8 @@ class MacroStudioDialog(QDialog):
         phrase = _empty(self.c_phrase.text())
         action = self.c_action.currentData() or ""
         if not phrase or not action:
-            QMessageBox.warning(self, "Custom Commands", "Enter a phrase and pick an action.")
+            QMessageBox.warning(
+                self, tr("Custom Commands"), tr("Enter a phrase and pick an action."))
             return
         params = {}
         for tok in _empty(self.c_params.text()).replace(",", " ").split():
@@ -284,25 +287,25 @@ class PlannerPreviewDialog(QDialog):
         super().__init__(parent)
         self.core = core
         self.plan = plan
-        self.setWindowTitle("AI Planner suggestion")
+        self.setWindowTitle(tr("AI Planner suggestion"))
         self.setMinimumWidth(480)
         self.setStyleSheet(DARK)
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel("For: " + (plan.request or "")))
-        title = QLabel(plan.description or "Proposed actions")
+        lay.addWidget(QLabel(tr("For: ") + (plan.request or "")))
+        title = QLabel(plan.description or tr("Proposed actions"))
         title.setStyleSheet("font-size: 15px; font-weight: bold; color: #ffe08a;")
         lay.addWidget(title)
         self.list = QListWidget()
         for s in plan.steps:
             self.list.addItem(f"• {s.describe()}")
         lay.addWidget(self.list, 1)
-        hint = QLabel("Nothing runs yet — every step still passes the Safety Engine gates.")
+        hint = QLabel(tr("Nothing runs yet — every step still passes the Safety Engine gates."))
         hint.setStyleSheet("color: #5f7ea0; font-size: 11px;")
         lay.addWidget(hint)
         row = QHBoxLayout()
-        b_exec = QPushButton("Execute plan")
+        b_exec = QPushButton(tr("Execute plan"))
         b_exec.setObjectName("ok")
-        b_cancel = QPushButton("Cancel")
+        b_cancel = QPushButton(tr("Cancel"))
         b_exec.clicked.connect(self._execute)
         b_cancel.clicked.connect(self.reject)
         row.addStretch(1)
@@ -319,14 +322,14 @@ class TestLabDialog(QDialog):
     def __init__(self, core, parent=None):
         super().__init__(parent)
         self.core = core
-        self.setWindowTitle("HADJ Test Lab")
+        self.setWindowTitle(tr("HADJ Test Lab"))
         self.resize(560, 520)
         self.setStyleSheet(DARK)
         lay = QVBoxLayout(self)
         head = QHBoxLayout()
-        head.addWidget(QLabel("Self-diagnostics (simulated inputs, no hardware needed)"))
+        head.addWidget(QLabel(tr("Self-diagnostics (simulated inputs, no hardware needed)")))
         head.addStretch(1)
-        self.btn_run = QPushButton("Run all tests")
+        self.btn_run = QPushButton(tr("Run all tests"))
         self.btn_run.clicked.connect(lambda: self.run())
         head.addWidget(self.btn_run)
         lay.addLayout(head)
@@ -390,7 +393,9 @@ class TestLabDialog(QDialog):
         passed = sum(1 for r in rows if r.get("ok") is True)
         skipped = sum(1 for r in rows if r.get("ok") is None)
         failed = sum(1 for r in rows if r.get("ok") is False)
-        self.summary.setText(f"Passed {passed} · Skipped {skipped} · Failed {failed}")
+        self.summary.setText(trf(
+            "Passed {passed} · Skipped {skipped} · Failed {failed}",
+            passed=passed, skipped=skipped, failed=failed))
         self.btn_run.setEnabled(True)
         self._refresh_live()
 
@@ -399,28 +404,28 @@ class SettingsCenterDialog(QDialog):
     def __init__(self, core, parent=None):
         super().__init__(parent)
         self.core = core
-        self.setWindowTitle("Settings Center")
+        self.setWindowTitle(tr("Settings Center"))
         self.setMinimumWidth(420)
         self.setStyleSheet(DARK)
         lay = QVBoxLayout(self)
 
-        g_safe = QGroupBox("Safety")
+        g_safe = QGroupBox(tr("Safety"))
         sl = QVBoxLayout(g_safe)
-        sl.addWidget(QLabel("Confirmation level"))
+        sl.addWidget(QLabel(tr("Confirmation level")))
         self.s_conf = QComboBox()
-        self.s_conf.addItem("None — run CONFIRM actions freely (CRITICAL still asks)", "none")
-        self.s_conf.addItem("Smart — confirm sensitive actions", "smart")
-        self.s_conf.addItem("All — confirm every action except emergency/safety toggles", "all")
+        self.s_conf.addItem(tr("None — run CONFIRM actions freely (CRITICAL still asks)"), "none")
+        self.s_conf.addItem(tr("Smart — confirm sensitive actions"), "smart")
+        self.s_conf.addItem(tr("All — confirm every action except emergency/safety toggles"), "all")
         idx = self.s_conf.findData(self.core.safety.confirmation_level)
         self.s_conf.setCurrentIndex(max(0, idx))
         sl.addWidget(self.s_conf)
-        sl.addWidget(QLabel("Demo mode blocks every real OS action and simulates it loudly."))
+        sl.addWidget(QLabel(tr("Demo mode blocks every real OS action and simulates it loudly.")))
         lay.addWidget(g_safe)
 
-        g_voice = QGroupBox("Voice recognition")
+        g_voice = QGroupBox(tr("Voice recognition"))
         vl = QVBoxLayout(g_voice)
         rv = QHBoxLayout()
-        rv.addWidget(QLabel("Language"))
+        rv.addWidget(QLabel(tr("Language")))
         self.v_lang = QComboBox()
         self.v_lang.addItem("English (en-US)", "en-US")
         self.v_lang.addItem("Français (fr-FR)", "fr-FR")
@@ -430,54 +435,54 @@ class SettingsCenterDialog(QDialog):
         rv.addWidget(self.v_lang)
         rv.addStretch(1)
         vl.addLayout(rv)
-        vl.addWidget(QLabel(
+        vl.addWidget(QLabel(tr(
             "Recognized commands switch language (open/next/volume… in EN, FR or AR). "
-            "Applied on save — the voice engine restarts with the new language."))
+            "Applied on save — the voice engine restarts with the new language.")))
         lay.addWidget(g_voice)
 
-        g_head = QGroupBox("Head control (FaceMesh)")
+        g_head = QGroupBox(tr("Head control (FaceMesh)"))
         hl = QVBoxLayout(g_head)
-        self.h_enabled = QCheckBox("Enable head-direction actions")
+        self.h_enabled = QCheckBox(tr("Enable head-direction actions"))
         self.h_enabled.setChecked(self.core.settings.head.enabled)
         hl.addWidget(self.h_enabled)
         r1 = QHBoxLayout()
-        r1.addWidget(QLabel("Sensitivity"))
+        r1.addWidget(QLabel(tr("Sensitivity")))
         self.h_sens = QDoubleSpinBox()
         self.h_sens.setRange(0.02, 0.6)
         self.h_sens.setSingleStep(0.01)
         self.h_sens.setValue(self.core.settings.head.sensitivity)
         r1.addWidget(self.h_sens)
-        r1.addWidget(QLabel("Hold (ms)"))
+        r1.addWidget(QLabel(tr("Hold (ms)")))
         self.h_hold = QSpinBox()
         self.h_hold.setRange(50, 2000)
         self.h_hold.setSingleStep(50)
         self.h_hold.setValue(self.core.settings.head.hold_ms)
         r1.addWidget(self.h_hold)
-        r1.addWidget(QLabel("Cooldown (ms)"))
+        r1.addWidget(QLabel(tr("Cooldown (ms)")))
         self.h_cool = QSpinBox()
         self.h_cool.setRange(200, 5000)
         self.h_cool.setSingleStep(100)
         self.h_cool.setValue(self.core.settings.head.cooldown_ms)
         r1.addWidget(self.h_cool)
         hl.addLayout(r1)
-        hl.addWidget(QLabel(
+        hl.addWidget(QLabel(tr(
             "Turn left/right → previous/next (slide, page, track). Up/down → volume / "
-            "zoom depending on context. Hold the direction, release to repeat.",))
+            "zoom depending on context. Hold the direction, release to repeat.",)))
         lay.addWidget(g_head)
 
-        g_gaze = QGroupBox("Gaze tracking (experimental)")
+        g_gaze = QGroupBox(tr("Gaze tracking (experimental)"))
         gl = QVBoxLayout(g_gaze)
-        self.g_enabled = QCheckBox("Enable gaze estimation (optional)")
+        self.g_enabled = QCheckBox(tr("Enable gaze estimation (optional)"))
         self.g_enabled.setChecked(self.core.settings.tracking.gaze_enabled)
         gl.addWidget(self.g_enabled)
-        gl.addWidget(QLabel(
+        gl.addWidget(QLabel(tr(
             "Uses iris position (FaceMesh, local). Gaze confirms pinch/click on the "
-            "thing you look at, and feeds the AI Copilot context."))
+            "thing you look at, and feeds the AI Copilot context.")))
         lay.addWidget(g_gaze)
 
-        g_demo = QGroupBox("Demo mode")
+        g_demo = QGroupBox(tr("Demo mode"))
         dl = QVBoxLayout(g_demo)
-        self.d_start = QCheckBox("Start the app in demo mode")
+        self.d_start = QCheckBox(tr("Start the app in demo mode"))
         self.d_start.setChecked(self.core.settings.demo.start_in_demo)
         dl.addWidget(self.d_start)
         lay.addWidget(g_demo)
@@ -515,9 +520,9 @@ class SettingsCenterDialog(QDialog):
         lay.addWidget(g_sense)
 
         row = QHBoxLayout()
-        b_save = QPushButton("Save")
+        b_save = QPushButton(tr("Save"))
         b_save.setObjectName("ok")
-        b_close = QPushButton("Close")
+        b_close = QPushButton(tr("Close"))
         b_save.clicked.connect(self._save)
         b_close.clicked.connect(self.accept)
         row.addStretch(1)
@@ -556,11 +561,11 @@ class SettingsCenterDialog(QDialog):
 class HelpDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("HADJ NO-TOUCH AI — quick start")
+        self.setWindowTitle(tr("HADJ NO-TOUCH AI — quick start"))
         self.setMinimumWidth(520)
         self.setStyleSheet(DARK)
         lay = QVBoxLayout(self)
-        txt = QLabel(
+        txt = QLabel(tr(
             "<b>Hands</b><br>"
             "☝️ POINT → move cursor<br>"
             "🤏 PINCH (thumb+index) → left click · hold + move → drag<br>"
@@ -573,10 +578,10 @@ class HelpDialog(QDialog):
             "<b>Safety</b><br>"
             "🔴 REAL mode acts on your computer; 🔵 DEMO simulates nothing.<br>"
             "Sensitive actions ask for confirmation first.<br>"
-            "Emergency stop: <b>CTRL + ALT + H</b>")
+            "Emergency stop: <b>CTRL + ALT + H</b>"))
         txt.setTextFormat(Qt.TextFormat.RichText)
         txt.setWordWrap(True)
         lay.addWidget(txt)
-        b = QPushButton("Got it")
+        b = QPushButton(tr("Got it"))
         b.clicked.connect(self.accept)
         lay.addWidget(b, 0, Qt.AlignmentFlag.AlignRight)

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 
 from ..core.status import StatusSnapshot
 from .widgets import StatusDot, StatCard
+from ..i18n import tr, trf, set_language, install, current_language, LANGUAGE_NAMES
 
 DARK = """
 QWidget { background: #0b1622; color: #eaf3ff; }
@@ -44,7 +45,11 @@ class Dashboard(QWidget):
             "copilot": "🤖 AI Copilot", "custom": "✨ Custom",
         }
         self._last_history_count = -1
+        self._emergency_stopped = False
+        self._demo_state = False
+        self._lang = current_language()
         self._build()
+        install(self._on_lang_changed)
 
     # ---- construction -------------------------------------------------------
     def _build(self) -> None:
@@ -55,9 +60,9 @@ class Dashboard(QWidget):
         header = QHBoxLayout()
         title = QLabel("HADJ NO-TOUCH AI")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: #7cc3ff;")
-        tagline = QLabel("Multimodal contactless control — hands, voice & eyes")
-        tagline.setStyleSheet("color: #5f7ea0; font-size: 12px;")
-        self.demo_badge = QLabel("🔴 REAL")
+        self.tagline = QLabel(tr("Multimodal contactless control — hands, voice & eyes"))
+        self.tagline.setStyleSheet("color: #5f7ea0; font-size: 12px;")
+        self.demo_badge = QLabel(tr("🔴 REAL"))
         self.demo_badge.setStyleSheet(
             "font-size: 13px; font-weight: bold; color: #ff6b6b; background: #2a1515;"
             "border: 1px solid #b33636; border-radius: 8px; padding: 3px 10px;")
@@ -65,11 +70,17 @@ class Dashboard(QWidget):
         self.audio_badge.setStyleSheet(
             "font-size: 13px; font-weight: bold; color: #8a8a9a; background: #191922;"
             "border: 1px solid #44445a; border-radius: 8px; padding: 3px 10px;")
+        self.lang_combo = QComboBox()
+        for code in ("en", "fr", "ar"):
+            self.lang_combo.addItem(LANGUAGE_NAMES[code], code)
+        self.lang_combo.setCurrentIndex(max(0, self.lang_combo.findData(self._lang)))
+        self.lang_combo.currentIndexChanged.connect(self._on_lang)
         header.addWidget(title)
         header.addStretch(1)
         header.addWidget(self.audio_badge)
+        header.addWidget(self.lang_combo)
         header.addWidget(self.demo_badge)
-        header.addWidget(tagline)
+        header.addWidget(self.tagline)
         root.addLayout(header)
 
         split = QSplitter(Qt.Orientation.Horizontal)
@@ -78,7 +89,7 @@ class Dashboard(QWidget):
         left = QWidget()
         llay = QVBoxLayout(left)
         llay.setContentsMargins(0, 0, 0, 0)
-        self.preview = QLabel("Camera preview")
+        self.preview = QLabel(tr("Camera preview"))
         self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview.setMinimumSize(400, 300)
         self.preview.setStyleSheet(
@@ -90,7 +101,7 @@ class Dashboard(QWidget):
         self.gesture_big.setAlignment(Qt.AlignmentFlag.AlignCenter)
         llay.addWidget(self.gesture_big)
 
-        self.action_label = QLabel("Waiting for a gesture…")
+        self.action_label = QLabel(tr("Waiting for a gesture…"))
         self.action_label.setStyleSheet("color: #9fc7e8; font-size: 14px;")
         self.action_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         llay.addWidget(self.action_label)
@@ -112,12 +123,12 @@ class Dashboard(QWidget):
         dotbox = QFrame()
         dotbox.setStyleSheet("background:#12263d; border:1px solid #223d5c; border-radius:10px;")
         dlay = QGridLayout(dotbox)
-        self.dot_cam = StatusDot("Camera")
-        self.dot_hand = StatusDot("Hand Tracking")
-        self.dot_voice = StatusDot("Voice")
-        self.dot_gaze = StatusDot("Gaze (optional)")
-        self.dot_ctl = StatusDot("Control")
-        self.dot_env = StatusDot("Lighting")
+        self.dot_cam = StatusDot(tr("Camera"))
+        self.dot_hand = StatusDot(tr("Hand Tracking"))
+        self.dot_voice = StatusDot(tr("Voice"))
+        self.dot_gaze = StatusDot(tr("Gaze (optional)"))
+        self.dot_ctl = StatusDot(tr("Control"))
+        self.dot_env = StatusDot(tr("Lighting"))
         dlay.addWidget(self.dot_cam, 0, 0)
         dlay.addWidget(self.dot_hand, 0, 1)
         dlay.addWidget(self.dot_voice, 1, 0)
@@ -128,12 +139,12 @@ class Dashboard(QWidget):
 
         # stat cards
         cards = QHBoxLayout()
-        self.card_fps = StatCard("Camera FPS", "—", "frames / sec")
-        self.card_tfps = StatCard("Tracking", "—", "FPS")
-        self.card_lat = StatCard("Latency", "—", "ms")
-        self.card_cpu = StatCard("CPU", "—", "%")
-        self.card_mem = StatCard("RAM", "—", "MB")
-        self.card_cmd = StatCard("Commands", "—", "per minute")
+        self.card_fps = StatCard(tr("Camera FPS"), "—", tr("frames / sec"))
+        self.card_tfps = StatCard(tr("Tracking"), "—", "FPS")
+        self.card_lat = StatCard(tr("Latency"), "—", tr("ms"))
+        self.card_cpu = StatCard(tr("CPU"), "—", "%")
+        self.card_mem = StatCard(tr("RAM"), "—", tr("MB"))
+        self.card_cmd = StatCard(tr("Commands"), "—", tr("per minute"))
         for c in (self.card_fps, self.card_tfps, self.card_lat, self.card_cpu,
                   self.card_mem, self.card_cmd):
             cards.addWidget(c)
@@ -141,60 +152,61 @@ class Dashboard(QWidget):
 
         # profile row
         prow = QHBoxLayout()
-        prow.addWidget(QLabel("Mode:"))
+        self.mode_label = QLabel(tr("Mode:"))
+        prow.addWidget(self.mode_label)
         self.profile_combo = QComboBox()
         for p in self.app.profiles.all():
-            self.profile_combo.addItem(self._titles.get(p.id, p.name), p.id)
+            self.profile_combo.addItem(tr(self._titles.get(p.id, p.name)), p.id)
         self.profile_combo.currentIndexChanged.connect(self._on_profile_change)
         prow.addWidget(self.profile_combo, 1)
         rlay.addLayout(prow)
 
         # big controls
         btnrow = QGridLayout()
-        self.btn_stop = QPushButton("⛔ STOP NO-TOUCH CONTROL")
+        self.btn_stop = QPushButton(tr("⛔ STOP NO-TOUCH CONTROL"))
         self.btn_stop.setObjectName("danger")
         self.btn_stop.clicked.connect(lambda: self.app.emergency_stop())
         btnrow.addWidget(self.btn_stop, 0, 0, 1, 2)
-        self.btn_resume = QPushButton("▶ Resume")
+        self.btn_resume = QPushButton(tr("▶ Resume"))
         self.btn_resume.clicked.connect(lambda: self.app.resume_from_emergency())
-        self.btn_pause = QPushButton("⏸ Pause")
+        self.btn_pause = QPushButton(tr("⏸ Pause"))
         self.btn_pause.setCheckable(True)
         self.btn_pause.clicked.connect(self._on_pause)
         btnrow.addWidget(self.btn_pause, 0, 2)
         btnrow.addWidget(self.btn_resume, 0, 3)
 
-        self.btn_camera = QPushButton("📷 Camera: On")
+        self.btn_camera = QPushButton(tr("📷 Camera: On"))
         self.btn_camera.clicked.connect(self._on_camera)
-        self.btn_mic = QPushButton("🎤 Mic: On")
+        self.btn_mic = QPushButton(tr("🎤 Mic: On"))
         self.btn_mic.clicked.connect(self._on_mic)
-        self.btn_privacy = QPushButton("🕶 Privacy Mode")
+        self.btn_privacy = QPushButton(tr("🕶 Privacy Mode"))
         self.btn_privacy.setCheckable(True)
         self.btn_privacy.clicked.connect(self._on_privacy)
         btnrow.addWidget(self.btn_camera, 1, 0)
         btnrow.addWidget(self.btn_mic, 1, 1)
         btnrow.addWidget(self.btn_privacy, 1, 2)
 
-        self.btn_calibrate = QPushButton("🎯 Calibrate")
+        self.btn_calibrate = QPushButton(tr("🎯 Calibrate"))
         self.btn_calibrate.clicked.connect(lambda: self.app._ui_calibrate())
-        self.btn_keyboard = QPushButton("⌨ Keyboard")
+        self.btn_keyboard = QPushButton(tr("⌨ Keyboard"))
         self.btn_keyboard.clicked.connect(lambda: self.app._ui_keyboard())
-        self.btn_trainer = QPushButton("✋ Teach My Gesture")
+        self.btn_trainer = QPushButton(tr("✋ Teach My Gesture"))
         self.btn_trainer.clicked.connect(lambda: self.app._ui_trainer())
-        self.btn_debug = QPushButton("🐞 Debug")
+        self.btn_debug = QPushButton(tr("🐞 Debug"))
         self.btn_debug.clicked.connect(lambda: self.app._ui_debug())
         btnrow.addWidget(self.btn_calibrate, 2, 0)
         btnrow.addWidget(self.btn_keyboard, 2, 1)
         btnrow.addWidget(self.btn_trainer, 2, 2)
         btnrow.addWidget(self.btn_debug, 2, 3)
 
-        self.btn_demo = QPushButton("🔵 DEMO MODE")
+        self.btn_demo = QPushButton(tr("🔵 DEMO MODE"))
         self.btn_demo.setCheckable(True)
         self.btn_demo.clicked.connect(self._on_demo)
-        self.btn_macro = QPushButton("🧩 Macro Studio")
+        self.btn_macro = QPushButton(tr("🧩 Macro Studio"))
         self.btn_macro.clicked.connect(lambda: self.app._ui_macros())
-        self.btn_testlab = QPushButton("🧪 Test Lab")
+        self.btn_testlab = QPushButton(tr("🧪 Test Lab"))
         self.btn_testlab.clicked.connect(lambda: self.app._ui_testlab())
-        self.btn_settings = QPushButton("⚙ Settings")
+        self.btn_settings = QPushButton(tr("⚙ Settings"))
         self.btn_settings.clicked.connect(lambda: self.app._ui_settings())
         btnrow.addWidget(self.btn_demo, 3, 0)
         btnrow.addWidget(self.btn_macro, 3, 1)
@@ -208,13 +220,14 @@ class Dashboard(QWidget):
         rlay.addWidget(self.toast)
 
         # activity log
-        rlay.addWidget(QLabel("Activity log"))
+        self.activity_label = QLabel(tr("Activity log"))
+        rlay.addWidget(self.activity_label)
         self.activity = QListWidget()
         self.activity.setMaximumHeight(110)
         rlay.addWidget(self.activity)
 
         # recent actions (real-time, local history)
-        rlay.addWidget(QLabel("Recent actions"))
+        self.recent_label = QLabel(tr("Recent actions"))
         self.recent = QListWidget()
         self.recent.setMaximumHeight(110)
         rlay.addWidget(self.recent)
@@ -238,7 +251,7 @@ class Dashboard(QWidget):
         self.dot_env.set_active(s.lighting in ("good", "bright"),
                                 color_on=env_colors.get(s.lighting, "#ffb35c"),
                                 color_off=env_colors.get(s.lighting, "#ffb35c"))
-        self.dot_env.label.setText(f"Lighting: {s.lighting.title()}")
+        self.dot_env.label.setText(trf("Lighting: {lighting}", lighting=s.lighting.title()))
 
         self.set_demo_badge(s.demo_mode)
         self.set_audio_badge(s.audio_online, s.voice_engine)
@@ -268,13 +281,14 @@ class Dashboard(QWidget):
             self._refresh_recent()
 
     def set_demo_badge(self, on: bool) -> None:
+        self._demo_state = bool(on)
         if on:
-            self.demo_badge.setText("🔵 DEMO MODE")
+            self.demo_badge.setText(tr("🔵 DEMO MODE"))
             self.demo_badge.setStyleSheet(
                 "font-size: 13px; font-weight: bold; color: #6fc3ff; background: #11263a;"
                 "border: 1px solid #2a7ab5; border-radius: 8px; padding: 3px 10px;")
         else:
-            self.demo_badge.setText("🔴 REAL")
+            self.demo_badge.setText(tr("🔴 REAL"))
             self.demo_badge.setStyleSheet(
                 "font-size: 13px; font-weight: bold; color: #ff6b6b; background: #2a1515;"
                 "border: 1px solid #b33636; border-radius: 8px; padding: 3px 10px;")
@@ -303,31 +317,31 @@ class Dashboard(QWidget):
 
     def _camera_tooltip(self, s: StatusSnapshot) -> str:
         if s.camera_active:
-            return "Camera running"
+            return tr("Camera running")
         err = getattr(getattr(self.app.core, "camera", None), "error", None)
-        return err or "Camera unavailable"
+        return err or tr("Camera unavailable")
 
     def _hand_tooltip(self, s: StatusSnapshot) -> str:
         if s.tracking_paused:
-            return "Tracking paused"
+            return tr("Tracking paused")
         if s.hand_tracking_active:
-            return "Hand model ready"
+            return tr("Hand model ready")
         err = getattr(getattr(self.app.core, "hand_tracker", None), "error", None)
-        return err or "Loading hand model (MediaPipe)…"
+        return err or tr("Loading hand model (MediaPipe)…")
 
     def _gaze_tooltip(self, s: StatusSnapshot) -> str:
         if not s.gaze_ready:
             core = getattr(self.app, "core", None)
             if not getattr(getattr(core, "settings", None), "tracking", None) or \
                     not core.settings.tracking.gaze_enabled:
-                return "Gaze tracking disabled"
+                return tr("Gaze tracking disabled")
             err = getattr(getattr(core, "face_tracker", None), "error", None)
             if err:
-                return f"Face model error: {err}"
-            return "Face model loading…"
+                return trf("Face model error: {err}", err=err)
+            return tr("Face model loading…")
         if s.gaze_active:
-            return "Gaze active (tracking your eyes)"
-        return "Gaze ready — face not in view"
+            return tr("Gaze active (tracking your eyes)")
+        return tr("Gaze ready — face not in view")
 
     def _refresh_recent(self) -> None:
         try:
@@ -358,23 +372,87 @@ class Dashboard(QWidget):
         txt = names.get(g, g)
         return f"{txt}  {conf:>4.0%}" if conf else txt
 
-    # ---- handlers ----------------------------------------------------------
+# ---- handlers ----------------------------------------------------------
     def _on_profile_change(self, idx: int) -> None:
         pid = self.profile_combo.itemData(idx)
         if pid:
             self.app.set_profile(pid)
 
+    def _on_lang(self, idx: int) -> None:
+        code = self.lang_combo.itemData(idx) or "en"
+        if code != self._lang:
+            set_language(code)
+
+    def _on_lang_changed(self, _code: str) -> None:
+        if not hasattr(self, "btn_stop"):
+            return
+        self._lang = current_language()
+        self.retranslate()
+
+    def retranslate(self) -> None:
+        self.tagline.setText(tr("Multimodal contactless control — hands, voice & eyes"))
+        self.preview.setText(tr("Camera preview"))
+        self.action_label.setText(tr("Waiting for a gesture…"))
+        self.dot_cam.label.setText(tr("Camera"))
+        self.dot_hand.label.setText(tr("Hand Tracking"))
+        self.dot_voice.label.setText(tr("Voice"))
+        self.dot_gaze.label.setText(tr("Gaze (optional)"))
+        self.dot_ctl.label.setText(tr("Control"))
+        self.dot_env.label.setText(tr("Lighting"))
+        self.card_fps.title.setText(tr("Camera FPS"))
+        self.card_fps.caption.setText(tr("frames / sec"))
+        self.card_tfps.title.setText(tr("Tracking"))
+        self.card_tfps.caption.setText("FPS")
+        self.card_lat.title.setText(tr("Latency"))
+        self.card_lat.caption.setText(tr("ms"))
+        self.card_cpu.title.setText(tr("CPU"))
+        self.card_cpu.caption.setText("%")
+        self.card_mem.title.setText(tr("RAM"))
+        self.card_mem.caption.setText(tr("MB"))
+        self.card_cmd.title.setText(tr("Commands"))
+        self.card_cmd.caption.setText(tr("per minute"))
+        self.mode_label.setText(tr("Mode:"))
+        self.activity_label.setText(tr("Activity log"))
+        self.recent_label.setText(tr("Recent actions"))
+        self.btn_stop.setText(tr("⛔ STOP NO-TOUCH CONTROL"))
+        self.btn_resume.setText(tr("▶ Resume"))
+        self._set_state_texts()
+        if self.profile_combo.count():
+            cur = self.profile_combo.currentData()
+            self.profile_combo.blockSignals(True)
+            self.profile_combo.clear()
+            for p in self.app.profiles.all():
+                self.profile_combo.addItem(tr(self._titles.get(p.id, p.name)), p.id)
+            idx = self.profile_combo.findData(cur)
+            if idx >= 0:
+                self.profile_combo.setCurrentIndex(idx)
+            self.profile_combo.blockSignals(False)
+        self.set_demo_badge(self._demo_state)
+        if self._emergency_stopped:
+            self.on_emergency()
+
+    def _set_state_texts(self) -> None:
+        self.btn_pause.setText(tr("⏸ Resume") if self.btn_pause.isChecked() else tr("⏸ Pause"))
+        self.btn_camera.setText(tr("📷 Camera: Off")
+                                if not self.app.privacy.camera_enabled
+                                else tr("📷 Camera: On"))
+        self.btn_mic.setText(tr("🎤 Mic: Off")
+                             if not self.app.privacy.mic_enabled
+                             else tr("🎤 Mic: On"))
+
     def _on_pause(self, checked: bool) -> None:
         self.app.pause_tracking(checked)
-        self.btn_pause.setText("⏸ Resume" if checked else "⏸ Pause")
+        self.btn_pause.setText(tr("⏸ Resume") if checked else tr("⏸ Pause"))
 
     def _on_camera(self) -> None:
         self.app.toggle_camera()
-        self.btn_camera.setText("📷 Camera: Off" if not self.app.privacy.camera_enabled else "📷 Camera: On")
+        self.btn_camera.setText(
+            tr("📷 Camera: Off") if not self.app.privacy.camera_enabled else tr("📷 Camera: On"))
 
     def _on_mic(self) -> None:
         self.app.toggle_mic()
-        self.btn_mic.setText("🎤 Mic: Off" if not self.app.privacy.mic_enabled else "🎤 Mic: On")
+        self.btn_mic.setText(
+            tr("🎤 Mic: Off") if not self.app.privacy.mic_enabled else tr("🎤 Mic: On"))
 
     def _on_privacy(self, checked: bool) -> None:
         self.app.toggle_privacy_mode()
@@ -391,11 +469,13 @@ class Dashboard(QWidget):
             self.activity.takeItem(self.activity.count() - 1)
 
     def on_emergency(self) -> None:
+        self._emergency_stopped = True
         self.btn_stop.setEnabled(False)
         self.btn_resume.setEnabled(True)
-        self.toast.setText("⛔ EMERGENCY STOP — press Resume or CTRL+ALT+H to re-enable")
+        self.toast.setText(tr("⛔ EMERGENCY STOP — press Resume or CTRL+ALT+H to re-enable"))
 
     def on_resume(self) -> None:
+        self._emergency_stopped = False
         self.btn_stop.setEnabled(True)
         self.btn_resume.setEnabled(False)
-        self.toast.setText("✓ Control re-enabled")
+        self.toast.setText(tr("✓ Control re-enabled"))

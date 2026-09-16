@@ -254,8 +254,42 @@ section { position: relative; }
 }
 .nav-links a:hover { color: var(--text); background: var(--panel); }
 
-.nav-actions { display: flex; gap: 0.6rem; }
+.nav-actions { display: flex; gap: 0.6rem; align-items: center; }
 .nav-actions .btn { min-height: 42px; padding-block: 0.5rem; }
+
+.lang-wrap { position: relative; display: inline-flex; }
+.lang-wrap::after {
+  content: "▾";
+  position: absolute;
+  inset-inline-end: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--muted, #9aa4b2);
+  font-size: 0.78rem;
+}
+#lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 42px;
+  padding: 0.5rem 2rem 0.5rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--border, rgba(255,255,255,0.14));
+  background: var(--panel, rgba(255,255,255,0.06));
+  color: var(--text, #e8ecf1);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+#lang-select:hover { border-color: var(--accent-2, #35d0ba); }
+#lang-select:focus-visible {
+  outline: 2px solid var(--accent-2, #35d0ba);
+  outline-offset: 2px;
+}
+#lang-select option { background: #11161d; color: #e8ecf1; }
+
+[dir="rtl"] .nav-actions { margin-inline-start: auto; }
 
 /* ---------- Hero ---------- */
 

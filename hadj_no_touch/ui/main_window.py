@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 from ..core.app import AppCore
 from ..config import SETTINGS
 from ..logging_setup import get_logger
+from ..i18n import tr, trf, set_language, install, current_language, LANGUAGE_NAMES
 from .dashboard import Dashboard
 from .calibration_wizard import CalibrationWizard
 from .gesture_trainer import GestureTrainer
@@ -62,6 +63,7 @@ class MainWindow(QMainWindow):
             "planner": None,
         }
         self._tray = None
+        self._lang = current_language()
 
         self.dashboard = Dashboard(self)
         self.setCentralWidget(self.dashboard)
@@ -72,6 +74,7 @@ class MainWindow(QMainWindow):
         self._build_menus()
         self._build_tray()
         self._apply_large_cursor()
+        install(self._on_lang_changed)
 
     # ------------------------------------------------------------------
     # attribute/proxy surface used by the dashboard & panels
@@ -138,28 +141,28 @@ class MainWindow(QMainWindow):
             return a
 
         m = self.menuBar()
-        m_c = m.addMenu("&Control")
-        act(m_c, "Camera On/Off", self.toggle_camera)
-        act(m_c, "Microphone On/Off", self.toggle_mic)
-        act(m_c, "Pause tracking", self._menu_pause)
-        act(m_c, "Privacy mode", self.toggle_privacy_mode)
+        m_c = m.addMenu(tr("&Control"))
+        act(m_c, tr("Camera On/Off"), self.toggle_camera)
+        act(m_c, tr("Microphone On/Off"), self.toggle_mic)
+        act(m_c, tr("Pause tracking"), self._menu_pause)
+        act(m_c, tr("Privacy mode"), self.toggle_privacy_mode)
         m_c.addSeparator()
-        act(m_c, "Emergency stop", self.emergency_stop, "Ctrl+Alt+H")
-        act(m_c, "Resume control", self.resume_from_emergency)
+        act(m_c, tr("Emergency stop"), self.emergency_stop, "Ctrl+Alt+H")
+        act(m_c, tr("Resume control"), self.resume_from_emergency)
 
-        m_v = m.addMenu("&View")
-        act(m_v, "Calibration wizard", self._ui_calibrate)
-        act(m_v, "Virtual keyboard", self._ui_keyboard)
-        act(m_v, "Teach my gesture", self._ui_trainer)
-        act(m_v, "Macro Studio & custom commands", self._ui_macros)
-        act(m_v, "Test Lab", self._ui_testlab)
-        act(m_v, "Settings Center", self._ui_settings)
-        act(m_v, "Debug panel", self._ui_debug)
+        m_v = m.addMenu(tr("&View"))
+        act(m_v, tr("Calibration wizard"), self._ui_calibrate)
+        act(m_v, tr("Virtual keyboard"), self._ui_keyboard)
+        act(m_v, tr("Teach my gesture"), self._ui_trainer)
+        act(m_v, tr("Macro Studio & custom commands"), self._ui_macros)
+        act(m_v, tr("Test Lab"), self._ui_testlab)
+        act(m_v, tr("Settings Center"), self._ui_settings)
+        act(m_v, tr("Debug panel"), self._ui_debug)
 
-        m_h = m.addMenu("&Help")
-        act(m_h, "Quick start", self._ui_help)
-        act(m_h, "Quick guide", self._quick_guide)
-        act(m_h, "About", self._about)
+        m_h = m.addMenu(tr("&Help"))
+        act(m_h, tr("Quick start"), self._ui_help)
+        act(m_h, tr("Quick guide"), self._quick_guide)
+        act(m_h, tr("About"), self._about)
 
     def _menu_pause(self) -> None:
         self.core.pause_tracking(True)
@@ -169,14 +172,29 @@ class MainWindow(QMainWindow):
         self._tray = QSystemTrayIcon(_make_tray_icon(), self)
         self._tray.setToolTip("HADJ NO-TOUCH AI")
         menu = QMenu()
-        menu.addAction("Show interface", self.show_normal)
-        menu.addAction("Calibrate", self._ui_calibrate)
-        menu.addAction("Emergency stop", self.emergency_stop)
-        menu.addSeparator()
-        menu.addAction("Quit", self._quit)
+        self._build_tray_menu(menu)
         self._tray.setContextMenu(menu)
         self._tray.activated.connect(self._on_tray_activated)
         self._tray.show()
+
+    def _build_tray_menu(self, menu) -> None:
+        menu.addAction(tr("Show interface"), self.show_normal)
+        menu.addAction(tr("Calibrate"), self._ui_calibrate)
+        menu.addAction(tr("Emergency stop"), self.emergency_stop)
+        menu.addSeparator()
+        menu.addAction(tr("Quit"), self._quit)
+
+    def _on_lang_changed(self, code: str) -> None:
+        self._lang = code
+        bar = self.menuBar()
+        if bar is not None:
+            bar.clear()
+            self._build_menus()
+        if self._tray is not None:
+            menu = self._tray.contextMenu()
+            if menu is not None:
+                menu.clear()
+                self._build_tray_menu(menu)
 
     def _on_tray_activated(self, reason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
@@ -209,8 +227,8 @@ class MainWindow(QMainWindow):
     def _on_confirm_request(self, intent) -> None:
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Question)
-        box.setWindowTitle("Confirm action")
-        box.setText("Confirm action?")
+        box.setWindowTitle(tr("Confirm action"))
+        box.setText(tr("Confirm action?"))
         box.setInformativeText(intent.describe())
         box.setStandardButtons(QMessageBox.StandardButton.Yes
                                | QMessageBox.StandardButton.No)
@@ -327,16 +345,15 @@ class MainWindow(QMainWindow):
             tb = traceback.format_exc()
             log.error("core startup failed:\n%s", tb)
             QMessageBox.critical(
-                self, "Startup error",
-                "HADJ NO-TOUCH AI could not start.\n\n"
-                f"{tb[-2500:]}\n\n"
-                "Details are in the app log file.")
+                self, tr("Startup error"),
+                trf("HADJ NO-TOUCH AI could not start.\n\n{err}\n\nDetails are in the app log file.",
+                    err=tb[-2500:]))
             return
         if self.core.camera_error_hint:
             QMessageBox.warning(
-                self, "Camera",
-                f"Camera unavailable ({self.core.camera_error_hint}).\n\n"
-                "Gestures are offline but voice can still be used.")
+                self, tr("Camera"),
+                trf("Camera unavailable ({err}).\n\nGestures are offline but voice can still be used.",
+                    err=self.core.camera_error_hint))
         self._first_run_calibration()
         self._first_run_voice_choice()
 
@@ -392,13 +409,13 @@ class MainWindow(QMainWindow):
             return
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Question)
-        box.setWindowTitle("First run")
-        box.setText("Set up your virtual interaction plane?")
+        box.setWindowTitle(tr("First run"))
+        box.setText(tr("Set up your virtual interaction plane?"))
         box.setInformativeText(
-            "Calibrate now so the webcam fingertip maps correctly onto your "
-            "screen. You can recalibrate any time from the dashboard.")
-        y = box.addButton("Calibrate now", QMessageBox.ButtonRole.YesRole)
-        box.addButton("Later", QMessageBox.ButtonRole.NoRole)
+            tr("Calibrate now so the webcam fingertip maps correctly onto your screen. "
+               "You can recalibrate any time from the dashboard."))
+        y = box.addButton(tr("Calibrate now"), QMessageBox.ButtonRole.YesRole)
+        box.addButton(tr("Later"), QMessageBox.ButtonRole.NoRole)
         box.exec()
         if box.clickedButton() is y:
             self._ui_calibrate()
@@ -410,7 +427,7 @@ class MainWindow(QMainWindow):
         if self._tray is not None:
             self._tray.showMessage(
                 "HADJ NO-TOUCH AI",
-                "Still running in the system tray (gestures remain active).",
+                tr("Still running in the system tray (gestures remain active)."),
                 QSystemTrayIcon.MessageIcon.Information,
                 2500)
 
@@ -431,25 +448,25 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     def _quick_guide(self) -> None:
         QMessageBox.information(
-            self, "Quick guide",
-            "POINT \u2192 move cursor\n"
-            "PINCH (thumb+index) \u2192 left click\n"
-            "Double pinch \u2192 double click\n"
-            "Thumb + middle \u2192 right click\n"
-            "Pinch + move \u2192 drag\n"
-            "Open palm + move vertically \u2192 scroll\n"
-            "Swipe \u2192 next/previous (slides, pages, tracks, tabs)\n"
-            "Open palm held 1-2 s \u2192 pause interaction\n"
-            "Fist held \u2192 interaction lock\n\n"
-            "Voice: 'open chrome', 'next page', 'volume 50 percent',\n"
-            "'close this window', 'take screenshot' \u2014 English, French, Arabic.\n\n"
-            "Emergency stop: CTRL + ALT + H")
+            self, tr("Quick guide"),
+            tr("POINT → move cursor") + "\n"
+            + tr("PINCH (thumb+index) → left click") + "\n"
+            + tr("Double pinch → double click") + "\n"
+            + tr("Thumb + middle → right click") + "\n"
+            + tr("Pinch + move → drag") + "\n"
+            + tr("Open palm + move vertically → scroll") + "\n"
+            + tr("Swipe → next/previous (slides, pages, tracks, tabs)") + "\n"
+            + tr("Open palm held 1-2 s → pause interaction") + "\n"
+            + tr("Fist held → interaction lock") + "\n\n"
+            + tr("Voice: 'open chrome', 'next page', 'volume 50 percent', "
+                 "'close this window', 'take screenshot' — English, French, Arabic.") + "\n\n"
+            + tr("Emergency stop: CTRL + ALT + H"))
 
     def _about(self) -> None:
         QMessageBox.about(
             self, "HADJ NO-TOUCH AI",
-            "HADJ NO-TOUCH AI \u2014 a multimodal AI platform for controlling a "
-            "computer without touching it (hands, voice, optional gaze).\n\n"
-            "Privacy-first: camera and microphone processing stays local by "
-            "default; no frames are uploaded or recorded.\n\n"
-            "This is a virtual/contactless interaction layer, not a touchscreen.")
+            tr("HADJ NO-TOUCH AI — a multimodal AI platform for controlling a "
+               "computer without touching it (hands, voice, optional gaze).\n\n"
+               "Privacy-first: camera and microphone processing stays local by "
+               "default; no frames are uploaded or recorded.\n\n"
+               "This is a virtual/contactless interaction layer, not a touchscreen."))
