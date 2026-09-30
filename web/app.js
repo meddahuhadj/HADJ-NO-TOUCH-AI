@@ -954,6 +954,19 @@
         SoundFx.play("click");
         btnStartApp.disabled = true;
         try {
+          if (location.protocol === "https:") {
+            const openLocal = confirm(
+              "🌐 Vous consultez la version hébergée sur Vercel (HTTPS).\n\n" +
+              "Pour le contrôle direct en temps réel de votre ordinateur, la passerelle s'exécute en local sur :\n" +
+              "http://127.0.0.1:8000\n\n" +
+              "Voulez-vous ouvrir l'interface locale sur votre PC ?"
+            );
+            if (openLocal) {
+              window.open("http://127.0.0.1:8000", "_blank");
+            }
+            return;
+          }
+
           let res = await fetch("/api/launch", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
           if (!res || !res.success) {
             res = await fetch("http://127.0.0.1:8000/api/launch", { mode: "cors", cache: "no-store" }).then((r) => r.json()).catch(() => null);
