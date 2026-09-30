@@ -192,9 +192,9 @@ class GestureRecognizer:
                     return HandGesture.SWIPE_RIGHT, 0.88
 
         # 7. Evaluate INDEX POINT (Virtual Mouse Movement)
-        # Index finger extended, middle/ring/pinky folded
-        if data.index_extended and not data.middle_extended and not data.ring_extended:
-            return HandGesture.INDEX_POINT, 0.96
+        # Index finger extended, while avoiding open palm (all fingers extended)
+        if data.index_extended and not (data.middle_extended and data.ring_extended and data.pinky_extended):
+            return HandGesture.INDEX_POINT, 0.94
 
         return HandGesture.NONE, 0.50
 

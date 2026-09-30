@@ -70,6 +70,8 @@ class CameraStream(threading.Thread):
         self.pointer_screen_pos: tuple = (0, 0)
         self._pinch_clicked: bool = False
         self._double_pinch_clicked: bool = False
+        self._last_hand_time: float = 0.0
+        self._hand_lost_grace_s: float = 0.40  # Eliminates flickering 'hand not visible'
 
         # Safety / Privacy
         self.camera_enabled = self.settings.get("privacy.camera_enabled", True)
@@ -319,16 +321,19 @@ class CameraStream(threading.Thread):
                     self.cursor.is_dragging = False
                     self.win_control.mouse_up()
 
+                self._last_hand_time = time.time()
                 # Draw skeleton HUD overlay
                 if self.settings.get("gestures.show_hand_skeleton", True):
                     frame = self.detector.draw_skeleton(frame, landmarks_data, gesture.value, conf)
 
                 self.qt_bridge.gesture_detected.emit(gesture.value, conf)
             else:
-                self.latest_gesture = HandGesture.NONE
-                self.cursor.reset()
-                self._feed_calibration(None)
-                self.qt_bridge.gesture_detected.emit("NONE", 0.0)
+                # Apply temporal grace period before declaring hand lost to avoid flickering
+                if (time.time() - self._last_hand_time) >= self._hand_lost_grace_s:
+                    self.latest_gesture = HandGesture.NONE
+                    self.cursor.reset()
+                    self._feed_calibration(None)
+                    self.qt_bridge.gesture_detected.emit("NONE", 0.0)
 
             self.latest_frame = frame
 

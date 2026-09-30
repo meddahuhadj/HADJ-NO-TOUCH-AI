@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "hadj-notouch-ai",
+  "name": "hadj-no-touch-web",
   "outputDirectory": "web",
   "buildCommand": "",
   "cleanUrls": true,

@@ -279,7 +279,7 @@ class CompanionServer(threading.Thread):
                 self.win_control.volume_up(step=payload.get("step", 6))
             elif action == "volume_down":
                 self.win_control.volume_down(step=payload.get("step", 6))
-            elif action == "volume_mute":
+            elif action in ("volume_mute", "mute"):
                 self.win_control.volume_mute()
             elif action == "media_play_pause":
                 self.win_control.media_play_pause()
@@ -295,9 +295,9 @@ class CompanionServer(threading.Thread):
                 self.win_control.show_desktop()
             elif action == "task_view":
                 self.win_control.open_task_view()
-            elif action == "open_task_manager":
+            elif action in ("open_task_manager", "task_manager"):
                 self.win_control.open_task_manager()
-            elif action == "open_explorer":
+            elif action in ("open_explorer", "explorer"):
                 self.win_control.open_explorer()
             elif action == "lock_pc":
                 self.win_control.lock_pc()

@@ -359,38 +359,39 @@ def probe_microphones(max_devices: int = 12) -> List[AudioDevice]:
     if not HAS_PYAUDIO:
         return []
 
-    devices: List[AudioDevice] = []
-    audio = None
-    try:
-        audio = pyaudio.PyAudio()
-        for index in range(audio.get_device_count()):
-            if len(devices) >= max_devices:
-                break
-            try:
-                info = audio.get_device_info_by_index(index)
-            except Exception:
-                continue
-            if int(info.get("maxInputChannels", 0)) <= 0:
-                continue
-            devices.append(
-                AudioDevice(
-                    index=index,
-                    name=str(info.get("name", f"Microphone {index}")),
-                    channels=int(info.get("maxInputChannels", 1)),
-                    max_input_channels=int(info.get("maxInputChannels", 0)),
-                    default_sample_rate=int(info.get("defaultSampleRate", 0)),
+    with _CAPTURE_LOCK:
+        devices: List[AudioDevice] = []
+        audio = None
+        try:
+            audio = pyaudio.PyAudio()
+            for index in range(audio.get_device_count()):
+                if len(devices) >= max_devices:
+                    break
+                try:
+                    info = audio.get_device_info_by_index(index)
+                except Exception:
+                    continue
+                if int(info.get("maxInputChannels", 0)) <= 0:
+                    continue
+                devices.append(
+                    AudioDevice(
+                        index=index,
+                        name=str(info.get("name", f"Microphone {index}")),
+                        channels=int(info.get("maxInputChannels", 1)),
+                        max_input_channels=int(info.get("maxInputChannels", 0)),
+                        default_sample_rate=int(info.get("defaultSampleRate", 0)),
+                    )
                 )
-            )
-    except Exception:
-        return []
-    finally:
-        if audio is not None:
-            try:
-                audio.terminate()
-            except Exception:
-                pass
+        except Exception:
+            return []
+        finally:
+            if audio is not None:
+                try:
+                    audio.terminate()
+                except Exception:
+                    pass
 
-    return devices
+        return devices
 
 
 # --------------------------------------------------------------------------- #
@@ -429,38 +430,39 @@ class MicrophoneProbe:
             self.error = "PyAudio is not installed"
             return {"noise_floor": 0.0, "speech_threshold": 0.06, "peak": 0.0, "ok": 0.0}
 
-        audio = None
-        stream = None
-        levels: List[float] = []
-        try:
-            audio = pyaudio.PyAudio()
-            stream = audio.open(
-                format=pyaudio.paInt16,
-                channels=1,
-                rate=self.sample_rate,
-                input=True,
-                input_device_index=self.device_index,
-                frames_per_buffer=self.chunk_size,
-            )
-            chunks = max(1, int(self.sample_rate * seconds / self.chunk_size))
-            for _ in range(chunks):
-                raw = stream.read(self.chunk_size, exception_on_overflow=False)
-                levels.append(self._rms(raw))
-        except Exception as error:
-            self.error = str(error)
-            return {"noise_floor": 0.0, "speech_threshold": 0.06, "peak": 0.0, "ok": 0.0}
-        finally:
-            if stream is not None:
-                try:
-                    stream.stop_stream()
-                    stream.close()
-                except Exception:
-                    pass
-            if audio is not None:
-                try:
-                    audio.terminate()
-                except Exception:
-                    pass
+        with _CAPTURE_LOCK:
+            audio = None
+            stream = None
+            levels: List[float] = []
+            try:
+                audio = pyaudio.PyAudio()
+                stream = audio.open(
+                    format=pyaudio.paInt16,
+                    channels=1,
+                    rate=self.sample_rate,
+                    input=True,
+                    input_device_index=self.device_index,
+                    frames_per_buffer=self.chunk_size,
+                )
+                chunks = max(1, int(self.sample_rate * seconds / self.chunk_size))
+                for _ in range(chunks):
+                    raw = stream.read(self.chunk_size, exception_on_overflow=False)
+                    levels.append(self._rms(raw))
+            except Exception as error:
+                self.error = str(error)
+                return {"noise_floor": 0.0, "speech_threshold": 0.06, "peak": 0.0, "ok": 0.0}
+            finally:
+                if stream is not None:
+                    try:
+                        stream.stop_stream()
+                        stream.close()
+                    except Exception:
+                        pass
+                if audio is not None:
+                    try:
+                        audio.terminate()
+                    except Exception:
+                        pass
 
         if not levels:
             return {"noise_floor": 0.0, "speech_threshold": 0.06, "peak": 0.0, "ok": 0.0}

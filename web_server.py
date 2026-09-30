@@ -240,7 +240,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                 win.volume_up(step=body.get("step", 6))
             elif action == "volume_down":
                 win.volume_down(step=body.get("step", 6))
-            elif action == "volume_mute":
+            elif action in ("volume_mute", "mute"):
                 win.volume_mute()
             elif action == "media_play_pause":
                 win.media_play_pause()
@@ -256,9 +256,9 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                 win.show_desktop()
             elif action == "task_view":
                 win.open_task_view()
-            elif action == "open_task_manager":
+            elif action in ("open_task_manager", "task_manager"):
                 win.open_task_manager()
-            elif action == "open_explorer":
+            elif action in ("open_explorer", "explorer"):
                 win.open_explorer()
             elif action == "lock_pc":
                 win.lock_pc()

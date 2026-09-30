@@ -63,7 +63,9 @@ class HandLandmarksData:
 
         d_tip = math.hypot(tip[0] - wrist[0], tip[1] - wrist[1])
         d_pip = math.hypot(pip[0] - wrist[0], pip[1] - wrist[1])
-        return d_tip > (d_pip * 1.15)
+        # Allow natural foreshortening for index finger when pointing towards camera
+        ratio = 1.04 if tip_idx == 8 else 1.15
+        return d_tip > (d_pip * ratio)
 
     def _is_thumb_extended(self) -> bool:
         """Determines if thumb is extended relative to CMC/MCP joints."""
@@ -82,8 +84,8 @@ class GestureDetector:
         self,
         static_image_mode: bool = False,
         max_num_hands: int = 1,
-        min_detection_confidence: float = 0.65,
-        min_tracking_confidence: float = 0.60
+        min_detection_confidence: float = 0.45,
+        min_tracking_confidence: float = 0.40
     ):
         self.mp_hands = mp.solutions.hands
         self.mp_draw = mp.solutions.drawing_utils
