@@ -59,7 +59,11 @@ def classify(hand: Hand, pinch_enter: float, pinch_exit: float, aspect: float = 
     ext, curl = {}, {}
     for name, (mcp, pip, _dip, tip) in FINGERS.items():
         d_tip, d_pip, d_mcp = _d(p[tip], w), _d(p[pip], w), _d(p[mcp], w)
-        ext[name] = d_tip > d_pip * 1.15 and d_pip > d_mcp
+        if name == "index":
+            # مراعاة منظور الكاميرا عند توجيه السبابة للأمام نحو الشاشة
+            ext[name] = (d_tip > d_pip * 1.05 and d_pip > d_mcp * 0.98) or (_d(p[tip], p[mcp]) > size * 0.45 and d_tip > d_pip)
+        else:
+            ext[name] = d_tip > d_pip * 1.15 and d_pip > d_mcp
         curl[name] = d_tip < d_pip
     thumb_ext = _d(p[THUMB_TIP], p[17]) > _d(p[THUMB_IP], p[17]) * 1.05 and \
         _d(p[THUMB_TIP], p[5]) > size * 0.45

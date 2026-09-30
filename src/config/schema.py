@@ -53,7 +53,7 @@ class GestureTuning(BaseModel):
     pinch_exit: float = Field(0.38, ge=0.1, le=0.9)     # لإنهائه (أكبر = تخلف hysteresis)
     drag_hold_ms: int = Field(400, ge=100, le=3000)     # قرص مستمر أطول من هذا ← سحب
     drag_move: float = Field(0.04, ge=0.005, le=0.3)    # أو حركة أكبر من هذا (نسبة من عرض الصورة) ← سحب
-    rewind_ms: int = Field(120, ge=0, le=500)           # النقر في موضع المؤشر قبل بدء القرص بهذه المدة
+    rewind_ms: int = Field(180, ge=0, le=500)           # النقر في موضع المؤشر قبل بدء القرص بهذه المدة
     fist_ms: int = Field(600, ge=100, le=5000)
     palm_resume_ms: int = Field(1000, ge=200, le=5000)
     palm_long_ms: int = Field(2000, ge=500, le=10000)
@@ -80,8 +80,8 @@ class VisionConfig(BaseModel):
     control_zone: tuple[float, float, float, float] = (0.2, 0.15, 0.8, 0.75)
     min_cutoff: float = Field(1.0, gt=0, le=20)
     beta: float = Field(0.01, ge=0, le=1)
-    min_detection_confidence: float = Field(0.6, ge=0.1, le=1)
-    min_tracking_confidence: float = Field(0.5, ge=0.1, le=1)
+    min_detection_confidence: float = Field(0.45, ge=0.1, le=1)
+    min_tracking_confidence: float = Field(0.40, ge=0.1, le=1)
     tuning: GestureTuning = Field(default_factory=GestureTuning)
     # إيماءة ← إجراء (أي إجراء من قائمة الإجراءات، أو none للتعطيل)
     bindings: dict[str, str] = Field(default_factory=lambda: {

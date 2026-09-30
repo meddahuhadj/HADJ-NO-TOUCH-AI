@@ -63,14 +63,14 @@ vision:
   # التنعيم (One Euro): min_cutoff أقل = ثبات أكثر وتأخر أكبر؛ beta أكبر = استجابة أسرع للحركة السريعة
   min_cutoff: 1.0
   beta: 0.01
-  min_detection_confidence: 0.6
-  min_tracking_confidence: 0.5
+  min_detection_confidence: 0.45
+  min_tracking_confidence: 0.40
   tuning:
     pinch_enter: 0.25     # قرص الإبهام بالسبابة يبدأ تحت هذه المسافة (نسبة لحجم اليد)
     pinch_exit: 0.38      # وينتهي فوق هذه
     drag_hold_ms: 400     # إبقاء القرص أطول من هذا = بدء سحب
     drag_move: 0.04       # أو تحريك اليد أثناء القرص أكثر من هذا = بدء سحب
-    rewind_ms: 120        # النقر يحدث حيث كان المؤشر قبل القرص (يمنع انزياح النقرة)
+    rewind_ms: 180        # النقر يحدث حيث كان المؤشر قبل القرص (يمنع انزياح النقرة)
     fist_ms: 600          # قبضة لهذه المدة = إيقاف مؤقت
     palm_resume_ms: 1000  # كف مفتوح لهذه المدة أثناء الإيقاف = استئناف
     palm_long_ms: 2000    # كف مفتوح لهذه المدة = الإجراء palm_hold_long

@@ -140,6 +140,8 @@ def run(cfg_dict: dict, models_dir: str, address, authkey: bytes) -> None:
 
     frames, busy, last_report = 0, 0.0, time.monotonic()
     hand_visible = False
+    last_hand_seen = 0.0
+    LOST_GRACE_S = 0.40  # 400ms grace period to eliminate flickering 'hand not visible'
     last_image = time.monotonic()   # آخر إطار فيه صورة فعلية (غير سوداء)
     blind = slow = calibrating = False
     try:
@@ -189,9 +191,19 @@ def run(cfg_dict: dict, models_dir: str, address, authkey: bytes) -> None:
                 continue
             out = engine.update(hands, t0)
             pointer.apply(out, t0)
-            if bool(hands) != hand_visible:
-                hand_visible = bool(hands)
-                emit(StatusEvent("vision", "tracking" if hand_visible else "ready"))
+
+            # حالة رؤية اليد مع فترة سماح لمنع الوميض المزعج
+            now_has_hand = bool(hands)
+            if now_has_hand:
+                last_hand_seen = t0
+                if not hand_visible:
+                    hand_visible = True
+                    emit(StatusEvent("vision", "tracking"))
+            else:
+                if hand_visible and (t0 - last_hand_seen) >= LOST_GRACE_S:
+                    hand_visible = False
+                    emit(StatusEvent("vision", "ready"))
+
             if cfg.preview:
                 draw_preview(frame, hands, out, cfg.control_zone)
             frames += 1

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from collections import deque
+import math
 from typing import Callable
 
 from os_layer.base import OSBackend
@@ -21,6 +22,8 @@ LOCAL_ACTIONS = {"click", "double_click", "right_click", "middle_click", "scroll
 
 
 class PointerController:
+    DEADBAND_PX = 2.5  # منطقة ميتة ضد الارتعاش الفيزيولوجي بالبكسل
+
     def __init__(self, os: OSBackend, vision_cfg, forward: Callable[[str, str], None],
                  paused, screen_rect: tuple[int, int, int, int] | None = None):
         """forward(gesture, action): لتنفيذ إجراء في العملية الرئيسية.
@@ -37,6 +40,7 @@ class PointerController:
         self.offset = (0.0, 0.0)
         self.last_move: tuple[int, int] | None = None
         self.performed: list[str] = []   # للاختبارات والتشخيص
+        self._stable_pos: tuple[float, float] | None = None
 
     # ------------------------------------------------------------------
     def _to_px(self, u: float, v: float) -> tuple[float, float]:
@@ -66,6 +70,7 @@ class PointerController:
             self.os.mouse_button("left", "up")
             self.dragging = False
         self.locked_at = None
+        self._stable_pos = None
 
     def _run_binding(self, gesture: str, amount: int = 1) -> None:
         action = self.cfg.bindings.get(gesture, "none")
@@ -113,8 +118,20 @@ class PointerController:
         # الموضع المنعّم الحالي
         fx = fy = None
         if out.pointer is not None:
-            fx, fy = self.filter(*self._to_px(*out.pointer), t)
+            raw_x, raw_y = self._to_px(*out.pointer)
+            fx, fy = self.filter(raw_x, raw_y, t)
+            # استقرار ضد الارتعاش الفيزيولوجي لضمان الدقة أثناء تحديد الأهداف
+            if self._stable_pos is not None:
+                dist = math.hypot(fx - self._stable_pos[0], fy - self._stable_pos[1])
+                if dist < self.DEADBAND_PX:
+                    fx, fy = self._stable_pos
+                else:
+                    self._stable_pos = (fx, fy)
+            else:
+                self._stable_pos = (fx, fy)
             self.history.append((t, fx, fy))
+        else:
+            self._stable_pos = None
 
         for ev in out.events:
             if ev in ("pinch_down", "middle_down"):
@@ -156,6 +173,7 @@ class PointerController:
                 self.filter.reset()
                 self.history.clear()
                 self.offset = (0.0, 0.0)
+                self._stable_pos = None
 
         if out.scroll:
             self._run_binding("two_scroll", out.scroll)
