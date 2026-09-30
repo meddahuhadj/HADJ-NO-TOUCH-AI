@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HADJ NO-TOUCH AI — Contrôlez votre PC sans le toucher</title>
+<meta name="description" content="Contrôlez Windows 10/11 à la voix et aux gestes de la main, sans souris ni clavier, et entièrement hors ligne. Modèles sur votre machine, rien n'est envoyé, archive ZIP portable.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070912">
+<meta property="og:type" content="website">
+<meta property="og:title" content="HADJ NO-TOUCH AI">
+<meta property="og:description" content="Contrôlez Windows 10/11 à la voix et aux gestes de la main. 100 % hors ligne.">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:locale:alternate" content="ar_AE">
+<meta property="og:locale:alternate" content="en_US">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;600&amp;family=IBM+Plex+Sans+Arabic:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070912'/%3E%3Cpath d='M16 7a3.2 3.2 0 0 1 3.2 3.2v6a3.2 3.2 0 0 1-6.4 0v-6A3.2 3.2 0 0 1 16 7Z' fill='none' stroke='%232dd4bf' stroke-width='1.8'/%3E%3Cpath d='M10.6 15.6a5.4 5.4 0 0 0 10.8 0M16 21v3.2' fill='none' stroke='%233b82f6' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Aller au contenu principal</a>
+<p class="sr-only" role="status" aria-live="polite" id="live"></p>
+
+<div class="backdrop" aria-hidden="true">
+  <span class="orb orb-a"></span>
+  <span class="orb orb-b"></span>
+  <span class="orb orb-c"></span>
+  <span class="gridlines"></span>
+  <span class="grain"></span>
+</div>
+<div class="pointer-glow" id="pointerGlow" aria-hidden="true"></div>
+
+<!-- ============================== ICON SPRITE ============================== -->
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+    <g id="s-line" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+  <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V4.8a1.4 1.4 0 0 1 2.8 0V11M11.8 10.4V3.6a1.4 1.4 0 0 1 2.8 0v6.8M14.6 10.8V5.6a1.4 1.4 0 0 1 2.8 0v8.2M17.4 10.4V8a1.4 1.4 0 0 1 2.8 0v6.4c0 3.6-2.6 6.6-6.2 6.6-3 0-4.4-1.2-5.6-3.2l-2.2-3.8a1.4 1.4 0 0 1 2.2-1.7L9 14.2"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="3.2" width="7.2" height="7.2" rx="1.6"/><rect x="13.6" y="3.2" width="7.2" height="7.2" rx="1.6"/><rect x="3.2" y="13.6" width="7.2" height="7.2" rx="1.6"/><rect x="13.6" y="13.6" width="7.2" height="7.2" rx="1.6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 4.6 5.6v5.8c0 4.6 3 8.2 7.4 9.9 4.4-1.7 7.4-5.3 7.4-9.9V5.6Z"/><path d="m9 12 2.2 2.2L15.4 10"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="10.2" width="15.2" height="10.6" rx="2.6"/><path d="M8 10.2V7.6a4 4 0 0 1 8 0v2.6M12 14.4v2.4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4v11.4M7.6 10.6 12 15l4.4-4.4M4 18.6h16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 6.8"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 3.9 2.5 18.2A1.6 1.6 0 0 0 3.9 20.6h16.2a1.6 1.6 0 0 0 1.4-2.4L13.3 3.9a1.6 1.6 0 0 0-2.6 0Z"/><path d="M12 9.4v4.4M12 17h.01"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 9.5 5.5 5.5 5.5-5.5"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13.4 6.4 19 12l-5.6 5.6"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.2" y="6" width="19.6" height="12" rx="2.4"/><path d="M6 9.6h.01M9.4 9.6h.01M12.8 9.6h.01M16.2 9.6h.01M6 12.8h.01M9.4 12.8h.01M12.8 12.8h.01M16.2 12.8h.01M7.6 15.8h8.8"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 13.9 9 19.8 11l-5.9 2L12 18.8 10.1 13 4.2 11 10.1 9Z"/><path d="M18.6 3.4v3M17.1 4.9h3"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m5.4 3.6 12.4 8-5.2 1.1-1.1 5.2Z"/><path d="m13.2 14.4 4 4.6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5.4 18.4 12 8 18.6Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5.5v13M15 5.5v13"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.1"/><path d="M20.4 4.4V9h-4.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.6" cy="10.6" r="6.4"/><path d="m15.4 15.4 4.4 4.4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 12h13"/></symbol>
+  <symbol id="i-top" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6.4" y="6.4" width="11.2" height="11.2" rx="2.2"/><path d="M9.6 3.4v3M14.4 3.4v3M9.6 17.6v3M14.4 17.6v3M3.4 9.6h3M3.4 14.4h3M17.6 9.6h3M17.6 14.4h3"/></symbol>
+  <symbol id="i-offline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4 21 20"/><path d="M5 12.4a11 11 0 0 1 4.2-2.6M15.8 9.8A11 11 0 0 1 19 12.4M8.4 16a6 6 0 0 1 2.4-1.5M13.2 14.5A6 6 0 0 1 15.6 16"/><circle cx="12" cy="19.4" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-window" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.2" width="18" height="15.6" rx="2.4"/><path d="M3 8.6h18M6.4 6.4h.01M8.8 6.4h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 2"/></symbol>
+  <symbol id="i-drive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 3.4h6.8l5.2 5.2v9.2a2.8 2.8 0 0 1-2.8 2.8H6.2a2.8 2.8 0 0 1-2.8-2.8V6.2a2.8 2.8 0 0 1 2.8-2.8Z"/><path d="M14.8 3.6v5h5.2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.6v5M12 16h.01"/></symbol>
+
+  <!-- gesture glyphs (schematic line art, no emoji) -->
+  <symbol id="g-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4.6" r="1.7"/><path d="M11 6.4v9.8M4.4 12.4h3.2M6.1 10.5l-1.7 1.9 1.7 1.9M19.6 12.4h-3.2M17.9 10.5l1.7 1.9-1.7 1.9"/></symbol>
+  <symbol id="g-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 4.4c2.8 2.2 4.1 4.6 4.8 7.5M17.6 4.4c-2.8 2.2-4.1 4.6-4.8 7.5"/><circle cx="11.6" cy="15.6" r="2.2"/><path d="M11.6 17.8v3"/></symbol>
+  <symbol id="g-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="13.4" width="9" height="7.6" rx="1.8"/><path d="M8.6 9.4 18 3.8M18 3.8h-4.4M18 3.8v4.4"/></symbol>
+  <symbol id="g-4" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.4" y="3" width="11.2" height="18" rx="5.6" fill="none"/><path d="M12 3v18" fill="none"/><path d="M12 3h.6a5.6 5.6 0 0 1 5.6 5.6V15H12Z" fill="currentColor" fill-opacity=".5" stroke="none"/></symbol>
+  <symbol id="g-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 9.6v5.2M14.6 9.6v5.2"/><path d="M4.2 5.4v12.4M4.2 5.4l-1.7 2M4.2 5.4l1.7 2M4.2 17.8l-1.7-2M4.2 17.8l1.7-2"/></symbol>
+  <symbol id="g-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12h16.8M17.4 8.4 20.6 12l-3.2 3.6M6.6 8.4 3.4 12l3.2 3.6"/><circle cx="12" cy="12" r="1.9" fill="currentColor" fill-opacity=".65" stroke="none"/></symbol>
+  <symbol id="g-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.4" r="1.8"/><path d="M10.2 11.6 5 6.4M5 6.4h3.4M5 6.4v3.4M13.8 11.6 19 6.4M19 6.4h-3.4M19 6.4v3.4"/></symbol>
+  <symbol id="g-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8v6.4M7.4 5.2 10 8.8M16.6 5.2 14 8.8"/><path d="M5.4 11.6h13.2M8 11.6v4.2M12 11.6v5.4M16 11.6v4.2M4.4 20.6h15.2"/></symbol>
+  <symbol id="g-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="5.4" width="12" height="13.2" rx="3.2"/><path d="M9.6 5.4v13.2M14.4 5.4v13.2"/></symbol>
+  <symbol id="g-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 12a7.4 7.4 0 1 1-2.8-5.9"/><path d="M19.8 4.6v4.6h-4.6"/><path d="M10.4 9.8 14 12l-3.6 2.2Z" fill="currentColor" fill-opacity=".55" stroke="none"/></symbol>
+</svg>
+
+<!-- ================================ HEADER ================================ -->
+<header class="site-header" id="top">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="9"/><rect class="bm-r" x="11" y="7" width="10" height="12" rx="5"/><path class="bm-p" d="M8 16.5a8 8 0 0 0 16 0M16 24.5V29M11 29h10"/></svg>
+      </span>
+      <span class="brand-txt">
+        <span class="brand-name">HADJ NO-TOUCH</span>
+        <span class="brand-sub" data-i18n="brand.sub">AI</span>
+      </span>
+    </a>
+
+    <nav class="nav" data-i18n-attr="aria-label:nav.label" aria-label="Sections">
+      <span class="nav-indicator" id="navIndicator" aria-hidden="true"></span>
+      <ul class="nav-list" id="navList">
+        <li><a class="nav-link" href="#features" data-i18n="nav.features">Fonctions</a></li>
+        <li><a class="nav-link" href="#gestures" data-i18n="nav.gestures">Gestes</a></li>
+        <li><a class="nav-link" href="#commands" data-i18n="nav.commands">Commandes</a></li>
+        <li><a class="nav-link" href="#grid" data-i18n="nav.grid">Grille vocale</a></li>
+        <li><a class="nav-link" href="#privacy" data-i18n="nav.privacy">Confidentialité</a></li>
+        <li><a class="nav-link" href="#faq" data-i18n="nav.faq">Questions</a></li>
+      </ul>
+    </nav>
+
+    <div class="header-actions">
+      <div class="lang" role="group" data-i18n-attr="aria-label:a11y.langLabel">
+        <span class="lang-thumb" id="langThumb" aria-hidden="true"></span>
+        <button type="button" class="lang-btn" data-set-lang="fr" aria-pressed="true">FR</button>
+        <button type="button" class="lang-btn" data-set-lang="ar" aria-pressed="false"><span aria-hidden="true">ع</span><span class="sr-only">العربية</span></button>
+        <button type="button" class="lang-btn" data-set-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <a class="btn btn-primary btn-sm" href="https://drive.google.com/file/d/1DGez44ZHktBlPtjHnaPx2Wm5BC_egWys/view?usp=sharing" target="_blank" rel="noopener noreferrer" data-magnetic>
+        <svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg>
+        <span data-i18n="nav.download">Télécharger</span>
+      </a>
+      <button type="button" class="hamburger" id="hamburger" aria-expanded="false" aria-controls="mobileSheet" data-i18n-attr="aria-label:nav.menuOpen">
+        <svg class="ic" aria-hidden="true"><use href="#i-menu"></use></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-sheet" id="mobileSheet" hidden>
+    <div class="wrap sheet-inner">
+      <a class="sheet-link" href="#features" data-i18n="nav.features">Fonctions</a>
+      <a class="sheet-link" href="#gestures" data-i18n="nav.gestures">Gestes</a>
+      <a class="sheet-link" href="#commands" data-i18n="nav.commands">Commandes</a>
+      <a class="sheet-link" href="#grid" data-i18n="nav.grid">Grille vocale</a>
+      <a class="sheet-link" href="#dictation" data-i18n="nav.dictation">Dictée</a>
+      <a class="sheet-link" href="#accessibility" data-i18n="nav.a11y">Accessibilité</a>
+      <a class="sheet-link" href="#privacy" data-i18n="nav.privacy">Confidentialité</a>
+      <a class="sheet-link" href="#requirements" data-i18n="nav.req">Configuration</a>
+      <a class="sheet-link" href="#faq" data-i18n="nav.faq">Questions</a>
+      <a class="btn btn-primary sheet-cta" href="https://drive.google.com/file/d/1DGez44ZHktBlPtjHnaPx2Wm5BC_egWys/view?usp=sharing" target="_blank" rel="noopener noreferrer">
+        <svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg>
+        <span data-i18n="nav.download">Télécharger</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ================================= HERO ================================= -->
+<section class="hero" id="hero" data-hero>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="badge reveal" style="--i:0"><span class="badge-dot" aria-hidden="true"></span><span data-i18n="hero.badge">Nouvelle version disponible</span></p>
+      <h1 class="hero-title reveal" style="--i:1">
+        <span class="hero-title-l1" data-i18n="hero.title.a">Contrôlez votre PC</span>
+        <span class="hero-title-l2 grad-text" data-i18n="hero.title.b">sans jamais le toucher</span>
+      </h1>
+      <p class="hero-sub reveal" style="--i:2" data-i18n="hero.sub">Commandes vocales, gestes de la main, dictée intelligente. Windows 10/11, 100 % hors ligne, rien ne quitte votre machine.</p>
+      <div class="hero-cta reveal" style="--i:3">
+        <a class="btn btn-primary btn-lg" href="https://drive.google.com/file/d/1DGez44ZHktBlPtjHnaPx2Wm5BC_egWys/view?usp=sharing" target="_blank" rel="noopener noreferrer" data-magnetic>
+          <svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg>
+          <span data-i18n="hero.cta.primary">Télécharger la version portable</span>
+        </a>
+        <a class="btn btn-ghost btn-lg" href="#gestures" data-magnetic>
+          <svg class="ic" aria-hidden="true"><use href="#i-hand"></use></svg>
+          <span data-i18n="hero.cta.secondary">Essayer le laboratoire</span>
+        </a>
+      </div>
+      <p class="hero-meta reveal" style="--i:4"><svg class="ic" aria-hidden="true"><use href="#i-drive"></use></svg><span data-i18n="hero.meta">Pour Windows · Portable (ZIP) · ~1 Go</span></p>
+      <ul class="chips reveal" style="--i:5">
+        <li class="chip"><svg class="ic ic-ok" aria-hidden="true"><use href="#i-check"></use></svg><span data-i18n="hero.chips.1">100 % local &amp; hors ligne</span></li>
+        <li class="chip"><svg class="ic ic-ok" aria-hidden="true"><use href="#i-check"></use></svg><span data-i18n="hero.chips.2">Aucune installation</span></li>
+        <li class="chip"><svg class="ic ic-ok" aria-hidden="true"><use href="#i-check"></use></svg><span data-i18n="hero.chips.3">Arabe, anglais, français</span></li>
+        <li class="chip"><svg class="ic ic-ok" aria-hidden="true"><use href="#i-check"></use></svg><span data-i18n="hero.chips.4">Arrêt d'urgence permanent</span></li>
+      </ul>
+      <ul class="stats reveal" style="--i:6" id="statRow"></ul>
+    </div>
+
+    <div class="hero-side">
+      <div class="tray glass reveal" style="--i:2" id="trayWidget">
+        <div class="tray-top">
+          <span class="tray-dot" id="trayDot"><svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg></span>
+          <div class="tray-txt">
+            <p class="tray-h" data-i18n="hero.tray.title">L'icône près de l'horloge</p>
+            <p class="tray-s" id="trayState" role="status" aria-live="polite" data-i18n="tray.ready">Écoute le mot d'éveil</p>
+          </div>
+        </div>
+        <canvas class="tray-wave" id="trayWave" aria-hidden="true" width="600" height="120"></canvas>
+        <div class="tray-legend" id="trayLegend"></div>
+        <p class="tray-hint" data-i18n="hero.tray.hint">Un seul coup d'œil : sept états réels, pas une approximation.</p>
+      </div>
+
+      <figure class="mock glass reveal" style="--i:4" aria-hidden="true">
+        <div class="mock-bar"><span class="mock-title" data-i18n="lab.scene.taskbar">Bureau</span><span class="mock-clock">10:42</span></div>
+        <ul class="mock-menu">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-pause"></use></svg><span data-i18n="mock.pause">Mettre le contrôle en pause</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg><span data-i18n="mock.dictate">Démarrer la dictée</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-grid"></use></svg><span data-i18n="mock.grid">Grille vocale</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-hand"></use></svg><span data-i18n="mock.calibrate">Calibrer les gestes</span></li>
+          <li class="sep"></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-cursor"></use></svg><span data-i18n="mock.lang">Langue des commandes : arabe</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-window"></use></svg><span data-i18n="mock.camera">Caméra (gestes)</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-keyboard"></use></svg><span data-i18n="mock.hotkey">Arrêt : Ctrl+Alt+Shift+P</span></li>
+          <li class="sep"></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-reset"></use></svg><span data-i18n="mock.refresh">Réindexer les applications</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-sparkle"></use></svg><span data-i18n="mock.settings">Paramètres</span></li>
+        </ul>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== FEATURES ============================== -->
+<section class="section" id="features" aria-labelledby="features-h">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="features.eyebrow">Ce que le programme fait</span></p>
+      <h2 class="sec-title" id="features-h" data-i18n="features.title">Quatre promesses, tenues</h2>
+      <p class="sec-lead" data-i18n="features.lead">Rien de plus, rien de moins.</p>
+    </header>
+    <div class="card-grid" id="featureGrid"></div>
+    <p class="f4-tag reveal" id="f4tag" data-i18n="f4.tag">Interface et commandes en arabe, français et anglais.</p>
+  </div>
+</section>
+
+<!-- ============================== GESTURE LAB ============================= -->
+<section class="section" id="gestures" aria-labelledby="lab-h">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="lab.eyebrow">Laboratoire de gestes</span></p>
+      <h2 class="sec-title" id="lab-h" data-i18n="lab.title">Ici, votre souris est votre main</h2>
+      <p class="sec-lead" data-i18n="lab.lead">Déplacez le curseur dans le poste de travail simulé.</p>
+    </header>
+
+    <div class="lab reveal">
+      <div class="lab-main">
+        <div class="lab-stage" id="labStage" tabindex="0" role="application"
+             data-i18n-attr="aria-label:lab.stage;aria-describedby:labHelp">
+          <div class="cam-frame" aria-hidden="true"><span class="cf tl"></span><span class="cf tr"></span><span class="cf bl"></span><span class="cf br"></span></div>
+          <div class="desktop" id="labDesktop">
+            <div class="desk-wall" id="deskWall" aria-hidden="true"></div>
+            <div class="win" data-win="1" data-drag data-i18n-attr="aria-hidden:true">
+              <div class="win-bar" data-drag-handle><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="win-t" data-i18n="lab.scene.win1">Rapport</span><span class="win-x" aria-hidden="true">×</span></div>
+              <div class="win-doc" data-scroll>
+                <p class="ln"><span class="ln-n">1</span><span class="ln-t" data-i18n="lab.doc.1">Contrôle sans contact — brouillon</span></p>
+                <p class="ln"><span class="ln-n">2</span><span class="ln-t" data-i18n="lab.doc.2">Un mot d'éveil, puis la commande.</span></p>
+                <p class="ln"><span class="ln-n">3</span><span class="ln-t" data-i18n="lab.doc.3">Six secondes pour enchaîner.</span></p>
+                <p class="ln"><span class="ln-n">4</span><span class="ln-t" data-i18n="lab.doc.4">Rien ne sort de la machine.</span></p>
+                <p class="ln"><span class="ln-n">5</span><span class="ln-t" data-i18n="lab.doc.5">Le poing arrête tout.</span></p>
+                <p class="ln"><span class="ln-n">6</span><span class="ln-t" data-i18n="lab.doc.6">La paume affiche le bureau.</span></p>
+                <p class="ln"><span class="ln-n">7</span><span class="ln-t" data-i18n="lab.doc.7">Le pincement saisit et lâche.</span></p>
+                <p class="ln"><span class="ln-n">8</span><span class="ln-t" data-i18n="lab.doc.8">Deux doigts font défiler.</span></p>
+                <p class="ln"><span class="ln-n">9</span><span class="ln-t" data-i18n="lab.doc.9">La grille atteint n'importe où.</span></p>
+                <p class="ln"><span class="ln-n">10</span><span class="ln-t" data-i18n="lab.doc.10">Dictée : des phrases entières.</span></p>
+                <p class="ln"><span class="ln-n">11</span><span class="ln-t" data-i18n="lab.doc.11">Confirmez avant les actions graves.</span></p>
+                <p class="ln"><span class="ln-n">12</span><span class="ln-t" data-i18n="lab.doc.12">Calibrage en quatre gestes.</span></p>
+                <p class="ln"><span class="ln-n">13</span><span class="ln-t" data-i18n="lab.doc.13">Encore une ligne, pour la suite.</span></p>
+                <p class="ln"><span class="ln-n">14</span><span class="ln-t" data-i18n="lab.doc.14">Faites défiler avec la molette.</span></p>
+                <p class="ln"><span class="ln-n">15</span><span class="ln-t" data-i18n="lab.doc.15">Fin du brouillon.</span></p>
+              </div>
+            </div>
+            <div class="win win-2" data-win="2" data-drag data-i18n-attr="aria-hidden:true">
+              <div class="win-bar" data-drag-handle><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="win-t" data-i18n="lab.scene.win2">Bloc-notes</span><span class="win-x" aria-hidden="true">×</span></div>
+              <div class="win-doc pad" data-scroll>
+                <p class="nt" data-i18n="lab.note.1">— Liste pour demain</p>
+                <p class="nt" data-i18n="lab.note.2">réessayer la caméra</p>
+                <p class="nt" data-i18n="lab.note.3">rappeler le médecin</p>
+                <p class="nt" data-i18n="lab.note.4">grandir la police</p>
+              </div>
+            </div>
+            <div class="win win-3" data-win="3" data-drag data-i18n-attr="aria-hidden:true">
+              <div class="win-bar" data-drag-handle><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="win-t" data-i18n="lab.scene.win3">Explorateur</span><span class="win-x" aria-hidden="true">×</span></div>
+              <div class="win-doc pad" data-scroll>
+                <ul class="fx">
+                  <li data-i18n="lab.fx.1">Documents</li>
+                  <li data-i18n="lab.fx.2">Téléchargements</li>
+                  <li data-i18n="lab.fx.3">Bureau</li>
+                  <li data-i18n="lab.fx.4">Images</li>
+                  <li data-i18n="lab.fx.5">Vidéos</li>
+                </ul>
+              </div>
+            </div>
+            <div class="desk-label" id="deskLabel" aria-hidden="true"><svg class="ic"><use href="#i-window"></use></svg><span data-i18n="lab.desktop">Bureau</span></div>
+            <div class="taskbar" aria-hidden="true">
+              <span class="tb-ic tb-start"></span>
+              <span class="tb-ic tb-app is-active"></span>
+              <span class="tb-ic tb-app"></span>
+              <span class="tb-ic tb-app"></span>
+              <span class="tb-clock">10:42</span>
+            </div>
+          </div>
+          <div class="lab-toast" id="labToast" aria-hidden="true"></div>
+          <div class="lab-veil" id="labVeil" hidden>
+            <div class="veil-inner" role="alert">
+              <span class="veil-ring" aria-hidden="true"></span>
+              <h3 class="veil-title" data-i18n="lab.emergency.title">ARRÊT D'URGENCE</h3>
+              <p class="veil-body" data-i18n="lab.emergency.body">Tout est figé.</p>
+              <button type="button" class="btn btn-resume" id="labResume">
+                <svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg>
+                <span data-i18n="lab.resume">Reprendre le contrôle</span>
+              </button>
+              <p class="veil-hint" data-i18n="lab.resumeHint">Ou : touche Échap · espace</p>
+            </div>
+          </div>
+          <div class="lab-cursor" id="labCursor" aria-hidden="true">
+            <span class="lc-halo"></span>
+            <svg class="lc-arrow" viewBox="0 0 24 24"><path d="M5.4 3.2 18.6 11.6l-5.6 1.2-1.2 5.6Z"/></svg>
+          </div>
+        </div>
+        <p class="lab-help" id="labHelp" data-i18n="lab.stageHelp">Zone interactive.</p>
+      </div>
+
+      <aside class="lab-side">
+        <div class="hud glass" id="labHud">
+          <div class="hud-row">
+            <span class="hud-led" id="hudLed" aria-hidden="true"></span>
+            <span class="hud-state" id="hudState" data-i18n="lab.hud.idle">Déplacez le pointeur pour commencer</span>
+            <span class="hud-fps" id="hudFps">0</span>
+          </div>
+          <div class="hud-meter" role="img" data-i18n-attr="aria-label:lab.hud.confidence">
+            <span class="hm-label" data-i18n="lab.hud.confidence">Confiance</span>
+            <span class="hm-track"><span class="hm-fill" id="hudConf"></span></span>
+            <span class="hm-val" id="hudConfVal">0%</span>
+          </div>
+          <p class="hud-last"><span class="hl-label" data-i18n="lab.hud.last">Dernière action</span><span class="hl-val" id="hudLast">—</span></p>
+        </div>
+
+        <div class="lab-controls glass">
+          <p class="lc-title" data-i18n="lab.controls">Commandes de la démonstration</p>
+          <p class="lc-hint" data-i18n="lab.controlsHint">Maintenez le bouton, comme le geste réel.</p>
+          <div class="lc-grid">
+            <button type="button" class="lc-btn lc-fist" id="btnFist" data-hold="false">
+              <svg class="ic ic-gg" aria-hidden="true"><use href="#g-9"></use></svg>
+              <span data-i18n="lab.btn.fist">Poing — arrêt d'urgence</span>
+              <span class="lc-fill" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="lc-btn" id="btnRight">
+              <svg class="ic ic-gg" aria-hidden="true"><use href="#g-4"></use></svg>
+              <span data-i18n="lab.btn.right">Clic droit — pouce + majeur</span>
+            </button>
+            <button type="button" class="lc-btn" id="btnPalm" data-hold="1200">
+              <svg class="ic ic-gg" aria-hidden="true"><use href="#g-8"></use></svg>
+              <span data-i18n="lab.btn.palm">Paume 2 s — bureau</span>
+              <span class="lc-fill" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="lc-btn" id="btnZoomIn">
+              <svg class="ic ic-gg" aria-hidden="true"><use href="#g-7"></use></svg>
+              <span data-i18n="lab.btn.zoomIn">Écarter les mains</span>
+            </button>
+            <button type="button" class="lc-btn" id="btnZoomOut">
+              <svg class="ic ic-gg" aria-hidden="true"><use href="#g-7"></use></svg>
+              <span data-i18n="lab.btn.zoomOut">Rapprocher les mains</span>
+            </button>
+            <button type="button" class="lc-btn lc-quiet" id="btnLabReset">
+              <svg class="ic" aria-hidden="true"><use href="#i-reset"></use></svg>
+              <span data-i18n="lab.btn.reset">Réinitialiser la scène</span>
+            </button>
+          </div>
+          <p class="lc-scroll" data-i18n="lab.scrollHint">Molette : faire défiler</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="legend reveal">
+      <h3 class="legend-title" data-i18n="lab.legend.title">Les dix gestes réels</h3>
+      <div class="legend-table" role="table" data-i18n-attr="aria-label:lab.legend.title">
+        <div class="lg-head" role="row">
+          <span role="columnheader" data-i18n="lab.legend.col.gesture">Geste</span>
+          <span role="columnheader" data-i18n="lab.legend.col.action">Action</span>
+          <span role="columnheader" data-i18n="lab.legend.col.key">Clavier</span>
+        </div>
+        <div id="legendBody"></div>
+      </div>
+      <p class="legend-note" data-i18n="lab.legend.note">Chacun se réassocie dans les réglages.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== COMMANDS ================================ -->
+<section class="section" id="commands" aria-labelledby="cmd-h">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="cmd.eyebrow">Catalogue vocal</span></p>
+      <h2 class="sec-title" id="cmd-h" data-i18n="cmd.title">Le jeu de commandes complet</h2>
+      <p class="sec-lead" id="cmdLead" data-i18n="cmd.lead">Toutes les commandes livrées.</p>
+    </header>
+
+    <div class="cmd-bar reveal">
+      <div class="wake glass">
+        <p class="wake-t" data-i18n="cmd.wake.title">Le mot d'éveil</p>
+        <ul class="wake-list">
+          <li><span class="wake-tag" data-i18n="cmd.wakeLabel.ar">Arabe</span><code class="wake-ph" dir="rtl" data-i18n="cmd.wake.ar">« حاسوب، »</code></li>
+          <li><span class="wake-tag" data-i18n="cmd.wakeLabel.en">Anglais</span><code class="wake-ph" data-i18n="cmd.wake.en">“Computer, ”</code></li>
+          <li><span class="wake-tag" data-i18n="cmd.wakeLabel.fr">Français</span><code class="wake-ph" data-i18n="cmd.wake.fr">“Ordinateur, ”</code></li>
+        </ul>
+        <p class="wake-note" data-i18n="cmd.wake.note">Dites le mot d'éveil puis la commande en une seule phrase.</p>
+      </div>
+      <div class="cmd-search">
+        <label class="sr-only" for="cmdInput" data-i18n="cmd.searchLabel">Rechercher une commande</label>
+        <div class="search-field">
+          <svg class="ic ic-lead" aria-hidden="true"><use href="#i-search"></use></svg>
+          <input type="search" id="cmdInput" autocomplete="off" spellcheck="false"
+                 data-i18n-attr="placeholder:cmd.searchPlaceholder;aria-label:cmd.searchLabel"
+                 placeholder="copier,关机, نسخ, إطفئ…">
+          <button type="button" class="search-clear" id="cmdClear" hidden data-i18n-attr="aria-label:cmd.clear">
+            <svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg>
+          </button>
+        </div>
+        <p class="search-count" id="cmdCount" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div class="cat-tabs reveal" id="catTabs" role="tablist" data-i18n-attr="aria-label:cmd.cat.apps"></div>
+
+    <div class="cmd-list" id="cmdList"></div>
+    <div class="cmd-empty" id="cmdEmpty" hidden>
+      <p class="ce-t" data-i18n="cmd.empty.title">Aucune commande ne correspond</p>
+      <p class="ce-b" data-i18n="cmd.empty.body">Essayez un mot plus court.</p>
+    </div>
+
+    <div class="confirm glass" id="cmdConfirm" hidden role="alertdialog"
+         aria-modal="false" data-i18n-attr="aria-labelledby:cmdConfirmTitle;aria-describedby:cmdConfirmBody">
+      <span class="cf-icon" aria-hidden="true"><svg class="ic"><use href="#i-warn"></use></svg></span>
+      <div class="cf-txt">
+        <p class="cf-title" id="cmdConfirmTitle" data-i18n="cmd.confirm.title">Confirmer ?</p>
+        <p class="cf-body" id="cmdConfirmBody" data-i18n="cmd.confirm.body">Répondez par « oui » ou « non ».</p>
+      </div>
+      <div class="cf-timer" aria-hidden="true"><span class="cf-bar" id="cmdConfirmBar"></span></div>
+      <div class="cf-btns">
+        <button type="button" class="btn btn-yes" id="cmdYes" data-i18n="cmd.confirm.yes">Oui</button>
+        <button type="button" class="btn btn-no" id="cmdNo" data-i18n="cmd.confirm.no">Non</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== VOICE GRID ============================= -->
+<section class="section" id="grid" aria-labelledby="grid-h">
+  <div class="wrap grid-wrap">
+    <div class="grid-copy">
+      <header class="sec-head sec-head-start reveal">
+        <p class="eyebrow"><span data-i18n="grid.eyebrow">Grille vocale</span></p>
+        <h2 class="sec-title" id="grid-h" data-i18n="grid.title">Cliquez n'importe où, à la voix seule</h2>
+        <p class="sec-lead" data-i18n="grid.lead">Neuf cases.</p>
+      </header>
+
+      <div class="grid-hint glass reveal">
+        <svg class="ic" aria-hidden="true"><use href="#i-sparkle"></use></svg>
+        <p data-i18n="grid.hint">Cliquez une case pour la subdiviser, la case 5 pour agir.</p>
+      </div>
+
+      <div class="vocab reveal">
+        <h3 class="mini-h" data-i18n="grid.vocabTitle">Le vocabulaire de la grille</h3>
+        <p class="mini-lead" data-i18n="grid.vocabLead">Une fois la bonne case atteinte, ces six mots suffisent.</p>
+        <ul class="vocab-list" id="vocabList"></ul>
+        <p class="mini-note" data-i18n="grid.autoHide">La grille disparaît d'elle-même après trente secondes.</p>
+      </div>
+
+      <div class="zone glass reveal">
+        <h3 class="mini-h"><svg class="ic" aria-hidden="true"><use href="#i-cursor"></use></svg><span data-i18n="grid.zone">Zone de contrôle</span></h3>
+        <div class="zone-vis" aria-hidden="true">
+          <span class="zv-frame"></span><span class="zv-zone"></span>
+        </div>
+        <p class="mini-note" data-i18n="grid.zoneNote">Le rectangle de l'image caméra qui correspond à tout l'écran.</p>
+      </div>
+    </div>
+
+    <div class="grid-demo reveal">
+      <div class="grid-stage glass" id="gridStage">
+        <div class="gs-bar">
+          <span class="gs-lbl" data-i18n="grid.path">Chemin</span>
+          <ol class="gs-crumbs" id="gridCrumbs"></ol>
+          <button type="button" class="gs-reset" id="gridReset">
+            <svg class="ic" aria-hidden="true"><use href="#i-reset"></use></svg>
+            <span data-i18n="grid.reset">Recommencer</span>
+          </button>
+        </div>
+        <div class="gs-screen" id="gridScreen" role="group" data-i18n-attr="aria-label:grid.root"></div>
+        <div class="gs-actions" id="gridActions"></div>
+        <p class="gs-picked" id="gridPicked" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== DICTATION ============================== -->
+<section class="section" id="dictation" aria-labelledby="dict-h">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="dict.eyebrow">Dictée</span></p>
+      <h2 class="sec-title" id="dict-h" data-i18n="dict.title">Des phrases entières, pas des mots isolés</h2>
+      <p class="sec-lead" data-i18n="dict.lead">Le curseur posé dans un champ texte, un mot d'éveil.</p>
+    </header>
+
+    <div class="dict-wrap">
+      <div class="dict-demo glass reveal" id="dictDemo">
+        <div class="dd-top">
+          <span class="dd-badge"><span class="dd-dot" aria-hidden="true"></span><span data-i18n="dict.demo.title">Une phrase, dictée</span></span>
+          <div class="dd-btns">
+            <button type="button" class="icon-btn" id="dictToggle" data-i18n-attr="aria-label:dict.demo.pause">
+              <svg class="ic" aria-hidden="true"><use href="#i-pause"></use></svg>
+            </button>
+            <button type="button" class="icon-btn" id="dictRestart" data-i18n-attr="aria-label:dict.demo.reset">
+              <svg class="ic" aria-hidden="true"><use href="#i-reset"></use></svg>
+            </button>
+          </div>
+        </div>
+        <div class="dd-text" id="dictText" dir="auto" aria-live="off"></div>
+        <div class="dd-foot">
+          <canvas class="dd-wave" id="dictWave" aria-hidden="true" width="900" height="90"></canvas>
+          <p class="dd-legend" data-i18n="dict.demo.said">mot dicté</p>
+        </div>
+      </div>
+
+      <div class="dict-side">
+        <div class="dict-steps glass reveal">
+          <h3 class="mini-h" data-i18n="dict.steps.title">Le geste, trois fois</h3>
+          <ol class="steps" id="dictSteps"></ol>
+        </div>
+        <div class="engines reveal" id="engines"></div>
+        <p class="dict-note reveal" data-i18n="dict.note">Sur une machine modeste : Vosk.</p>
+      </div>
+    </div>
+
+    <div class="punct glass reveal">
+      <h3 class="mini-h" data-i18n="dict.punct.title">Ponctuation et corrections, à la voix</h3>
+      <div class="punct-table" role="table">
+        <div class="pt-head" role="row">
+          <span role="columnheader" data-i18n="dict.punct.you">Vous dites</span>
+          <span role="columnheader" data-i18n="dict.punct.writes">Il s'écrit</span>
+        </div>
+        <div id="punctBody"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================== ACCESSIBILITY ============================= -->
+<section class="section" id="accessibility" aria-labelledby="acc-h">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="acc.eyebrow">Calibrage & accessibilité</span></p>
+      <h2 class="sec-title" id="acc-h" data-i18n="acc.title">Vingt secondes pour l'adapter à votre main</h2>
+      <p class="sec-lead" data-i18n="acc.lead">Dites « calibre ».</p>
+    </header>
+
+    <div class="calib glass reveal">
+      <div class="calib-visual">
+        <div class="cv-frame" aria-hidden="true">
+          <span class="cv-grid"></span>
+          <span class="cv-zone"></span>
+          <span class="cv-hand" id="cvHand">
+            <svg viewBox="0 0 64 64"><path class="ch-finger" d="M28 34V15a3 3 0 0 1 6 0v14"/><path class="ch-finger" d="M34 28V11a3 3 0 0 1 6 0v17"/><path class="ch-finger" d="M40 30V16a3 3 0 0 1 6 0v16"/><path class="ch-palm" d="M28 34V24a3 3 0 1 1 6 0v4"/><path class="ch-palm" d="M22 30a3 3 0 0 1 6 0v6"/><path class="ch-palm" d="M22 36v4a12 12 0 0 0 12 12h2a10 10 0 0 0 10-10V32"/></svg>
+          </span>
+          <span class="cv-corner c1"></span><span class="cv-corner c2"></span>
+          <span class="cv-corner c3"></span><span class="cv-corner c4"></span>
+        </div>
+        <ol class="calib-steps" id="calibSteps"></ol>
+      </div>
+      <div class="calib-side">
+        <p class="calib-note" data-i18n="acc.stepsNote">Moins de vingt secondes.</p>
+        <p class="calib-tag"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg><span data-i18n="acc.stepsNoteTag">Recommandé à la première utilisation.</span></p>
+        <button type="button" class="btn btn-ghost" id="calibStart" data-magnetic>
+          <svg class="ic" aria-hidden="true"><use href="#i-hand"></use></svg>
+          <span data-i18n="acc.start">Lancer le calibrage</span>
+        </button>
+        <p class="calib-status" id="calibStatus" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div class="a11y reveal">
+      <h3 class="mini-h center" data-i18n="acc.a11y.title">Ce que l'on promet</h3>
+      <ul class="a11y-list" id="a11yList"></ul>
+      <p class="a11y-foot" data-i18n="acc.motion">La voix seule suffit ?</p>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== PRIVACY ================================ -->
+<section class="section" id="privacy" aria-labelledby="priv-h">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="priv.eyebrow">Confidentialité</span></p>
+      <h2 class="sec-title" id="priv-h" data-i18n="priv.title">Le programme s'interdit lui-même le réseau</h2>
+      <p class="sec-lead" data-i18n="priv.lead">La reconnaissance tourne sur votre machine.</p>
+    </header>
+
+    <div class="priv-grid" id="privGrid"></div>
+
+    <div class="emergency glass reveal">
+      <h3 class="mini-h"><svg class="ic ic-danger" aria-hidden="true"><use href="#i-shield"></use></svg><span data-i18n="priv.emergency.title">Trois chemins vers l'arrêt immédiat</span></h3>
+      <ul class="em-list" id="emList"></ul>
+      <p class="em-after" data-i18n="priv.emergency.after">À l'arrêt, tout bouton est relâché.</p>
+    </div>
+
+    <p class="warn-band reveal">
+      <svg class="ic ic-warn" aria-hidden="true"><use href="#i-warn"></use></svg>
+      <span><strong data-i18n="priv.warn.title">Un avertissement honnête</strong> — <span data-i18n="priv.warn.body">« verrouille l'écran » peut vous empêcher de revenir.</span></span>
+    </p>
+  </div>
+</section>
+
+<!-- ============================ REQUIREMENTS ============================= -->
+<section class="section" id="requirements" aria-labelledby="req-h">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="req.eyebrow">Configuration</span></p>
+      <h2 class="sec-title" id="req-h" data-i18n="req.title">Ce qu'il vous faut, et ce que vous n'avez pas à faire</h2>
+      <p class="sec-lead" data-i18n="req.lead">Pas d'assistant d'installation, pas de compte.</p>
+    </header>
+
+    <div class="req-wrap">
+      <ul class="spec-list glass reveal" id="specList"></ul>
+
+      <div class="req-side">
+        <div class="launch glass reveal">
+          <h3 class="mini-h"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg><span data-i18n="req.launch.title">Trois étapes, et c'est parti</span></h3>
+          <ol class="steps" id="launchSteps"></ol>
+          <p class="mini-note" data-i18n="req.launch.note">Vos réglages vivent dans un dossier user_data.</p>
+        </div>
+
+        <figure class="settings glass reveal" aria-hidden="true">
+          <div class="set-tabs"><span class="st is-on" data-i18n="mock.tab.general">Général</span><span class="st" data-i18n="mock.tab.speech">Voix & dictée</span><span class="st" data-i18n="mock.tab.camera">Caméra</span><span class="st" data-i18n="mock.tab.safety">Sécurité</span></div>
+          <div class="set-body">
+            <div class="set-row"><span data-i18n="mock.set.lang">Langue de l'interface</span><span class="set-val">العربية</span></div>
+            <div class="set-row"><span data-i18n="mock.set.wake">Mot d'éveil</span><span class="set-val">حاسوب</span></div>
+            <div class="set-row"><span data-i18n="mock.set.font">Taille du texte</span><span class="set-slider"><i style="--v:62%"></i></span></div>
+            <div class="set-row"><span data-i18n="mock.set.contrast">Contraste élevé</span><span class="set-toggle is-on"><i></i></span></div>
+            <div class="set-row"><span data-i18n="mock.set.continuous">Écoute continue</span><span class="set-toggle"><i></i></span></div>
+            <div class="set-row"><span data-i18n="mock.set.engine">Moteur de dictée</span><span class="set-val">Whisper</span></div>
+            <div class="set-row"><span data-i18n="mock.set.zone">Zone de contrôle</span><span class="set-val">60 × 60 %</span></div>
+            <div class="set-row"><span data-i18n="mock.set.hotkey">Arrêt d'urgence</span><span class="set-val">Ctrl+Alt+Shift+P</span></div>
+          </div>
+        </figure>
+      </div>
+    </div>
+
+    <div class="tray-legend-block reveal">
+      <h3 class="mini-h"><svg class="ic" aria-hidden="true"><use href="#i-pause"></use></svg><span data-i18n="req.tray.title">Les sept couleurs de l'icône</span></h3>
+      <p class="mini-lead" data-i18n="req.tray.lead">Une seule ligne à lire.</p>
+      <ul class="legend-colors" id="legendColors"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================== FAQ ================================= -->
+<section class="section" id="faq" aria-labelledby="faq-h">
+  <div class="wrap wrap-narrow">
+    <header class="sec-head reveal">
+      <p class="eyebrow"><span data-i18n="faq.eyebrow">Questions fréquentes</span></p>
+      <h2 class="sec-title" id="faq-h" data-i18n="faq.title">Ce que l'on vous demandera quand même</h2>
+      <p class="sec-lead" data-i18n="faq.lead">Neuf questions légitimes.</p>
+    </header>
+    <div class="faq" id="faqList"></div>
+  </div>
+</section>
+
+<!-- =============================== DOWNLOAD ============================== -->
+<section class="section section-dl" id="download" aria-labelledby="dl-h">
+  <div class="wrap">
+    <div class="dl glass reveal">
+      <div class="dl-copy">
+        <p class="eyebrow"><span data-i18n="dl.eyebrow">Téléchargement</span></p>
+        <h2 class="sec-title" id="dl-h" data-i18n="dl.title">Une archive, pas une installation</h2>
+        <p class="dl-sub" data-i18n="dl.sub">L'archive contient l'interpréteur Python officiel signé.</p>
+        <p class="dl-meta"><svg class="ic" aria-hidden="true"><use href="#i-drive"></use></svg><span data-i18n="dl.meta">Pour Windows · Portable (ZIP) · ~1 Go</span></p>
+        <a class="btn btn-primary btn-lg" href="https://drive.google.com/file/d/1DGez44ZHktBlPtjHnaPx2Wm5BC_egWys/view?usp=sharing" target="_blank" rel="noopener noreferrer" data-magnetic>
+          <svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg>
+          <span data-i18n="dl.button">Télécharger l'archive</span>
+        </a>
+        <p class="dl-sec"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg><span data-i18n="dl.security">Hébergée sur Google Drive.</span></p>
+      </div>
+      <div class="dl-why">
+        <h3 class="mini-h" data-i18n="dl.why.title">Pourquoi un ZIP, et non un .exe ?</h3>
+        <p data-i18n="dl.why.body">Le contrôle intelligent des applications bloque les exécutables non signés.</p>
+        <p class="dl-privacy"><svg class="ic ic-ok" aria-hidden="true"><use href="#i-shield"></use></svg><span data-i18n="dl.privacy">Aucun compte.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ================================ FOOTER ================================ -->
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div class="f-brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="9"/><rect class="bm-r" x="11" y="7" width="10" height="12" rx="5"/><path class="bm-p" d="M8 16.5a8 8 0 0 0 16 0M16 24.5V29M11 29h10"/></svg>
+      </span>
+      <div>
+        <p class="f-name">HADJ NO-TOUCH AI</p>
+        <p class="f-tag" data-i18n="footer.tag">Contrôle sans contact pour Windows 10/11.</p>
+      </div>
+    </div>
+    <nav class="f-nav" data-i18n-attr="aria-label:footer.linksTitle">
+      <p class="f-nav-t" data-i18n="footer.linksTitle">Sur cette page</p>
+      <a href="#commands" data-i18n="footer.link1">Catalogue vocal</a>
+      <a href="#privacy" data-i18n="footer.link2">Confidentialité</a>
+      <a href="#faq" data-i18n="footer.link3">Questions fréquentes</a>
+    </nav>
+    <div class="f-legal">
+      <p class="f-rights" data-i18n="footer.rights">© 2026 HADJ NO-TOUCH AI</p>
+      <p class="f-small" data-i18n="footer.small">Version Windows uniquement.</p>
+      <p class="f-small" data-i18n="footer.small2">Ce site est un fichier statique.</p>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <a class="to-top" href="#top" data-magnetic><svg class="ic" aria-hidden="true"><use href="#i-top"></use></svg><span data-i18n="footer.toTop">Retour en haut</span></a>
+  </div>
+</footer>
+
+<noscript>
+  <div class="noscript-note" role="note">
+    <p><b>FR</b> — Cette page utilise JavaScript pour le sélecteur de langue et le laboratoire de gestes. La description complète du produit est disponible en arabe et en français dans le README du projet.</p>
+    <p dir="rtl" lang="ar"><b>AR</b> — تستخدم هذه الصفحة JavaScript لمبدّل اللغة ومختبر الإيماءات. يتوفّر وصف المنتج الكامل بالعربية والفرنسية في ملف README للمشروع.</p>
+    <p><b>EN</b> — This page uses JavaScript for the language switcher and the interactive gesture lab. The full product description is available in Arabic and French in the project README.</p>
+  </div>
+</noscript>
+
+<script src="i18n.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+# ===========================================================================
+#  الأوامر الصوتية الافتراضية
+#  لإضافة أوامرك أو تعديل أمر: أنشئ user_data/custom_commands.yaml بنفس البنية.
+#  الأمر المخصص الذي يحمل نفس id يستبدل الأمر الافتراضي.
+#
+#  بنية الأمر:
+#    id:        معرّف فريد
+#    phrases:   العبارات لكل لغة. {app} و {text} خانات تلتقط باقي الكلام.
+#    action + args   ← إجراء واحد
+#    أو steps: [ {action: ..., <args>}, ... ]   ← ماكرو من عدة خطوات
+#    dangerous: true ← يتطلب تأكيداً ("نعم"/"لا") قبل التنفيذ
+#    always: true    ← يعمل حتى بدون كلمة التنبيه (مخصص لأمر الإيقاف الطارئ)
+#
+#  التشكيل والهمزات والتاء المربوطة لا تهم: "أغلق" = "اغلق"، "النافذة" = "النافذه".
+#  قائمة الإجراءات المتاحة موجودة في README.
+# ===========================================================================
+commands:
+  # ---------------- الأمان والتحكم بالتطبيق نفسه ----------------
+  - id: emergency_stop
+    always: true
+    phrases:
+      ar: ["توقف فورا", "توقف", "قف"]
+      en: ["stop now", "stop", "emergency stop"]
+      fr: ["stop", "arrête", "arrête tout", "stop maintenant"]
+    action: app.pause
+
+  - id: resume
+    phrases:
+      ar: ["استانف", "استمر", "تابع", "فعل التحكم"]
+      en: ["resume", "continue", "enable control"]
+      fr: ["reprends", "reprendre", "continue", "active le contrôle"]
+    action: app.resume
+
+  - id: sleep
+    phrases:
+      ar: ["نم", "اسكت", "توقف عن الاستماع"]
+      en: ["go to sleep", "stop listening"]
+      fr: ["dors", "va dormir", "arrête d'écouter"]
+    action: app.sleep
+
+  - id: switch_language
+    phrases:
+      ar: ["بدل اللغة", "غير اللغة"]
+      en: ["switch language", "change language"]
+      fr: ["change de langue", "changer de langue"]
+    action: app.toggle_language   # بالتناوب: العربية ← الإنجليزية ← الفرنسية
+
+  - id: language_arabic
+    phrases:
+      ar: ["العربية", "بالعربي"]
+      en: ["arabic", "speak arabic"]
+      fr: ["arabe", "en arabe"]
+    action: app.set_language
+    args: {lang: ar}
+
+  - id: language_english
+    phrases:
+      ar: ["الانجليزية", "انجليزي"]
+      en: ["english"]
+      fr: ["anglais", "en anglais"]
+    action: app.set_language
+    args: {lang: en}
+
+  - id: language_french
+    phrases:
+      ar: ["الفرنسية", "فرنسي"]
+      en: ["french", "speak french"]
+      fr: ["français", "en français"]
+    action: app.set_language
+    args: {lang: fr}
+
+  - id: continuous_on
+    phrases:
+      ar: ["استماع مستمر", "فعل الاستماع المستمر"]
+      en: ["continuous listening on", "enable continuous listening"]
+      fr: ["écoute continue", "active l'écoute continue"]
+    action: app.set_continuous
+    args: {value: true}
+
+  - id: continuous_off
+    phrases:
+      ar: ["اوقف الاستماع المستمر", "الغ الاستماع المستمر"]
+      en: ["continuous listening off", "disable continuous listening"]
+      fr: ["désactive l'écoute continue", "arrête l'écoute continue"]
+    action: app.set_continuous
+    args: {value: false}
+
+  - id: calibrate
+    phrases:
+      ar: ["معايرة", "معايرة الكاميرا", "ابدا المعايرة"]
+      en: ["calibrate", "calibrate camera", "start calibration"]
+      fr: ["calibrage", "calibre la caméra", "lance le calibrage"]
+    action: app.calibrate
+
+  - id: open_settings
+    phrases:
+      ar: ["اعدادات التطبيق", "افتح اعدادات التطبيق"]
+      en: ["app settings", "open app settings"]
+      fr: ["paramètres de l'application", "ouvre les réglages"]
+    action: app.open_settings
+
+  - id: refresh_apps
+    phrases:
+      ar: ["حدث قائمة التطبيقات", "حدث التطبيقات"]
+      en: ["refresh apps", "refresh applications"]
+      fr: ["actualise les applications", "mets à jour les applications"]
+    action: app.refresh_apps
+
+  # ---------------- الإملاء والشبكة ----------------
+  # داخل الإملاء: "أوقف الإملاء" للخروج، "امسح ذلك" لحذف آخر جملة، والترقيم منطوقاً.
+  - id: start_dictation
+    phrases:
+      ar: ["ابدا الاملاء", "وضع الاملاء", "املاء"]
+      en: ["start dictation", "dictation mode", "dictate"]
+      fr: ["commence la dictée", "mode dictée", "dictée"]
+    action: app.start_dictation
+
+  - id: stop_dictation
+    phrases:
+      ar: ["اوقف الاملاء", "انهاء الاملاء"]
+      en: ["stop dictation", "end dictation"]
+      fr: ["arrête la dictée", "fin de la dictée"]
+    action: app.stop_dictation
+
+  # الشبكة: قل رقماً (1-9) للتكبير، ثم "انقر" أو "انقر مرتين" أو "انقر يمين"، "رجوع"، "إلغاء".
+  - id: show_grid
+    phrases:
+      ar: ["اعرض الشبكة", "اظهر الشبكة", "الشبكة", "شبكة الماوس"]
+      en: ["show grid", "mouse grid", "grid"]
+      fr: ["affiche la grille", "grille", "montre la grille"]
+    action: app.show_grid
+
+  # ---------------- التطبيقات والبحث ----------------
+  - id: open_app
+    phrases:
+      ar: ["افتح {app}", "شغل {app}"]
+      en: ["open {app}", "launch {app}", "start {app}"]
+      fr: ["ouvre {app}", "lance {app}", "démarre {app}"]
+    action: open_app
+    args: {name: "{app}"}
+
+  - id: search
+    phrases:
+      ar: ["ابحث عن {text}", "بحث عن {text}"]
+      en: ["search for {text}", "search {text}"]
+      fr: ["cherche {text}", "recherche {text}"]
+    action: search
+    args: {text: "{text}"}
+
+  - id: type_text
+    phrases:
+      ar: ["اكتب {text}"]
+      en: ["type {text}"]
+      fr: ["écris {text}", "tape {text}"]
+    action: type_text
+    args: {text: "{text}"}
+
+  # ---------------- النوافذ ----------------
+  - id: close_window
+    phrases:
+      ar: ["اغلق النافذة", "سكر النافذة", "اغلق"]
+      en: ["close window", "close the window", "close"]
+      fr: ["ferme la fenêtre", "ferme"]
+    action: close_window
+
+  - id: close_without_saving
+    dangerous: true
+    phrases:
+      ar: ["اغلق بدون حفظ", "اغلق دون حفظ"]
+      en: ["close without saving"]
+      fr: ["ferme sans enregistrer"]
+    steps:
+      - {action: close_window}
+      - {action: wait, ms: 600}
+      - {action: key, key: "n"}
+
+  - id: minimize
+    phrases:
+      ar: ["صغر النافذة", "صغر"]
+      en: ["minimize window", "minimize"]
+      fr: ["réduis la fenêtre", "réduis", "minimise"]
+    action: minimize_window
+
+  - id: maximize
+    phrases:
+      ar: ["كبر النافذة", "كبر"]
+      en: ["maximize window", "maximize"]
+      fr: ["agrandis la fenêtre", "agrandis", "maximise"]
+    action: maximize_window
+
+  - id: switch_window
+    phrases:
+      ar: ["بدل النافذة", "النافذة التالية", "بدل"]
+      en: ["switch window", "next window"]
+      fr: ["change de fenêtre", "fenêtre suivante"]
+    action: switch_window
+
+  - id: previous_window
+    phrases:
+      ar: ["النافذة السابقة"]
+      en: ["previous window"]
+      fr: ["fenêtre précédente"]
+    action: switch_window_prev
+
+  - id: zoom_in
+    phrases:
+      ar: ["تقريب", "كبر الخط", "كبر العرض"]
+      en: ["zoom in"]
+      fr: ["zoom avant", "agrandis le texte"]
+    action: zoom_in
+    args: {steps: 2}
+
+  - id: zoom_out
+    phrases:
+      ar: ["تبعيد", "صغر الخط", "صغر العرض"]
+      en: ["zoom out"]
+      fr: ["zoom arrière", "réduis le texte"]
+    action: zoom_out
+    args: {steps: 2}
+
+  - id: show_desktop
+    phrases:
+      ar: ["سطح المكتب", "اظهر سطح المكتب"]
+      en: ["show desktop", "desktop"]
+      fr: ["bureau", "affiche le bureau"]
+    action: show_desktop
+
+  - id: new_tab
+    phrases:
+      ar: ["تبويب جديد", "علامة تبويب جديدة"]
+      en: ["new tab"]
+      fr: ["nouvel onglet"]
+    action: hotkey
+    args: {keys: [ctrl, t]}
+
+  - id: close_tab
+    phrases:
+      ar: ["اغلق التبويب", "اغلق علامة التبويب"]
+      en: ["close tab"]
+      fr: ["ferme l'onglet"]
+    action: hotkey
+    args: {keys: [ctrl, w]}
+
+  # ---------------- التحرير ----------------
+  - id: copy
+    phrases: {ar: ["انسخ", "نسخ"], en: ["copy"], fr: ["copie", "copier"]}
+    action: hotkey
+    args: {keys: [ctrl, c]}
+
+  - id: paste
+    phrases: {ar: ["الصق", "لصق"], en: ["paste"], fr: ["colle", "coller"]}
+    action: hotkey
+    args: {keys: [ctrl, v]}
+
+  - id: cut
+    phrases: {ar: ["قص"], en: ["cut"], fr: ["coupe", "couper"]}
+    action: hotkey
+    args: {keys: [ctrl, x]}
+
+  - id: undo
+    phrases: {ar: ["تراجع"], en: ["undo"], fr: ["annule", "annuler"]}
+    action: hotkey
+    args: {keys: [ctrl, z]}
+
+  - id: redo
+    phrases: {ar: ["اعد", "اعادة"], en: ["redo"], fr: ["rétablis", "refais"]}
+    action: hotkey
+    args: {keys: [ctrl, y]}
+
+  - id: save
+    phrases: {ar: ["احفظ", "حفظ"], en: ["save"], fr: ["enregistre", "sauvegarde"]}
+    action: hotkey
+    args: {keys: [ctrl, s]}
+
+  - id: select_all
+    phrases: {ar: ["حدد الكل", "تحديد الكل"], en: ["select all"], fr: ["sélectionne tout", "tout sélectionner"]}
+    action: hotkey
+    args: {keys: [ctrl, a]}
+
+  - id: delete
+    dangerous: true
+    phrases: {ar: ["احذف", "حذف"], en: ["delete"], fr: ["supprime", "efface"]}
+    action: key
+    args: {key: delete}
+
+  - id: enter
+    phrases: {ar: ["ادخال", "انتر"], en: ["enter", "press enter"], fr: ["entrée", "valide"]}
+    action: key
+    args: {key: enter}
+
+  - id: escape
+    phrases: {ar: ["اخرج", "هروب"], en: ["escape"], fr: ["échappe", "touche échappe"]}
+    action: key
+    args: {key: esc}
+
+  - id: tab
+    phrases: {ar: ["الحقل التالي", "تاب"], en: ["tab", "next field"], fr: ["champ suivant", "tabulation"]}
+    action: key
+    args: {key: tab}
+
+  # ---------------- الفأرة والتمرير ----------------
+  - id: click
+    phrases: {ar: ["انقر", "اضغط", "كليك"], en: ["click"], fr: ["clique", "clic"]}
+    action: click
+
+  - id: double_click
+    phrases: {ar: ["انقر مرتين", "نقرة مزدوجة", "دبل كليك"], en: ["double click"], fr: ["double clic", "double clique"]}
+    action: double_click
+
+  - id: right_click
+    phrases: {ar: ["انقر بالزر الايمن", "انقر يمين", "زر ايمن"], en: ["right click"], fr: ["clic droit", "clique droit"]}
+    action: right_click
+
+  - id: scroll_down
+    phrases: {ar: ["مرر للاسفل", "مرر لتحت", "انزل"], en: ["scroll down"], fr: ["descends", "défile vers le bas"]}
+    action: scroll
+    args: {direction: down}
+
+  - id: scroll_up
+    phrases: {ar: ["مرر للاعلى", "مرر لفوق", "اطلع"], en: ["scroll up"], fr: ["monte", "défile vers le haut"]}
+    action: scroll
+    args: {direction: up}
+
+  - id: page_down
+    phrases: {ar: ["الصفحة التالية", "صفحة للاسفل"], en: ["page down"], fr: ["page suivante"]}
+    action: key
+    args: {key: pagedown}
+
+  - id: page_up
+    phrases: {ar: ["الصفحة السابقة", "صفحة للاعلى"], en: ["page up"], fr: ["page précédente"]}
+    action: key
+    args: {key: pageup}
+
+  # ---------------- الصوت والنظام ----------------
+  - id: volume_up
+    phrases: {ar: ["ارفع الصوت", "علي الصوت"], en: ["volume up", "louder"], fr: ["monte le son", "plus fort"]}
+    action: volume_up
+
+  - id: volume_down
+    phrases: {ar: ["اخفض الصوت", "وطي الصوت"], en: ["volume down", "quieter"], fr: ["baisse le son", "moins fort"]}
+    action: volume_down
+
+  - id: mute
+    phrases: {ar: ["كتم الصوت", "اكتم الصوت", "كتم"], en: ["mute", "mute sound"], fr: ["coupe le son", "muet"]}
+    action: mute
+
+  - id: screenshot
+    phrases: {ar: ["لقطة شاشة", "صور الشاشة"], en: ["screenshot", "take a screenshot"], fr: ["capture d'écran", "capture l'écran"]}
+    action: screenshot
+
+  # قفل الشاشة يُعدّ خطراً: فتحها قد يحتاج كلمة مرور لا يمكن إدخالها دون لمس
+  - id: lock_screen
+    dangerous: true
+    phrases: {ar: ["اقفل الشاشة", "قفل الشاشة"], en: ["lock screen", "lock the screen"], fr: ["verrouille l'écran"]}
+    action: lock_screen
+
+  - id: shutdown
+    dangerous: true
+    phrases: {ar: ["اطفئ الجهاز", "ايقاف التشغيل"], en: ["shut down", "shutdown computer"], fr: ["éteins l'ordinateur", "arrête l'ordinateur"]}
+    action: shutdown
+
+  - id: restart
+    dangerous: true
+    phrases: {ar: ["اعد تشغيل الجهاز", "اعادة التشغيل"], en: ["restart computer", "reboot"], fr: ["redémarre l'ordinateur"]}
+    action: restart

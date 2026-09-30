@@ -1,0 +1,169 @@
+# ===========================================================================
+#  HADJ No-Touch: ملف الإعدادات الافتراضي
+#  لا تعدّل هذا الملف مباشرة. انسخ ما تريد تغييره إلى user_data/config.yaml
+#  (القيم هناك تطغى على القيم هنا، ويكفي كتابة المفاتيح التي تغيّرها فقط).
+# ===========================================================================
+
+speech:
+  # لغة التعرف على الأوامر: ar | en | fr (صوتياً: "حاسوب، الفرنسية" / "ordinateur, arabe"...)
+  language: ar
+  # كلمات التنبيه لكل لغة. يمكن أن تكون أكثر من كلمة واحدة.
+  wake_words:
+    ar: ["حاسوب"]
+    en: ["computer"]
+    fr: ["ordinateur"]
+  # true = تنفيذ كل عبارة دون الحاجة لكلمة التنبيه (غير مستحسن في مكان صاخب)
+  continuous_listening: false
+  # بعد نطق كلمة التنبيه وحدها: مدة انتظار الأمر (ثوانٍ)
+  wake_timeout_s: 5
+  # بعد تنفيذ أمر: مدة بقاء الاستماع مفعّلاً لأمر تالٍ بدون كلمة التنبيه (0 = تعطيل)
+  followup_s: 6
+  # حد التطابق التقريبي للأوامر (50-100). أعلى = أدق وأقل تسامحاً.
+  match_threshold: 80
+  # تقييد التعرف بقائمة الأوامر: auto | on | off
+  use_grammar: auto
+  # رقم أو اسم جهاز الميكروفون (null = الافتراضي)
+  input_device: null
+  # حساسية كاشف الكلام 0-3 (3 = أشد تجاهلاً للضوضاء)
+  vad_aggressiveness: 2
+  # مدة الصمت التي تنهي العبارة (مللي ثانية)
+  silence_ms: 600
+  # أقصى طول للعبارة الواحدة (ثوانٍ)
+  max_utterance_s: 12
+
+dictation:
+  # محرك الإملاء:
+  #   whisper: دقة عالية وترقيم تلقائي، لكنه بطيء على المعالج (ثوانٍ لكل جملة).
+  #            تكمل كلامك والنص يُكتب بالترتيب عند جاهزيته.
+  #   vosk:    فوري لكن أقل دقة وبلا ترقيم تلقائي.
+  engine: whisper
+  # نموذج Whisper (مجلد داخل models/whisper). small أدق، base أسرع بنحو 3 مرات.
+  whisper_model: small
+  threads: 0        # عدد خيوط المعالج (0 = تلقائي)
+  beam_size: 1      # 1 = أسرع؛ 5 = أدق قليلاً وأبطأ كثيراً
+
+grid:
+  # إخفاء الشبكة الصوتية تلقائياً بعد هذه المدة دون كلام (ثوانٍ)
+  timeout_s: 30
+
+vision:
+  # التحكم بإيماءات اليد عبر كاميرا الويب (الصور لا تُحفظ ولا تغادر الذاكرة)
+  enabled: true
+  camera_index: 0
+  width: 640
+  height: 480
+  fps: 30
+  # نافذة معاينة تعرض ما تراه الكاميرا ونقاط اليد (للتجربة والضبط فقط)
+  preview: false
+  # اليد المتحكمة: any | right | left
+  hand: any
+  # المستطيل داخل صورة الكاميرا الذي يقابل كامل الشاشة [x0, y0, x1, y1] (0..1).
+  # تصغيره = حركة يد أقل لقطع الشاشة (مفيد لمحدودي الحركة).
+  control_zone: [0.2, 0.15, 0.8, 0.75]
+  # التنعيم (One Euro): min_cutoff أقل = ثبات أكثر وتأخر أكبر؛ beta أكبر = استجابة أسرع للحركة السريعة
+  min_cutoff: 1.0
+  beta: 0.01
+  min_detection_confidence: 0.6
+  min_tracking_confidence: 0.5
+  tuning:
+    pinch_enter: 0.25     # قرص الإبهام بالسبابة يبدأ تحت هذه المسافة (نسبة لحجم اليد)
+    pinch_exit: 0.38      # وينتهي فوق هذه
+    drag_hold_ms: 400     # إبقاء القرص أطول من هذا = بدء سحب
+    drag_move: 0.04       # أو تحريك اليد أثناء القرص أكثر من هذا = بدء سحب
+    rewind_ms: 120        # النقر يحدث حيث كان المؤشر قبل القرص (يمنع انزياح النقرة)
+    fist_ms: 600          # قبضة لهذه المدة = إيقاف مؤقت
+    palm_resume_ms: 1000  # كف مفتوح لهذه المدة أثناء الإيقاف = استئناف
+    palm_long_ms: 2000    # كف مفتوح لهذه المدة = الإجراء palm_hold_long
+    lost_ms: 400          # إذا اختفت اليد أثناء السحب لهذه المدة يُحرَّر الزر
+    scroll_step: 0.035    # حركة الإصبعين (نسبة من ارتفاع الصورة) لكل نقرة عجلة
+    scroll_settle_ms: 150 # ثبات وضعية الإصبعين قبل بدء التمرير
+    scroll_invert: false  # true = اليد للأعلى تمرّر للأسفل (مثل السحب على شاشة اللمس)
+    swipe_dist: 0.22      # سحب اليد المفتوحة أفقياً بهذه المسافة (نسبة من عرض الصورة)...
+    swipe_ms: 450         # ...خلال هذه المدة = تبديل النافذة
+    swipe_max_dy: 0.12    # أقصى انحراف عمودي أثناء السحب
+    swipe_cooldown_ms: 1000
+    zoom_step: 0.15       # تباعد/تقارب اليدين بنسبة 15% = خطوة تكبير/تصغير
+  # ربط الإيماءات بالإجراءات (none = تعطيل). السحب والإفلات ثابت على القرص المستمر.
+  bindings:
+    pinch_tap: click                # قرص الإبهام + السبابة
+    middle_pinch_tap: right_click   # قرص الإبهام + الوسطى
+    fist_hold: app.pause            # قبضة
+    palm_hold_long: show_desktop    # كف مفتوح ثانيتين
+    two_scroll: scroll              # السبابة والوسطى ممدودتان ثم تحريك اليد للأعلى/للأسفل
+    swipe_right: switch_window      # سحب اليد المفتوحة يميناً
+    swipe_left: switch_window_prev  # سحب اليد المفتوحة يساراً
+    zoom_in: zoom_in                # قرص بكلتا اليدين ثم إبعادهما
+    zoom_out: zoom_out              # قرص بكلتا اليدين ثم تقريبهما
+
+safety:
+  # اختصار لوحة مفاتيح لإيقاف/استئناف كل التحكم فوراً (للمرافق أو لحالات الطوارئ)
+  emergency_hotkey: "ctrl+alt+shift+p"
+  # طلب تأكيد ("نعم"/"لا") قبل الإجراءات الخطرة
+  confirm_dangerous: true
+  confirm_timeout_s: 8
+
+feedback:
+  # صوت قصير عند النجاح/الفشل
+  sounds: true
+
+ui:
+  ui_language: ar
+  # تكبير الخطوط (1.0 = عادي، 2.0 = ضعف الحجم)
+  font_scale: 1.0
+  high_contrast: false
+  # الشريط الشفاف الذي يعرض آخر أمر
+  overlay: true
+  overlay_seconds: 4
+  # إظهار لوحة التحكم عند التشغيل (إغلاقها لا يوقف التطبيق)
+  show_panel: true
+
+actions:
+  # عدد نقرات عجلة الفأرة لكل أمر تمرير
+  scroll_amount: 5
+  # عدد درجات الصوت لكل أمر رفع/خفض (الدرجة = 2%)
+  volume_step: 5
+
+# أسماء منطوقة للتطبيقات ← اسم التطبيق في قائمة ابدأ، أو أمر/مسار يُشغَّل مباشرة.
+app_aliases:
+  المفكرة: notepad.exe
+  مفكرة: notepad.exe
+  الحاسبة: calc.exe
+  الاله الحاسبة: calc.exe
+  الرسام: mspaint.exe
+  مستكشف الملفات: explorer.exe
+  الملفات: explorer.exe
+  الاعدادات: "ms-settings:"
+  موجه الاوامر: cmd.exe
+  مدير المهام: taskmgr.exe
+  لوحة المفاتيح: osk.exe
+  كروم: Google Chrome
+  المتصفح: Microsoft Edge
+  ايدج: Microsoft Edge
+  فايرفوكس: Firefox
+  وورد: Word
+  اكسل: Excel
+  باوربوينت: PowerPoint
+  اوتلوك: Outlook
+  تيمز: Microsoft Teams
+  notepad: notepad.exe
+  calculator: calc.exe
+  paint: mspaint.exe
+  file explorer: explorer.exe
+  files: explorer.exe
+  settings: "ms-settings:"
+  command prompt: cmd.exe
+  task manager: taskmgr.exe
+  keyboard: osk.exe
+  browser: Microsoft Edge
+  chrome: Google Chrome
+  bloc-notes: notepad.exe
+  bloc notes: notepad.exe
+  calculatrice: calc.exe
+  explorateur de fichiers: explorer.exe
+  explorateur: explorer.exe
+  fichiers: explorer.exe
+  paramètres: "ms-settings:"
+  invite de commandes: cmd.exe
+  gestionnaire des tâches: taskmgr.exe
+  clavier: osk.exe
+  navigateur: Microsoft Edge
