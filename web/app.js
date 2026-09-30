@@ -148,7 +148,30 @@
       "hub.tab_touch": "Pavé Tactile & Clavier",
       "hub.tab_apps": "Applications",
       "hub.tab_console": "Console d'Ordres",
-      "hub.tab_calib": "Calibrage Auto"
+      "hub.tab_calib": "Calibrage Auto",
+      "lm.title": "Diagnostic & Lancement de HADJ NO-TOUCH AI",
+      "lm.subtitle": "Vérification en temps réel du moteur local et assistance de démarrage.",
+      "lm.status_checking": "Analyse de la connexion au moteur local (Ports 8766 & 8000)...",
+      "lm.status_online": "✅ Application locale active & connectée !",
+      "lm.status_offline": "🟡 Application locale non détectée",
+      "lm.telemetry_cpu": "CPU",
+      "lm.telemetry_ram": "RAM",
+      "lm.telemetry_companion": "Port 8766",
+      "lm.telemetry_gateway": "Port 8000",
+      "lm.offline_lead": "HADJ fonctionne à 100% hors ligne sur votre ordinateur pour garantir une confidentialité totale (aucun cloud).",
+      "lm.step1_title": "Ouvrir le dossier du projet",
+      "lm.step1_sub": "Double-cliquez sur launch.bat ou ouvrez votre terminal.",
+      "lm.step2_title": "Lancer l'IA et la caméra",
+      "lm.step2_sub": "Démarre la reconnaissance de la main et de la voix.",
+      "lm.step3_title": "Démarrer la passerelle Web Companion",
+      "lm.step3_sub": "Permet le pilotage depuis ce site ou un mobile.",
+      "lm.btn_recheck": "Re-tester la connexion",
+      "lm.btn_open_local": "Ouvrir en Local (Port 8000)",
+      "lm.btn_demo": "Tester le Cockpit (Mode Démo)",
+      "lm.btn_goto_hub": "Accéder au Cockpit de Commande",
+      "lm.btn_calib": "Lancer le Calibrage Automatique",
+      "lm.btn_test_action": "Tester une commande (Vol +)",
+      "lm.close": "Fermer"
     },
 
     en: {
@@ -267,7 +290,30 @@
       "hub.tab_touch": "Trackpad & Typing",
       "hub.tab_apps": "Quick Apps",
       "hub.tab_console": "Command Console",
-      "hub.tab_calib": "Auto-Calibration"
+      "hub.tab_calib": "Auto-Calibration",
+      "lm.title": "Diagnostics & Launch — HADJ NO-TOUCH AI",
+      "lm.subtitle": "Real-time local engine verification and startup guide.",
+      "lm.status_checking": "Scanning local engine connection (Ports 8766 & 8000)...",
+      "lm.status_online": "✅ Local application running & connected!",
+      "lm.status_offline": "🟡 Local application not detected",
+      "lm.telemetry_cpu": "CPU",
+      "lm.telemetry_ram": "RAM",
+      "lm.telemetry_companion": "Port 8766",
+      "lm.telemetry_gateway": "Port 8000",
+      "lm.offline_lead": "HADJ runs 100% offline on your computer to ensure complete privacy (zero cloud).",
+      "lm.step1_title": "Open project folder",
+      "lm.step1_sub": "Double-click launch.bat or open your terminal.",
+      "lm.step2_title": "Launch AI & Vision",
+      "lm.step2_sub": "Starts hand tracking and voice listening.",
+      "lm.step3_title": "Start Web Companion gateway",
+      "lm.step3_sub": "Enables remote control from this website or mobile.",
+      "lm.btn_recheck": "Re-test connection",
+      "lm.btn_open_local": "Open local dashboard (Port 8000)",
+      "lm.btn_demo": "Try Cockpit in Demo Mode",
+      "lm.btn_goto_hub": "Go to Command Cockpit",
+      "lm.btn_calib": "Run Auto-Calibration",
+      "lm.btn_test_action": "Test PC Action (Vol +)",
+      "lm.close": "Close"
     },
 
     ar: {
@@ -386,7 +432,30 @@
       "hub.tab_touch": "لوحة اللمس والكتابة",
       "hub.tab_apps": "تشغيل التطبيقات",
       "hub.tab_console": "موجه الأوامر",
-      "hub.tab_calib": "المعايرة التلقائية"
+      "hub.tab_calib": "المعايرة التلقائية",
+      "lm.title": "فحص وتشغيل HADJ NO-TOUCH AI",
+      "lm.subtitle": "التحقق المباشر من المحرك المحلي ودليل بدء التشغيل.",
+      "lm.status_checking": "جاري فحص الاتصال بالمحرك المحلي (المنافذ 8766 و8000)...",
+      "lm.status_online": "✅ التطبيق المحلي قيد التشغيل ومتصل بنجاح!",
+      "lm.status_offline": "🟡 لم يتم العثور على التطبيق المحلي بعد",
+      "lm.telemetry_cpu": "المعالج",
+      "lm.telemetry_ram": "الذاكرة",
+      "lm.telemetry_companion": "منفذ 8766",
+      "lm.telemetry_gateway": "منفذ 8000",
+      "lm.offline_lead": "يعمل HADJ محلياً 100% على حاسوبك لضمان الخصوصية التامة دون أي سحابة.",
+      "lm.step1_title": "افتح مجلد المشروع",
+      "lm.step1_sub": "انقر مرتين على launch.bat أو افتح موجه الأوامر.",
+      "lm.step2_title": "شغّل الذكاء الاصطناعي والكاميرا",
+      "lm.step2_sub": "يبدأ تتبع اليدين والاستماع الصوتي المحلي.",
+      "lm.step3_title": "شغّل بوابة الويب المحلية",
+      "lm.step3_sub": "يتيح التحكم الكامل من هذا الموقع أو الهاتف.",
+      "lm.btn_recheck": "إعادة فحص الاتصال",
+      "lm.btn_open_local": "فتح التطبيق المحلي (منفذ 8000)",
+      "lm.btn_demo": "تجربة لوحة التحكم (محاكاة)",
+      "lm.btn_goto_hub": "الذهاب إلى مركز التحكم الكامل",
+      "lm.btn_calib": "تشغيل المعايرة التلقائية",
+      "lm.btn_test_action": "اختبار أمر بالنظام (رفع الصوت)",
+      "lm.close": "إغلاق"
     }
   };
 
@@ -745,49 +814,207 @@
 
   /* --------------------------------- launcher -------------------------------- */
 
+  /* --------------------------------- launcher -------------------------------- */
+
   function bindLauncher() {
-    const isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+    const modal = $("#launch-modal");
+    if (!modal) return;
+
+    let restoreFocus = null;
+
+    async function runDiagnostics() {
+      const dot = $("[data-lm-dot]", modal);
+      const statusTxt = $("[data-lm-status-text]", modal);
+      const viewOnline = $('[data-lm-view="online"]', modal);
+      const viewOffline = $('[data-lm-view="offline"]', modal);
+      const p8766 = $("[data-lm-p8766]", modal);
+      const p8000 = $("[data-lm-p8000]", modal);
+      const cpuEl = $("[data-lm-cpu]", modal);
+      const ramEl = $("[data-lm-ram]", modal);
+
+      if (dot) dot.className = "lm-dot is-checking";
+      if (statusTxt) {
+        statusTxt.textContent = (DICT[lang] && DICT[lang]["lm.status_checking"]) || "Analyse de la connexion au moteur local (Ports 8766 & 8000)...";
+      }
+
+      let is8000Ok = false;
+      let is8766Ok = false;
+      let statsData = null;
+
+      try {
+        const r8000 = await fetch("/api/status", { cache: "no-store" }).catch(() => null);
+        if (r8000 && r8000.ok) {
+          is8000Ok = true;
+          statsData = await r8000.json().catch(() => null);
+        }
+      } catch (_) {}
+
+      try {
+        const r8766 = await fetch("http://127.0.0.1:8766/status", { mode: "cors", cache: "no-store" }).catch(() => null);
+        if (r8766 && r8766.ok) {
+          is8766Ok = true;
+          if (!statsData) statsData = await r8766.json().catch(() => null);
+        }
+      } catch (_) {}
+
+      if (p8766) {
+        p8766.textContent = is8766Ok ? "ACTIF" : "OFFLINE";
+        p8766.style.color = is8766Ok ? "#34d399" : "#ffb703";
+      }
+      if (p8000) {
+        p8000.textContent = is8000Ok ? "ACTIF" : "OFFLINE";
+        p8000.style.color = is8000Ok ? "#34d399" : "#ffb703";
+      }
+
+      const telem = (statsData && statsData.telemetry) || {};
+      if (cpuEl) cpuEl.textContent = telem.cpu_percent != null ? `${Math.round(telem.cpu_percent)}%` : "--%";
+      if (ramEl) ramEl.textContent = telem.memory_percent != null ? `${Math.round(telem.memory_percent)}%` : "--%";
+
+      const isOnline = is8000Ok || is8766Ok;
+
+      if (dot) dot.className = `lm-dot ${isOnline ? "is-online" : ""}`;
+      if (statusTxt) {
+        statusTxt.textContent = isOnline
+          ? ((DICT[lang] && DICT[lang]["lm.status_online"]) || "✅ Application locale active & connectée !")
+          : ((DICT[lang] && DICT[lang]["lm.status_offline"]) || "🟡 Application locale non détectée");
+      }
+
+      if (viewOnline) viewOnline.hidden = !isOnline;
+      if (viewOffline) viewOffline.hidden = isOnline;
+
+      return isOnline;
+    }
+
+    function openModal() {
+      restoreFocus = document.activeElement;
+      modal.removeAttribute("hidden");
+      document.body.style.overflow = "hidden";
+      runDiagnostics();
+    }
+
+    function closeModal() {
+      modal.setAttribute("hidden", "");
+      document.body.style.overflow = "";
+      if (restoreFocus && typeof restoreFocus.focus === "function") {
+        restoreFocus.focus();
+      }
+    }
 
     $$('[data-action="launch-app"]').forEach((btn) => {
-      btn.addEventListener("click", async () => {
-
-        if (isLocal) {
-          // Local mode: try the web_server.py /api/launch endpoint
-          try {
-            const res = await fetch("/api/launch").then((r) => r.json()).catch(() => null);
-            if (res && res.success) {
-              if (res.alreadyRunning) {
-                alert("✅ HADJ NO-TOUCH AI est déjà actif et en cours d'exécution sur votre PC !");
-              } else {
-                alert("🚀 Lancement effectué avec succès !\n\nHADJ NO-TOUCH AI est en cours de démarrage sur votre ordinateur.");
-              }
-              return;
-            }
-          } catch (_) {}
-
-          // Fallback: check companion server directly
-          try {
-            const res8766 = await fetch("http://127.0.0.1:8766/status", { mode: "cors" }).catch(() => null);
-            if (res8766 && res8766.ok) {
-              alert("✅ HADJ NO-TOUCH AI est déjà actif et en cours d'exécution sur votre PC !");
-              return;
-            }
-          } catch (_) {}
-
-          alert("💡 Pour lancer HADJ : double-cliquez sur launch.bat dans votre dossier de projet.");
-
-        } else {
-          // Vercel / Remote mode: show installation instructions
-          alert("💻 HADJ NO-TOUCH OFFLINE AI est une application de bureau Windows.\n\n" +
-            "Pour l'utiliser :\n" +
-            "1️⃣  Téléchargez ou clonez le projet sur votre PC.\n" +
-            "2️⃣  Exécutez launch.bat (ou : python main.py)\n" +
-            "3️⃣  Lancez le serveur local : python web_server.py\n" +
-            "4️⃣  Ouvrez http://127.0.0.1:8000 sur votre machine.\n\n" +
-            "ℹ️  Cette page de présentation est déployée sur Vercel. Le contrôle s'exécute 100% en local, hors ligne.");
-        }
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        SoundFx.play("click");
+        openModal();
       });
     });
+
+    $$("[data-launch-close]", modal).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        SoundFx.play("click");
+        closeModal();
+      });
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        SoundFx.play("click");
+        closeModal();
+      }
+    });
+
+    addEventListener("keydown", (e) => {
+      if (modal.hidden) return;
+      if (e.key === "Escape") {
+        SoundFx.play("click");
+        closeModal();
+      }
+    });
+
+    const btnRecheck = $("[data-lm-recheck]", modal);
+    const btnGotoHub = $("[data-lm-goto-hub]", modal);
+    const btnCalib = $("[data-lm-calib]", modal);
+    const btnTestAction = $("[data-lm-test-action]", modal);
+    const btnDemo = $("[data-lm-demo-mode]", modal);
+
+    if (btnRecheck) {
+      btnRecheck.addEventListener("click", () => {
+        SoundFx.play("click");
+        const icon = btnRecheck.querySelector(".lm-spin-icon");
+        if (icon) icon.classList.add("is-spinning");
+        runDiagnostics().finally(() => {
+          if (icon) icon.classList.remove("is-spinning");
+        });
+      });
+    }
+
+    if (btnGotoHub) {
+      btnGotoHub.addEventListener("click", () => {
+        SoundFx.play("click");
+        closeModal();
+        const hub = $("#control-hub");
+        if (hub) hub.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+      });
+    }
+
+    if (btnCalib) {
+      btnCalib.addEventListener("click", () => {
+        SoundFx.play("click");
+        closeModal();
+        const hub = $("#control-hub");
+        if (hub) hub.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+        const calibTab = $('[data-hub-tab="calib"]');
+        if (calibTab) calibTab.click();
+        const calibBtn = $("[data-trigger-calib]");
+        if (calibBtn) calibBtn.click();
+      });
+    }
+
+    if (btnTestAction) {
+      btnTestAction.addEventListener("click", async () => {
+        SoundFx.play("click");
+        btnTestAction.disabled = true;
+        try {
+          const res = await fetch("/api/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "volume_up" })
+          }).catch(() => null);
+
+          if (res && res.ok) {
+            SoundFx.play("success");
+            alert("🔊 Commande testée avec succès ! (Volume +)");
+          } else {
+            const res8766 = await fetch("http://127.0.0.1:8766/action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "volume_up" })
+            }).catch(() => null);
+
+            if (res8766 && res8766.ok) {
+              SoundFx.play("success");
+              alert("🔊 Commande testée via Port 8766 ! (Volume +)");
+            } else {
+              alert("🟡 Moteur local indisponible. Démarrez launch.bat pour activer le contrôle.");
+            }
+          }
+        } finally {
+          btnTestAction.disabled = false;
+        }
+      });
+    }
+
+    if (btnDemo) {
+      btnDemo.addEventListener("click", () => {
+        SoundFx.play("success");
+        closeModal();
+        const hub = $("#control-hub");
+        if (hub) hub.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+        const statusBadge = $("[data-hub-status]");
+        const statusTxt = $("[data-hub-conn-txt]");
+        if (statusBadge) statusBadge.classList.add("is-online");
+        if (statusTxt) statusTxt.textContent = "MODE DÉMO ACTIF · SIMULATION EN DIRECT";
+      });
+    }
   }
 
   /* ----------------------------- calibration ----------------------------- */

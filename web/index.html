@@ -859,6 +859,140 @@
   </div>
 </div>
 
+<!-- ============================ LAUNCH & DIAGNOSTICS MODAL ============================ -->
+<div class="modal" id="launch-modal" hidden>
+  <div class="modal__box lm-box" role="dialog" aria-modal="true" aria-labelledby="lm-title">
+    <div class="lm-header">
+      <div class="lm-header__lead">
+        <span class="lm-badge-icon">⚡</span>
+        <div>
+          <h3 id="lm-title" class="lm-title" data-i18n="lm.title">Diagnostic & Lancement de HADJ NO-TOUCH AI</h3>
+          <p class="lm-subtitle" data-i18n="lm.subtitle">Vérification en temps réel du moteur local et assistance de démarrage.</p>
+        </div>
+      </div>
+      <button type="button" class="lm-close" data-launch-close aria-label="Fermer">✕</button>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="lm-status-bar" data-lm-status-bar>
+      <div class="lm-status-indicator">
+        <span class="lm-dot" data-lm-dot></span>
+        <span class="lm-status-txt" data-lm-status-text data-i18n="lm.status_checking">Analyse de la connexion au moteur local (Ports 8766 & 8000)...</span>
+      </div>
+      <div class="lm-scanline" data-lm-scanline></div>
+    </div>
+
+    <!-- Telemetry mini strip -->
+    <div class="lm-telemetry-row">
+      <div class="lm-telem-chip">
+        <span class="lm-telem-lbl" data-i18n="lm.telemetry_companion">Port 8766</span>
+        <strong class="lm-telem-val" data-lm-p8766>--</strong>
+      </div>
+      <div class="lm-telem-chip">
+        <span class="lm-telem-lbl" data-i18n="lm.telemetry_gateway">Port 8000</span>
+        <strong class="lm-telem-val" data-lm-p8000>--</strong>
+      </div>
+      <div class="lm-telem-chip">
+        <span class="lm-telem-lbl" data-i18n="lm.telemetry_cpu">CPU</span>
+        <strong class="lm-telem-val" data-lm-cpu>--%</strong>
+      </div>
+      <div class="lm-telem-chip">
+        <span class="lm-telem-lbl" data-i18n="lm.telemetry_ram">RAM</span>
+        <strong class="lm-telem-val" data-lm-ram>--%</strong>
+      </div>
+    </div>
+
+    <!-- ONLINE STATE VIEW -->
+    <div class="lm-state-online" data-lm-view="online" hidden>
+      <div class="lm-alert lm-alert--success">
+        <span class="lm-alert-icon">✨</span>
+        <div>
+          <strong data-i18n="lm.status_online">Application locale active & connectée !</strong>
+          <p>Le moteur d'orchestration Windows et la passerelle de télécommande répondent parfaitement sur votre PC.</p>
+        </div>
+      </div>
+      <div class="lm-actions-row">
+        <button type="button" class="btn btn--p" data-lm-goto-hub>
+          <span>🎮</span> <span data-i18n="lm.btn_goto_hub">Accéder au Cockpit de Commande</span>
+        </button>
+        <button type="button" class="btn" data-lm-calib>
+          <span>⚡</span> <span data-i18n="lm.btn_calib">Lancer le Calibrage Automatique</span>
+        </button>
+        <button type="button" class="btn btn--ghost" data-lm-test-action>
+          <span>🔊</span> <span data-i18n="lm.btn_test_action">Tester une commande (Vol +)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- OFFLINE / STANDBY STATE VIEW -->
+    <div class="lm-state-offline" data-lm-view="offline">
+      <div class="lm-note-card">
+        <p data-i18n="lm.offline_lead">HADJ fonctionne à 100% hors ligne sur votre ordinateur pour garantir une confidentialité totale (aucun cloud). Lancez le moteur sur votre PC pour activer le contrôle en direct.</p>
+      </div>
+
+      <div class="lm-steps-list">
+        <div class="lm-step-item">
+          <div class="lm-step-num">1</div>
+          <div class="lm-step-info">
+            <h4 data-i18n="lm.step1_title">Ouvrir le dossier du projet</h4>
+            <p data-i18n="lm.step1_sub">Double-cliquez sur launch.bat ou ouvrez votre terminal.</p>
+            <div class="lm-code-row">
+              <code>launch.bat</code>
+              <button type="button" class="btn-copy-code" data-copy="launch.bat" aria-label="Copier">
+                <span class="copy-lbl">Copier</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lm-step-item">
+          <div class="lm-step-num">2</div>
+          <div class="lm-step-info">
+            <h4 data-i18n="lm.step2_title">Lancer l'IA et la caméra</h4>
+            <p data-i18n="lm.step2_sub">Démarre la reconnaissance de la main et de la voix.</p>
+            <div class="lm-code-row">
+              <code>python main.py</code>
+              <button type="button" class="btn-copy-code" data-copy="python main.py" aria-label="Copier">
+                <span class="copy-lbl">Copier</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lm-step-item">
+          <div class="lm-step-num">3</div>
+          <div class="lm-step-info">
+            <h4 data-i18n="lm.step3_title">Démarrer la passerelle Web Companion</h4>
+            <p data-i18n="lm.step3_sub">Permet le pilotage depuis ce site ou un mobile.</p>
+            <div class="lm-code-row">
+              <code>python web_server.py</code>
+              <button type="button" class="btn-copy-code" data-copy="python web_server.py" aria-label="Copier">
+                <span class="copy-lbl">Copier</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lm-actions-row">
+        <button type="button" class="btn btn--p" data-lm-recheck>
+          <span class="lm-spin-icon">🔄</span> <span data-i18n="lm.btn_recheck">Re-tester la connexion</span>
+        </button>
+        <a href="http://127.0.0.1:8000" target="_blank" rel="noopener noreferrer" class="btn" data-lm-open-local>
+          <span>🌐</span> <span data-i18n="lm.btn_open_local">Ouvrir en Local (Port 8000)</span>
+        </a>
+        <button type="button" class="btn btn--ghost" data-lm-demo-mode>
+          <span>🎮</span> <span data-i18n="lm.btn_demo">Tester le Cockpit (Mode Démo)</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="lm-footer">
+      <button type="button" class="btn btn--ghost btn--sm" data-launch-close data-i18n="lm.close">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>
