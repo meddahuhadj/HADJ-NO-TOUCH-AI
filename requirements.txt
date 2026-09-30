@@ -1,0 +1,22 @@
+# HADJ NO-TOUCH OFFLINE AI - Python Dependencies
+# High-Performance Offline Touchless Control Suite
+
+PySide6>=6.6.0
+opencv-python>=4.8.0
+mediapipe>=0.10.14
+pyautogui>=0.9.54
+pywin32>=306
+pywinauto>=0.6.8
+pycaw>=20240210
+screen_brightness_control>=0.23.0
+sounddevice>=0.4.6
+# Microphone capture: SpeechRecognition drives the offline dictation path, and
+# both it and the automatic calibration's level probe read PortAudio directly.
+pyaudio>=0.2.13
+SpeechRecognition>=3.10.0
+vosk>=0.3.45
+pyttsx3>=2.90
+psutil>=5.9.0
+Pillow>=10.0.0
+numpy>=1.24.0
+pytesseract>=0.3.10

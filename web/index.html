@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HADJ NO-TOUCH OFFLINE AI — Contrôle sans toucher, 100% local</title>
+<meta name="description" content="Contrôle complet de l'ordinateur sans le toucher : voix, gestes de la main, vision de l'écran et IA locale. 100% hors ligne, zéro appel cloud.">
+<meta name="theme-color" content="#060A12">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no">
+<meta property="og:type" content="website">
+<meta property="og:title" content="HADJ NO-TOUCH OFFLINE AI">
+<meta property="og:description" content="Voice + gesture + screen vision + offline AI. Touchless Windows control, entirely on-device.">
+<meta property="og:image" content="icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HADJ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main" data-i18n="a11y.skip">Aller au contenu</a>
+<p class="sr" id="lang-status" role="status" aria-live="polite" aria-atomic="true"></p>
+
+<header class="nav" id="nav">
+  <div class="shell nav__inner">
+    <a class="brand" href="#top" aria-label="HADJ NO-TOUCH OFFLINE AI">
+      <img src="icons/icon.svg" alt="" width="26" height="26" aria-hidden="true">
+      <span class="brand__txt"><b>HADJ</b><i>NO-TOUCH · OFFLINE AI</i></span>
+    </a>
+
+    <nav class="nav__links" aria-label="Sections" data-i18n-attr="aria-label:nav.aria">
+      <a href="#architecture" data-i18n="nav.arch">Architecture</a>
+      <a href="#gestures" data-i18n="nav.gestures">Gestes</a>
+      <a href="#voice" data-i18n="nav.voice">Voix</a>
+      <a href="#security" data-i18n="nav.security">Sécurité</a>
+      <a href="#privacy" data-i18n="nav.privacy">Confidentialité</a>
+      <a href="#run" data-i18n="nav.run">Lancer</a>
+    </nav>
+
+    <div class="nav__end">
+      <div class="lang" role="group" data-i18n-attr="aria-label:nav.langaria">
+        <button type="button" data-lang="ar" lang="ar" dir="rtl">ع</button>
+        <button type="button" data-lang="fr" lang="fr">FR</button>
+        <button type="button" data-lang="en" lang="en">EN</button>
+      </div>
+      <button type="button" class="theme-toggle" data-theme-toggle data-i18n-attr="aria-label:nav.theme" aria-label="Changer le thème">
+        <svg class="sun-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+      <button type="button" class="btn btn--p btn--sm install-btn" data-install>
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M8 1v9M4.5 6.5 8 10l3.5-3.5M2 13.5h12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="nav.install">Installer</span>
+      </button>
+      <button type="button" class="burger" aria-expanded="false" aria-controls="mobile-menu" data-i18n-attr="aria-label:nav.menu">
+        <span></span><span></span>
+      </button>
+    </div>
+  </div>
+  <div class="nav__progress" aria-hidden="true"><i></i></div>
+</header>
+
+<div class="sheet" id="mobile-menu" hidden>
+  <div class="sheet__panel">
+    <a href="#architecture" data-i18n="nav.arch">Architecture</a>
+    <a href="#gestures" data-i18n="nav.gestures">Gestes</a>
+    <a href="#voice" data-i18n="nav.voice">Voix</a>
+    <a href="#security" data-i18n="nav.security">Sécurité</a>
+    <a href="#performance" data-i18n="nav.perf">Performance</a>
+    <a href="#privacy" data-i18n="nav.privacy">Confidentialité</a>
+    <a href="#run" data-i18n="nav.run">Lancer</a>
+    <a href="#faq" data-i18n="nav.faq">FAQ</a>
+  </div>
+</div>
+
+<main id="main">
+<a id="top"></a>
+
+<!-- ============================ HERO ============================ -->
+<section class="hero">
+  <div class="hero__grid" aria-hidden="true"></div>
+  <div class="hero__scan" aria-hidden="true"></div>
+  <div class="shell hero__inner">
+    <div class="hero__copy">
+      <p class="eyebrow"><span class="dot dot--ok"></span><span data-i18n="hero.eyebrow">Hors ligne par conception · IA 100% locale</span></p>
+      <h1 class="hero__title" data-i18n="hero.title">Contrôlez votre ordinateur sans le toucher.</h1>
+      <p class="hero__lead" data-i18n="hero.lead">Voix, gestes de la main et vision de l'écran fusionnés en une seule couche sensorielle. Aucune donnée ne quitte la machine, aucun appel cloud, aucune latence réseau.</p>
+      <div class="hero__cta">
+        <a class="btn btn--p" href="#run" data-i18n="hero.cta1">Lancer le projet</a>
+        <a class="btn" href="#gestures" data-i18n="hero.cta2">Voir les gestes</a>
+      </div>
+      <ul class="hero__meta">
+        <li><b>v1.0.0</b><span data-i18n="hero.m1">Windows 10/11</span></li>
+        <li><b>21</b><span data-i18n="hero.m2">points de la main</span></li>
+        <li><b>ar · fr · en</b><span data-i18n="hero.m3">avec RTL natif</span></li>
+      </ul>
+    </div>
+
+    <div class="hud" role="img" data-i18n-attr="aria-label:hero.hudaria">
+      <div class="hud__bar">
+        <span class="hud__dot"></span><span class="hud__dot"></span><span class="hud__dot"></span>
+        <span class="hud__path">CAM 0 · 640×480 · 22 FPS</span>
+        <span class="hud__badge" data-i18n="hero.hudlive">EN DIRECT</span>
+      </div>
+
+      <div class="hud__view">
+        <svg class="hud__skel" viewBox="0 0 240 180" aria-hidden="true">
+          <defs>
+            <linearGradient id="skelG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#4CC9F0"/><stop offset="1" stop-color="#A78BFA"/>
+            </linearGradient>
+          </defs>
+          <g class="skel__conn" fill="none" stroke="url(#skelG)" stroke-width="1.6" stroke-linecap="round">
+            <path d="M120 150 L96 120"/><path d="M120 150 L146 122"/>
+            <path d="M96 120 L100 88"/><path d="M120 150 L120 112"/><path d="M146 122 L152 92"/>
+            <path d="M150 92 L136 62"/><path d="M152 92 L166 66"/>
+            <path d="M150 92 L148 58"/><path d="M152 92 L156 56"/>
+            <path d="M100 88 L92 58"/><path d="M100 88 L100 56"/>
+            <path d="M100 88 L108 56"/><path d="M96 120 L100 88"/>
+            <path d="M150 92 L128 66"/>
+            <path d="M96 120 L88 106"/>
+          </g>
+          <g class="skel__pts">
+            <circle cx="120" cy="150" r="4.2"/>
+            <circle cx="96" cy="120" r="3.2"/><circle cx="146" cy="122" r="3.2"/>
+            <circle cx="100" cy="88" r="3.2"/><circle cx="120" cy="112" r="2.6"/><circle cx="152" cy="92" r="3.2"/>
+            <circle cx="150" cy="92" r="3.6"/><circle cx="136" cy="62" r="3"/>
+            <circle cx="166" cy="66" r="3"/>
+            <circle cx="148" cy="58" r="3"/><circle cx="156" cy="56" r="3"/>
+            <circle cx="92" cy="58" r="2.8"/><circle cx="100" cy="56" r="3"/><circle cx="108" cy="56" r="2.8"/>
+            <circle cx="88" cy="106" r="2.6"/><circle cx="128" cy="66" r="2.6"/>
+          </g>
+          <g class="skel__tips">
+            <circle cx="92" cy="58" r="4"/><circle cx="100" cy="56" r="4"/>
+            <circle cx="108" cy="56" r="4"/><circle cx="148" cy="58" r="4"/>
+            <circle cx="156" cy="56" r="4"/><circle cx="128" cy="66" r="4.4"/>
+          </g>
+        </svg>
+
+        <svg class="hud__cursor" viewBox="0 0 48 48" aria-hidden="true">
+          <circle class="cur__pulse" cx="24" cy="24" r="12"/>
+          <circle class="cur__ring" cx="24" cy="24" r="9"/>
+          <circle class="cur__dot" cx="24" cy="24" r="2.2"/>
+        </svg>
+
+        <span class="hud__reticle" aria-hidden="true"></span>
+      </div>
+
+      <div class="hud__rail">
+        <span class="rail rail--warn"><i></i><b data-i18n="hero.hlisten">ÉCOUTE</b></span>
+        <span class="rail rail--ok"><i></i><b data-i18n="hero.htrack">MAIN SUIVIE</b></span>
+        <span class="rail"><b>21 LANDMARKS</b></span>
+        <span class="rail"><b>EMA 0.45</b></span>
+      </div>
+
+      <div class="hud__log" aria-hidden="true">
+        <p class="log__head">audit.log · <span data-i18n="hero.hlocal">local</span></p>
+        <ol class="log__lines" data-log>
+          <li>{"ts":"14:02:11","intent":"open_app","risk":"LOW","cmd":"chrome","ok":true}</li>
+          <li>{"ts":"14:02:14","intent":"volume.up","risk":"LOW","cmd":"+5%","ok":true}</li>
+          <li>{"ts":"14:02:19","intent":"point.target","risk":"LOW","cmd":"btn_send","ok":true}</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell trust">
+    <div class="trust__i"><b>0</b><span data-i18n="trust.1">appels cloud</span></div>
+    <div class="trust__i"><b>3</b><span data-i18n="trust.2">langues actives</span></div>
+    <div class="trust__i"><b>21</b><span data-i18n="trust.3">repères 3D de la main</span></div>
+    <div class="trust__i"><b>100%</b><span data-i18n="trust.4">sur la machine</span></div>
+  </div>
+</section>
+
+<!-- ============================ ARCHITECTURE ============================ -->
+<section class="sec" id="architecture">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="arch.eyebrow">Architecture</p>
+    <h2 class="sec__title" data-i18n="arch.title">De l'intention à l'action, en neuf étages</h2>
+    <p class="sec__lead" data-i18n="arch.lead">Chaque commande traverse la même chaîne contrôlée. Le moteur de sécurité est le seul point de passage obligatoire vers le système.</p>
+
+    <ol class="flow">
+      <li class="flow__i"><span class="flow__n">01</span><h3 data-i18n="arch.n1">Opérateur</h3><p data-i18n="arch.d1">Voix, geste ou regard.</p></li>
+      <li class="flow__i"><span class="flow__n">02</span><h3 data-i18n="arch.n2">Capteurs</h3><p data-i18n="arch.d2">Micro et caméra 640×480.</p></li>
+      <li class="flow__i"><span class="flow__n">03</span><h3 data-i18n="arch.n3">Moteur d'entrée</h3><p data-i18n="arch.d3">Squelette 21 points MediaPipe, Vosk / SAPI.</p></li>
+      <li class="flow__i"><span class="flow__n">04</span><h3 data-i18n="arch.n4">Intention</h3><p data-i18n="arch.d4">Règles multilingues, regex, LLM local.</p></li>
+      <li class="flow__i"><span class="flow__n">05</span><h3 data-i18n="arch.n5">Orchestrateur</h3><p data-i18n="arch.d5">Fusion multimodale, priorité, anti-rebond.</p></li>
+      <li class="flow__i flow__i--gate"><span class="flow__n">06</span><h3 data-i18n="arch.n6">Sécurité</h3><p data-i18n="arch.d6">Portes LOW → CRITICAL.</p></li>
+      <li class="flow__i"><span class="flow__n">07</span><h3 data-i18n="arch.n7">Automatisation</h3><p data-i18n="arch.d7">PyAutoGUI, Win32, Pycaw, SBC.</p></li>
+      <li class="flow__i"><span class="flow__n">08</span><h3 data-i18n="arch.n8">Cibles</h3><p data-i18n="arch.d8">Applications, fichiers, navigateur, système.</p></li>
+      <li class="flow__i"><span class="flow__n">09</span><h3 data-i18n="arch.n9">Retour</h3><p data-i18n="arch.d9">HUD, curseur néon, synthèse vocale locale.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================ GESTURES ============================ -->
+<section class="sec sec--alt" id="gestures">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="g.eyebrow">Gestes</p>
+    <h2 class="sec__title" data-i18n="g.title">Dix gestes, une souris virtuelle</h2>
+    <p class="sec__lead" data-i18n="g.lead">Le suivi des 21 repères de la main est filtré par une moyenne exponentielle, puis interprété en gestes discrets. Survolez une carte pour voir la pose.</p>
+    <ul class="gset" data-gestures></ul>
+  </div>
+</section>
+
+<!-- ============================ VOICE ============================ -->
+<section class="sec" id="voice">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="v.eyebrow">Commandes vocales</p>
+    <h2 class="sec__title" data-i18n="v.title">Trois langues, un seul vocabulaire</h2>
+    <p class="sec__lead" data-i18n="v.lead">Les mêmes intentions sont comprises en arabe, en français et en anglais, avec une saisie Unicode-safe : l'arabe se tape correctement dans n'importe quelle application.</p>
+
+    <div class="wake">
+      <p class="micro" data-i18n="v.wake">Mots d'activation</p>
+      <ul class="chips">
+        <li lang="ar" dir="rtl">يا حاج</li><li lang="ar" dir="rtl">ياحاج</li><li lang="ar" dir="rtl">حاج</li>
+        <li lang="en">Hey Hadj</li><li lang="fr">Bonjour Hadj</li>
+      </ul>
+    </div>
+
+    <div class="tabs" data-tabs>
+      <div class="tabs__bar" role="tablist" data-i18n-attr="aria-label:v.tabsaria">
+        <button role="tab" id="tab-ar" aria-controls="pane-voice" aria-selected="true" data-tab="ar" lang="ar" dir="rtl">العربية</button>
+        <button role="tab" id="tab-fr" aria-controls="pane-voice" aria-selected="false" tabindex="-1" data-tab="fr" lang="fr">Français</button>
+        <button role="tab" id="tab-en" aria-controls="pane-voice" aria-selected="false" tabindex="-1" data-tab="en" lang="en">English</button>
+      </div>
+      <div class="tabs__panes" id="pane-voice" role="tabpanel" aria-labelledby="tab-ar" tabindex="0" data-voice></div>
+    </div>
+
+    <div class="stop">
+      <span class="stop__ic" aria-hidden="true">✋</span>
+      <div>
+        <p class="stop__t" data-i18n="v.stop">Arrêt d'urgence</p>
+        <p class="stop__d" data-stopphrase></p>      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SECURITY ============================ -->
+<section class="sec sec--alt" id="security">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="s.eyebrow">Moteur de risque</p>
+    <h2 class="sec__title" data-i18n="s.title">Quatre niveaux, aucune exception</h2>
+    <p class="sec__lead" data-i18n="s.lead">Chaque intention est classée avant d'atteindre le système. Le niveau détermine si la commande part seule ou exige une confirmation.</p>
+
+    <ol class="tiers">
+      <li class="tier tier--low"><header><span class="tier__lv">LOW</span><span class="tier__px" data-i18n="s.auto">auto</span></header><p data-i18n="s.d1">Exécuté immédiatement.</p><ul><li data-i18n="s.x1a">Volume, luminosité</li><li data-i18n="s.x1b">Lancer une application</li><li data-i18n="s.x1c">Changer d'onglet</li></ul></li>
+      <li class="tier tier--med"><header><span class="tier__lv">MEDIUM</span><span class="tier__px" data-i18n="s.opt">configurable</span></header><p data-i18n="s.d2">Confirmation selon les réglages.</p><ul><li data-i18n="s.x2a">Fermer une fenêtre</li><li data-i18n="s.x2b">Supprimer un fichier</li></ul></li>
+      <li class="tier tier--high"><header><span class="tier__lv">HIGH</span><span class="tier__px" data-i18n="s.must">obligatoire</span></header><p data-i18n="s.d3">Confirmation obligatoire.</p><ul><li data-i18n="s.x3a">Supprimer un dossier</li><li data-i18n="s.x3b">Redémarrer, éteindre</li><li data-i18n="s.x3c">Vider la corbeille</li></ul></li>
+      <li class="tier tier--crit"><header><span class="tier__lv">CRITICAL</span><span class="tier__px" data-i18n="s.dual">double</span></header><p data-i18n="s.d4">Double confirmation obligatoire.</p><ul><li data-i18n="s.x4a">Formater un disque</li><li data-i18n="s.x4b">Opérations de volume</li></ul></li>
+    </ol>
+
+    <div class="handsfree">
+      <p class="micro" data-i18n="s.hf">Confirmation mains libres — délai 10 s</p>
+      <ul class="chips">
+        <li class="ok" lang="ar" dir="rtl">نعم</li><li class="ok" lang="en">Yes</li><li class="ok" lang="fr">Oui</li>
+        <li class="warn" data-i18n="s.cancel">Annuler · poing fermé</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PERFORMANCE ============================ -->
+<section class="sec" id="performance">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="p.eyebrow">Profils</p>
+    <h2 class="sec__title" data-i18n="p.title">Quatre regimes, un seul arbitrage</h2>
+    <p class="sec__lead" data-i18n="p.lead">Le nombre d'images par seconde pilote la consommation CPU. Choisissez selon la machine et le contexte d'usage.</p>
+    <ul class="profs">
+      <li class="prof"><b>15</b><span class="prof__u">FPS</span><h3>ECO</h3><p data-i18n="p.d1">Charge CPU minimale, matériel ancien.</p><i class="bar" style="--v:50%"></i></li>
+      <li class="prof prof--on"><b>22</b><span class="prof__u">FPS</span><h3>BALANCED</h3><p data-i18n="p.d2">Le compromis par défaut.</p><i class="bar" style="--v:73%"></i></li>
+      <li class="prof"><b>30</b><span class="prof__u">FPS</span><h3>PERFORMANCE</h3><p data-i18n="p.d3">Curseur parfaitement fluide.</p><i class="bar" style="--v:100%"></i></li>
+      <li class="prof prof--ai"><b>30</b><span class="prof__u">FPS + IA</span><h3>AI MAX</h3><p data-i18n="p.d4">Vision d'écran et intention locale.</p><i class="bar" style="--v:100%"></i></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ PRIVACY ============================ -->
+<section class="sec sec--alt" id="privacy">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="pr.eyebrow">Confidentialité</p>
+    <h2 class="sec__title" data-i18n="pr.title">Rien ne sort de la machine</h2>
+    <p class="sec__lead" data-i18n="pr.lead">Ce n'est pas une promesse commerciale, c'est une contrainte d'architecture : le réseau externe est bloqué par défaut.</p>
+
+    <div class="priv">
+      <article class="panel">
+        <span class="panel__n">01</span>
+        <h3 data-i18n="pr.a">Capture volatile</h3>
+        <p data-i18n="pr.da">Les images caméra et les flux audio vivent en mémoire vive puis sont immédiatement détruits. Aucune vidéo n'est enregistrée.</p>
+      </article>
+      <article class="panel">
+        <span class="panel__n">02</span>
+        <h3 data-i18n="pr.b">Journal local seul</h3>
+        <p data-i18n="pr.db">Seules des métadonnées texte sont conservées dans un fichier JSONL, pour votre audit.</p>
+      </article>
+      <article class="panel panel--net">
+        <span class="panel__n">03</span>
+        <h3 data-i18n="pr.c">Réseau coupé</h3>
+        <p data-i18n="pr.dc">Télémétrie désactivée, appels externes bloqués, transcription faite par un moteur local.</p>
+        <p class="blocked"><span class="dot dot--bad"></span>NETWORK <b>BLOCKED</b></p>
+      </article>
+    </div>
+
+    <div class="logbox">
+      <p class="logbox__head">logs/audit.jsonl <span>· local</span></p>
+      <pre><code>{"ts":"2026-03-11T09:14:02","intent":"open_app","risk":"LOW","command":"chrome","ok":true}
+{"ts":"2026-03-11T09:14:09","intent":"volume.up","risk":"LOW","command":"+5%","ok":true}
+{"ts":"2026-03-11T09:14:22","intent":"dictation","risk":"LOW","command":"اكتب مرحبا","ok":true}
+{"ts":"2026-03-11T09:15:31","intent":"shell.delete.dir","risk":"HIGH","command":"rm -rf ./cache","ok":false}
+{"ts":"2026-03-11T09:15:44","intent":"window.snap.right","risk":"LOW","command":"snap","ok":true}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ RUN ============================ -->
+<section class="sec" id="run">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="r.eyebrow">Mise en route</p>
+    <h2 class="sec__title" data-i18n="r.title">Trois étapes</h2>
+    <p class="sec__lead" data-i18n="r.lead">Aucune installation réseau, aucun compte, aucune clé d'API.</p>
+
+    <div class="run__actions" style="display: flex; gap: 12px; margin-block-end: 20px; flex-wrap: wrap; align-items: center;">
+      <button type="button" class="btn btn--p" data-action="launch-app">
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" style="margin-inline-end: 6px;"><path d="M4 2.5l9 5.5-9 5.5v-11z" fill="currentColor"/></svg>
+        <span data-i18n="r.launch_btn">Lancer / Vérifier l'application</span>
+      </button>
+      <button type="button" class="btn" data-install>
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" style="margin-inline-end: 6px;"><path d="M8 1v9M4.5 6.5 8 10l3.5-3.5M2 13.5h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="r.install_pwa">Installer l'App Web (PWA)</span>
+      </button>
+    </div>
+
+    <div class="sac-note" style="background: rgba(76, 201, 240, 0.07); border: 1px solid var(--border); border-radius: var(--r-md); padding: 14px 18px; margin-block-end: 28px; font-size: 13.5px; line-height: 1.5; color: var(--muted);">
+      <strong style="color: var(--accent); display: block; margin-block-end: 4px;" data-i18n="r.sac_title">💡 Information Windows Smart App Control</strong>
+      <span data-i18n="r.sac_desc">Pour des raisons de sécurité, Windows 11 bloque les fichiers .bat téléchargés depuis le Web. <b>Aucun téléchargement n'est nécessaire</b> : double-cliquez directement sur <code>launch.bat</code> dans votre dossier local ou exécutez <code>python main.py</code>.</span>
+    </div>
+
+    <ol class="steps">
+      <li><span class="steps__n">1</span><h3 data-i18n="r.s1">Ouvrir le dossier</h3><p data-i18n="r.d1">Décompressez l'archive et ouvrez le répertoire du projet.</p></li>
+      <li><span class="steps__n">2</span><h3 data-i18n="r.s2">Lancer</h3><p data-i18n="r.d2">Double-cliquez sur le lanceur, ou lancez Python directement.</p>
+        <div class="code" data-copy="launch.bat">
+          <button type="button" class="code__b" data-i18n-attr="aria-label:r.copy">Copier</button>
+          <code>launch.bat</code>
+        </div>
+        <div class="code" data-copy="python main.py">
+          <button type="button" class="code__b" data-i18n-attr="aria-label:r.copy">Copier</button>
+          <code>python main.py</code>
+        </div>
+      </li>
+      <li><span class="steps__n">3</span><h3 data-i18n="r.s3">Calibrer et réveiller</h3><p data-i18n="r.d3">Lancez l'assistant de calibration, puis prononcez un mot d'activation.</p>
+        <div class="code" data-copy="python -m unittest discover tests">
+          <button type="button" class="code__b" data-i18n-attr="aria-label:r.copy">Copier</button>
+          <code>python -m unittest discover tests</code>
+        </div>
+      </li>
+    </ol>
+
+    <ul class="spec">
+      <li data-i18n="r.sp1">Windows 10 / 11</li>
+      <li data-i18n="r.sp2">Python 3.12</li>
+      <li data-i18n="r.sp3">Webcam</li>
+      <li data-i18n="r.sp4">Microphone</li>
+      <li data-i18n="r.sp5">API compagnon 127.0.0.1:8766</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ FAQ ============================ -->
+<section class="sec sec--alt" id="faq">
+  <div class="shell shell--narrow">
+    <p class="eyebrow" data-i18n="f.eyebrow">FAQ</p>
+    <h2 class="sec__title" data-i18n="f.title">Questions fréquentes</h2>
+    <div class="faq">
+      <details><summary data-i18n="f.q1">Est-ce que ça fonctionne sans internet ?</summary><p data-i18n="f.a1">Oui. La reconnaissance vocale, la reconnaissance des gestes et l'analyse d'intention tournent localement. Le réseau externe est bloqué par défaut.</p></details>
+      <details><summary data-i18n="f.q2">Quelles langues sont prises en charge ?</summary><p data-i18n="f.a2">L'arabe, le français et l'anglais, y compris l'affichage en écriture de droite à gauche pour l'arabe.</p></details>
+      <details><summary data-i18n="f.q3">Peut-on s'en passer de souris et de clavier ?</summary><p data-i18n="f.a3">Oui. Un pointage de l'index déplace le curseur, une pince clique, une pince tenue glisse. Un clavier virtuel sans touche prend le relais pour la dictée.</p></details>
+      <details><summary data-i18n="f.q4">Que se passe-t-il si une commande est dangereuse ?</summary><p data-i18n="f.a4">Elle est classée par niveau de risque. Les niveaux HIGH et CRITICAL exigent une confirmation, donnée à la voix ou par le pouce levé. La poing fermé annule à tout moment.</p></details>
+      <details><summary data-i18n="f.q5">Sur quelles machines ?</summary><p data-i18n="f.a5">Windows 10 et 11 avec Python 3.12, une webcam et un microphone. Le profil ECO permet de rester léger sur du matériel ancien.</p></details>
+      <details><summary data-i18n="f.q6">Puis-je l'utiliser pour l'accessibilité ?</summary><p data-i18n="f.a6">Oui. Le HUD à contraste élevé, le grand curseur, le clic à dwell et le mode multimodal sont prévus pour les situations où la précision pose problème.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="shell foot__inner">
+    <div class="foot__brand">
+      <img src="icons/icon.svg" alt="" width="30" height="30" aria-hidden="true">
+      <div><b>HADJ NO-TOUCH OFFLINE AI</b><span>v1.0.0 · <span data-i18n="foot.lic">licence ouverte</span></span></div>
+    </div>
+    <ul class="foot__stack">
+      <li>MediaPipe</li><li>PySide6</li><li>PyAutoGUI</li><li>Vosk</li><li>Python 3.12</li>
+    </ul>
+    <p class="foot__off"><span class="dot dot--ok"></span><span data-i18n="foot.off">0 requête réseau vers des tiers</span></p>
+  </div>
+</footer>
+
+<button type="button" class="top-btn" data-top hidden data-i18n-attr="aria-label:foot.top">
+  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 13V4M4.5 7.5 8 4l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</button>
+
+<div class="modal" id="install-modal" hidden>
+  <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="im-t">
+    <h3 id="im-t" data-i18n="im.t">Installer & Lancer HADJ</h3>
+    <p data-i18n="im.body">Démarrez le contrôle sans toucher directement sur votre PC ou installez l'application Web PWA.</p>
+    <div class="modal__actions" style="display: flex; gap: 10px; margin-block: 14px; flex-wrap: wrap;">
+      <button type="button" class="btn btn--p btn--sm" data-action="launch-app">
+        <span data-i18n="im.launch_btn">Lancer HADJ sur le PC</span>
+      </button>
+    </div>
+    <div class="sac-note" style="background: rgba(76, 201, 240, 0.07); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 10px 14px; margin-block-end: 14px; font-size: 12.5px; line-height: 1.4; color: var(--muted);">
+      <span data-i18n="im.sac_note">💡 Sur Windows 11, exécutez directement launch.bat dans votre dossier local pour éviter tout blocage.</span>
+    </div>
+    <ol class="modal__steps" data-install-body></ol>
+    <div class="modal__end">
+      <button type="button" class="btn btn--p" data-install-go data-i18n="im.go">Installer l'application Web (PWA)</button>
+      <button type="button" class="btn btn--ghost" data-install-close data-i18n="im.no">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

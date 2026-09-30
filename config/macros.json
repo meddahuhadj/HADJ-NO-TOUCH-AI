@@ -1,0 +1,48 @@
+{
+  "Morning Setup": [
+    {
+      "action": "LAUNCH_APP",
+      "target": "chrome",
+      "delay": 1.0
+    },
+    {
+      "action": "LAUNCH_APP",
+      "target": "notepad",
+      "delay": 1.0
+    },
+    {
+      "action": "VOLUME_SET",
+      "target": 50,
+      "delay": 0.5
+    }
+  ],
+  "Coding Setup": [
+    {
+      "action": "LAUNCH_APP",
+      "target": "code",
+      "delay": 1.5
+    },
+    {
+      "action": "LAUNCH_APP",
+      "target": "cmd",
+      "delay": 1.0
+    },
+    {
+      "action": "BRIGHTNESS_SET",
+      "target": 80,
+      "delay": 0.5
+    }
+  ],
+  "Relax Mode": [
+    {
+      "action": "LAUNCH_APP",
+      "target": "spotify",
+      "delay": 1.0
+    },
+    {
+      "action": "VOLUME_SET",
+      "target": 35,
+      "delay": 0.5
+    }
+  ]
+}

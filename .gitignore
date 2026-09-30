@@ -1,0 +1,13 @@
+.vercel
+.env*
+
+# Local REST API token, generated on first run by core/companion_server.py.
+config/auth_token.secret
+
+# Per-machine state, not source: rebuilt from config/default_config.json.
+config/user_settings.json
+logs/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
