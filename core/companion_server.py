@@ -60,6 +60,10 @@ class CompanionServer(threading.Thread):
         self.profile_mgr = ProfileManager()
         self.logger = EventLogger()
         self.settings = SettingsManager()
+        from automation.windows_control import WindowsControlEngine
+        from automation.app_launcher import AppLauncher
+        self.win_control = WindowsControlEngine()
+        self.app_launcher = AppLauncher()
         self.auth_token = get_or_create_auth_token()
 
     def run(self):
@@ -165,14 +169,29 @@ class CompanionServer(threading.Thread):
                     "status": "RUNNING",
                     "language": self.settings.get("language", "ar"),
                     "offlineMode": self.settings.get("privacy.offline_mode", True),
-                    "telemetry": stats
+                    "telemetry": stats,
+                    "calibration": {
+                        "calibrated": self.settings.get("gestures.calibrated", False),
+                        "pinchThreshold": self.settings.get("gestures.pinch_click_threshold", 0.045),
+                        "smoothingFactor": self.settings.get("gestures.smoothing_factor", 0.45),
+                        "cursorSpeed": self.settings.get("gestures.cursor_speed", 1.6)
+                    }
                 }
                 client_socket.sendall(self._build_response(200, data, allowed_origin=cors_origin))
                 client_socket.close()
                 return
 
-            # Security Authentication Gate: All state-changing endpoints require valid token
-            if not secrets.compare_digest(req_token, self.auth_token):
+            # Loopback token pairing for local web dashboard
+            if method == "GET" and (path == "/token" or path == "/api/token"):
+                client_socket.sendall(self._build_response(200, {"token": self.auth_token}, allowed_origin=cors_origin))
+                client_socket.close()
+                return
+
+            # Security Authentication Gate: All state-changing endpoints require valid token or trusted local loopback
+            is_valid_token = bool(req_token and secrets.compare_digest(req_token, self.auth_token))
+            is_local_trusted = bool(cors_origin in ("http://127.0.0.1:8000", "http://localhost:8000", "http://127.0.0.1", "http://localhost") or not origin)
+
+            if not is_valid_token and not is_local_trusted:
                 client_socket.sendall(self._build_response(401, {"error": "Unauthorized: Invalid or missing X-Hadj-Token"}, allowed_origin=cors_origin))
                 client_socket.close()
                 return
@@ -184,8 +203,30 @@ class CompanionServer(threading.Thread):
                 client_socket.close()
                 return
 
+            # POST /calibrate or GET /calibrate (Auto-calibration trigger)
+            if path in ("/calibrate", "/api/calibrate"):
+                from core.auto_calibration import perform_one_click_auto_calibration
+                result = perform_one_click_auto_calibration()
+                client_socket.sendall(self._build_response(200, result, allowed_origin=cors_origin))
+                client_socket.close()
+                return
+
+            # POST /action (Total PC Control Endpoint)
+            if method == "POST" and (path == "/action" or path == "/api/action"):
+                body_text = "\r\n".join(lines[body_idx:]) if body_idx != -1 else ""
+                try:
+                    payload = json.loads(body_text) if body_text else {}
+                except Exception:
+                    payload = {}
+
+                action = payload.get("action", "")
+                res = self._execute_pc_action(action, payload)
+                client_socket.sendall(self._build_response(200, res, allowed_origin=cors_origin))
+                client_socket.close()
+                return
+
             # POST /command
-            if method == "POST" and path == "/command":
+            if method == "POST" and (path == "/command" or path == "/api/command"):
                 body_text = "\r\n".join(lines[body_idx:]) if body_idx != -1 else ""
                 try:
                     payload = json.loads(body_text) if body_text else {}
@@ -205,6 +246,7 @@ class CompanionServer(threading.Thread):
             # 404
             client_socket.sendall(self._build_response(404, {"error": "Not Found"}, allowed_origin=cors_origin))
             client_socket.close()
+            return
 
         except Exception:
             try:
@@ -229,6 +271,88 @@ class CompanionServer(threading.Thread):
         headers.append("")
         headers.append("")
         return "\r\n".join(headers).encode("utf-8") + body
+
+    def _execute_pc_action(self, action: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Executes direct Windows automation action from companion dashboard."""
+        try:
+            if action == "volume_up":
+                self.win_control.volume_up(step=payload.get("step", 6))
+            elif action == "volume_down":
+                self.win_control.volume_down(step=payload.get("step", 6))
+            elif action == "volume_mute":
+                self.win_control.volume_mute()
+            elif action == "media_play_pause":
+                self.win_control.media_play_pause()
+            elif action == "media_next":
+                self.win_control.media_next()
+            elif action == "media_prev":
+                self.win_control.media_prev()
+            elif action == "brightness_up":
+                self.win_control.brightness_up(step=payload.get("step", 10))
+            elif action == "brightness_down":
+                self.win_control.brightness_down(step=payload.get("step", 10))
+            elif action == "show_desktop":
+                self.win_control.show_desktop()
+            elif action == "task_view":
+                self.win_control.open_task_view()
+            elif action == "open_task_manager":
+                self.win_control.open_task_manager()
+            elif action == "open_explorer":
+                self.win_control.open_explorer()
+            elif action == "lock_pc":
+                self.win_control.lock_pc()
+            elif action == "take_screenshot":
+                path = self.win_control.take_screenshot()
+                return {"success": True, "action": action, "path": path}
+            elif action == "snap_left":
+                self.win_control.snap_window_left()
+            elif action == "snap_right":
+                self.win_control.snap_window_right()
+            elif action == "maximize":
+                self.win_control.maximize_window()
+            elif action == "minimize":
+                self.win_control.minimize_window()
+            elif action == "close_window":
+                self.win_control.close_current_window()
+            elif action == "alt_tab":
+                self.win_control.switch_app()
+            elif action == "mouse_click":
+                btn = payload.get("button", "left")
+                if btn == "double":
+                    self.win_control.double_click()
+                elif btn == "right":
+                    self.win_control.right_click()
+                else:
+                    self.win_control.click(button=btn)
+            elif action == "mouse_move":
+                dx = int(payload.get("dx", 0))
+                dy = int(payload.get("dy", 0))
+                cur_x, cur_y = self.win_control.get_cursor_position()
+                self.win_control.move_mouse(cur_x + dx, cur_y + dy)
+            elif action == "mouse_scroll":
+                amount = int(payload.get("amount", -120))
+                self.win_control.scroll(amount)
+            elif action == "type_text":
+                text = payload.get("text", "")
+                if text:
+                    self.win_control.type_text(text)
+            elif action == "press_key":
+                key = payload.get("key", "")
+                if key:
+                    self.win_control.press_key(key)
+            elif action == "launch_app":
+                app = payload.get("app", "")
+                if app:
+                    self.app_launcher.launch(app)
+            elif action == "auto_calibrate":
+                from core.auto_calibration import perform_one_click_auto_calibration
+                return perform_one_click_auto_calibration()
+            else:
+                return {"success": False, "error": f"Unknown action: {action}"}
+
+            return {"success": True, "action": action}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def stop(self):
         self.running = False

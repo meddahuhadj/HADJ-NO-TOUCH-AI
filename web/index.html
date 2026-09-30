@@ -38,8 +38,10 @@
     </a>
 
     <nav class="nav__links" aria-label="Sections" data-i18n-attr="aria-label:nav.aria">
+      <a href="#control-hub" class="nav__link--hub" data-i18n="nav.hub">⚡ Commande PC</a>
       <a href="#architecture" data-i18n="nav.arch">Architecture</a>
       <a href="#gestures" data-i18n="nav.gestures">Gestes</a>
+      <a href="#calibration" data-i18n="nav.calib">Calibration</a>
       <a href="#voice" data-i18n="nav.voice">Voix</a>
       <a href="#security" data-i18n="nav.security">Sécurité</a>
       <a href="#privacy" data-i18n="nav.privacy">Confidentialité</a>
@@ -70,8 +72,10 @@
 
 <div class="sheet" id="mobile-menu" hidden>
   <div class="sheet__panel">
+    <a href="#control-hub" data-i18n="nav.hub">⚡ Commande PC</a>
     <a href="#architecture" data-i18n="nav.arch">Architecture</a>
     <a href="#gestures" data-i18n="nav.gestures">Gestes</a>
+    <a href="#calibration" data-i18n="nav.calib">Calibration</a>
     <a href="#voice" data-i18n="nav.voice">Voix</a>
     <a href="#security" data-i18n="nav.security">Sécurité</a>
     <a href="#performance" data-i18n="nav.perf">Performance</a>
@@ -180,6 +184,331 @@
   </div>
 </section>
 
+<!-- ============================ CONTROL HUB (COMMANDE TOTALE & CALIBRAGE) ============================ -->
+<section class="sec sec--hub" id="control-hub">
+  <div class="shell">
+    <div class="hub-header">
+      <div class="hub-intro">
+        <p class="eyebrow"><span class="dot dot--hub-pulse"></span><span data-i18n="hub.eyebrow">Centre de Contrôle Interactif · Pilotage Total</span></p>
+        <h2 class="sec__title" data-i18n="hub.title">Commande Totale du PC & Calibrage Automatique</h2>
+        <p class="sec__lead" data-i18n="hub.lead">Pilotez directement votre ordinateur depuis cette interface web connectée en temps réel au moteur local, testez les commandes et calibrez les seuils de tracking en un clic.</p>
+      </div>
+      <div class="hub-status-card">
+        <div class="hub-status-badge" data-hub-status>
+          <span class="hub-status-dot"></span>
+          <span class="hub-status-txt" data-hub-conn-txt data-i18n="hub.conn_wait">EN ATTENTE DU MOTEUR LOCAL</span>
+        </div>
+        <div class="hub-telemetry-row">
+          <span class="hub-telem-pill">CPU: <b data-telem-cpu>--%</b></span>
+          <span class="hub-telem-pill">RAM: <b data-telem-ram>--%</b></span>
+          <span class="hub-telem-pill">FPS: <b data-telem-fps>30</b></span>
+          <span class="hub-telem-pill">LATENCE: <b data-telem-ping>-- ms</b></span>
+        </div>
+        <div class="hub-tools-row">
+          <button type="button" class="btn btn--sm hub-sound-toggle" data-sound-toggle>
+            <span class="sound-icon" data-sound-icon>🔊</span>
+            <span data-sound-label data-i18n="hub.sound_on">Sons : Activés</span>
+          </button>
+          <button type="button" class="btn btn--p btn--sm hub-launch-btn" data-action="launch-app" data-hub-launch>
+            <span data-i18n="hub.btn_launch">⚡ Lancer HADJ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hub Navigation Tabs -->
+    <div class="hub-nav" role="tablist">
+      <button type="button" class="hub-tab is-active" role="tab" aria-selected="true" data-hub-tab="system">
+        <span class="hub-tab__icon">🖥️</span>
+        <span data-i18n="hub.tab_system">Système & Fenêtres</span>
+      </button>
+      <button type="button" class="hub-tab" role="tab" aria-selected="false" data-hub-tab="audio">
+        <span class="hub-tab__icon">🔊</span>
+        <span data-i18n="hub.tab_audio">Audio & Média</span>
+      </button>
+      <button type="button" class="hub-tab" role="tab" aria-selected="false" data-hub-tab="touch">
+        <span class="hub-tab__icon">🖱️</span>
+        <span data-i18n="hub.tab_touch">Pavé Tactile & Clavier</span>
+      </button>
+      <button type="button" class="hub-tab" role="tab" aria-selected="false" data-hub-tab="apps">
+        <span class="hub-tab__icon">🚀</span>
+        <span data-i18n="hub.tab_apps">Applications</span>
+      </button>
+      <button type="button" class="hub-tab" role="tab" aria-selected="false" data-hub-tab="console">
+        <span class="hub-tab__icon">💬</span>
+        <span data-i18n="hub.tab_console">Console d'Ordres</span>
+      </button>
+      <button type="button" class="hub-tab hub-tab--calib" role="tab" aria-selected="false" data-hub-tab="calib">
+        <span class="hub-tab__icon">⚡</span>
+        <span data-i18n="hub.tab_calib">Calibrage Auto</span>
+      </button>
+    </div>
+
+    <!-- Hub Panels Container -->
+    <div class="hub-panels">
+      <!-- PANEL 1: SYSTEM & WINDOWS -->
+      <div class="hub-panel is-active" data-hub-panel="system">
+        <div class="hub-grid">
+          <button type="button" class="hub-card-btn" data-pc-action="show_desktop">
+            <span class="hcb__icon">🖥️</span>
+            <span class="hcb__title">Afficher le Bureau</span>
+            <span class="hcb__sub">Win + D · Masquer/Révéler</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="task_view">
+            <span class="hcb__icon">📑</span>
+            <span class="hcb__title">Vue des Tâches</span>
+            <span class="hcb__sub">Win + Tab · Sélecteur visuel</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="snap_left">
+            <span class="hcb__icon">🗔</span>
+            <span class="hcb__title">Ancrer à Gauche</span>
+            <span class="hcb__sub">Win + Gauche · Écran partagé</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="snap_right">
+            <span class="hcb__icon">🗖</span>
+            <span class="hcb__title">Ancrer à Droite</span>
+            <span class="hcb__sub">Win + Droite · Écran partagé</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="maximize">
+            <span class="hcb__icon">🔲</span>
+            <span class="hcb__title">Plein Écran / Maximiser</span>
+            <span class="hcb__sub">Win + Haut · Fenêtre active</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="minimize">
+            <span class="hcb__icon">🗕</span>
+            <span class="hcb__title">Réduire la Fenêtre</span>
+            <span class="hcb__sub">Win + Bas · Minimiser</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="alt_tab">
+            <span class="hcb__icon">🔄</span>
+            <span class="hcb__title">Basculer d'Application</span>
+            <span class="hcb__sub">Alt + Tab · Tâche suivante</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="take_screenshot">
+            <span class="hcb__icon">📸</span>
+            <span class="hcb__title">Capture d'Écran</span>
+            <span class="hcb__sub">Enregistre l'écran complet</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="open_task_manager">
+            <span class="hcb__icon">⚡</span>
+            <span class="hcb__title">Gestionnaire des Tâches</span>
+            <span class="hcb__sub">Ctrl + Shift + Esc</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="lock_pc">
+            <span class="hcb__icon">🔒</span>
+            <span class="hcb__title">Verrouiller le PC</span>
+            <span class="hcb__sub">Win + L · Sécurité immédiate</span>
+          </button>
+          <button type="button" class="hub-card-btn hcb--danger" data-pc-action="close_window">
+            <span class="hcb__icon">❌</span>
+            <span class="hcb__title">Fermer la Fenêtre</span>
+            <span class="hcb__sub">Alt + F4 · Quitter l'application</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PANEL 2: AUDIO & MEDIA -->
+      <div class="hub-panel" data-hub-panel="audio">
+        <div class="hub-grid">
+          <button type="button" class="hub-card-btn" data-pc-action="volume_up">
+            <span class="hcb__icon">🔊</span>
+            <span class="hcb__title">Volume +</span>
+            <span class="hcb__sub">+6% Niveau sonore</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="volume_down">
+            <span class="hcb__icon">🔉</span>
+            <span class="hcb__title">Volume -</span>
+            <span class="hcb__sub">-6% Niveau sonore</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="volume_mute">
+            <span class="hcb__icon">🔇</span>
+            <span class="hcb__title">Couper le Son (Mute)</span>
+            <span class="hcb__sub">Activer / Désactiver</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="media_play_pause">
+            <span class="hcb__icon">⏯️</span>
+            <span class="hcb__title">Lecture / Pause</span>
+            <span class="hcb__sub">Contrôle lecteur média</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="media_prev">
+            <span class="hcb__icon">⏮️</span>
+            <span class="hcb__title">Piste Précédente</span>
+            <span class="hcb__sub">Média précédent</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="media_next">
+            <span class="hcb__icon">⏭️</span>
+            <span class="hcb__title">Piste Suivante</span>
+            <span class="hcb__sub">Média suivant</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="brightness_up">
+            <span class="hcb__icon">☀️</span>
+            <span class="hcb__title">Luminosité +</span>
+            <span class="hcb__sub">+10% Écran</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="brightness_down">
+            <span class="hcb__icon">🌘</span>
+            <span class="hcb__title">Luminosité -</span>
+            <span class="hcb__sub">-10% Écran</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PANEL 3: TOUCHPAD & TYPING -->
+      <div class="hub-panel" data-hub-panel="touch">
+        <div class="hub-touch-layout">
+          <div class="hub-trackpad-box">
+            <div class="hub-trackpad" data-touchpad>
+              <div class="hub-trackpad-reticle" data-touchpad-reticle></div>
+              <div class="hub-trackpad-hint">
+                <span>🖱️ Glissez votre doigt ou la souris ici pour déplacer le curseur du PC</span>
+                <span class="trackpad-coords" data-trackpad-coords>ΔX: 0 · ΔY: 0</span>
+              </div>
+            </div>
+            <div class="hub-mouse-actions">
+              <button type="button" class="btn hub-mouse-btn" data-mouse-btn="left">Clic Gauche</button>
+              <button type="button" class="btn hub-mouse-btn" data-mouse-btn="double">Double Clic</button>
+              <button type="button" class="btn hub-mouse-btn" data-mouse-btn="right">Clic Droit</button>
+              <button type="button" class="btn hub-mouse-btn" data-mouse-scroll="up">▲ Défiler Haut</button>
+              <button type="button" class="btn hub-mouse-btn" data-mouse-scroll="down">▼ Défiler Bas</button>
+            </div>
+          </div>
+          <div class="hub-typing-box">
+            <h4 class="typing-title">⌨️ Clavier Virtuel & Saisie Directe</h4>
+            <p class="typing-desc">Tapez du texte pour l'envoyer et l'écrire instantanément dans la fenêtre active sur le PC.</p>
+            <div class="typing-input-row">
+              <input type="text" class="hub-text-input" placeholder="Écrivez un message ou tapez du texte..." data-typing-input>
+              <button type="button" class="btn btn--p" data-typing-send>Envoyer au PC</button>
+            </div>
+            <div class="typing-quick-keys">
+              <button type="button" class="hub-key-chip" data-key-press="enter">Entrée ↵</button>
+              <button type="button" class="hub-key-chip" data-key-press="space">Espace ␣</button>
+              <button type="button" class="hub-key-chip" data-key-press="backspace">Effacer ⌫</button>
+              <button type="button" class="hub-key-chip" data-key-press="tab">Tab ⇥</button>
+              <button type="button" class="hub-key-chip" data-key-press="esc">Échap ⎋</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL 4: QUICK APPS -->
+      <div class="hub-panel" data-hub-panel="apps">
+        <div class="hub-grid">
+          <button type="button" class="hub-card-btn" data-app-launch="chrome">
+            <span class="hcb__icon">🌐</span>
+            <span class="hcb__title">Google Chrome / Web</span>
+            <span class="hcb__sub">Ouvrir le navigateur</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="open_explorer">
+            <span class="hcb__icon">📁</span>
+            <span class="hcb__title">Explorateur de Fichiers</span>
+            <span class="hcb__sub">Win + E · Documents & Disques</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-app-launch="notepad">
+            <span class="hcb__icon">📝</span>
+            <span class="hcb__title">Bloc-Notes (Notepad)</span>
+            <span class="hcb__sub">Éditeur de texte rapide</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-app-launch="code">
+            <span class="hcb__icon">💻</span>
+            <span class="hcb__title">Visual Studio Code</span>
+            <span class="hcb__sub">Environnement de code</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-app-launch="terminal">
+            <span class="hcb__icon">⬛</span>
+            <span class="hcb__title">Terminal / Invite CMD</span>
+            <span class="hcb__sub">Ligne de commande Windows</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-app-launch="calc">
+            <span class="hcb__icon">🔢</span>
+            <span class="hcb__title">Calculatrice</span>
+            <span class="hcb__sub">Outil de calcul rapide</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-app-launch="settings">
+            <span class="hcb__icon">⚙️</span>
+            <span class="hcb__title">Paramètres Windows</span>
+            <span class="hcb__sub">Configuration système</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PANEL 5: COMMAND CONSOLE -->
+      <div class="hub-panel" data-hub-panel="console">
+        <div class="hub-console-wrap">
+          <div class="hub-console-bar">
+            <span class="console-prefix">HADJ-PC &gt;</span>
+            <input type="text" class="hub-console-input" placeholder="Tapez un ordre (ex: 'Ouvre Chrome', 'Monte le son', 'Capture d'écran')..." data-console-input>
+            <button type="button" class="btn btn--p" data-console-send>Exécuter</button>
+          </div>
+          <div class="hub-console-suggestions">
+            <span class="sugg-label">Suggestions :</span>
+            <button type="button" class="sugg-chip" data-sugg="Ouvre Chrome">Ouvre Chrome</button>
+            <button type="button" class="sugg-chip" data-sugg="Monte le volume">Monte le volume</button>
+            <button type="button" class="sugg-chip" data-sugg="Prends une capture d'écran">Prends une capture</button>
+            <button type="button" class="sugg-chip" data-sugg="Ancre la fenêtre à droite">Ancre à droite</button>
+            <button type="button" class="sugg-chip" data-sugg="Verrouille le PC">Verrouille le PC</button>
+          </div>
+          <div class="hub-console-terminal">
+            <div class="terminal-head">
+              <span>JOURNAL DES ORDRES EN DIRECT (AUDIT LOCAL)</span>
+              <span class="term-status" data-term-status>PRÊT</span>
+            </div>
+            <pre class="terminal-body" data-console-logs><code>[00:00:00] Système HADJ NO-TOUCH prêt · En attente d'ordres...</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL 6: AUTO-CALIBRATION -->
+      <div class="hub-panel" data-hub-panel="calib">
+        <div class="hub-calib-wrap">
+          <div class="hub-calib-card">
+            <div class="hcc-top">
+              <div>
+                <h3 class="hcc-title">⚡ Calibrage Automatique Sensoriel</h3>
+                <p class="hcc-desc">Mesure en temps réel la cadence caméra, le bruit audio ambiant et adapte automatiquement les seuils de pince et le filtre EMA.</p>
+              </div>
+              <button type="button" class="btn btn--p hub-calib-trigger" data-trigger-calib>
+                <span>⚡ Lancer le Calibrage Automatique</span>
+              </button>
+            </div>
+
+            <div class="hub-calib-gauges">
+              <div class="hc-gauge">
+                <span class="hc-gauge__name">Seuil de Pince (Otsu)</span>
+                <b class="hc-gauge__val" data-calib-pinch>0.045</b>
+                <span class="hc-gauge__status">Optimal</span>
+                <div class="hc-gauge__bar"><div class="hc-gauge__fill" style="width: 45%;"></div></div>
+              </div>
+              <div class="hc-gauge">
+                <span class="hc-gauge__name">Lissage EMA (Anti-tremblement)</span>
+                <b class="hc-gauge__val" data-calib-smooth>0.450</b>
+                <span class="hc-gauge__status">Fluide</span>
+                <div class="hc-gauge__bar"><div class="hc-gauge__fill" style="width: 65%;"></div></div>
+              </div>
+              <div class="hc-gauge">
+                <span class="hc-gauge__name">Vitesse Curseur</span>
+                <b class="hc-gauge__val" data-calib-speed>1.60x</b>
+                <span class="hc-gauge__status">Équilibré</span>
+                <div class="hc-gauge__bar"><div class="hc-gauge__fill" style="width: 55%;"></div></div>
+              </div>
+              <div class="hc-gauge">
+                <span class="hc-gauge__name">Zone Morte (Dead Zone)</span>
+                <b class="hc-gauge__val" data-calib-dead>0.015</b>
+                <span class="hc-gauge__status">Stable</span>
+                <div class="hc-gauge__bar"><div class="hc-gauge__fill" style="width: 30%;"></div></div>
+              </div>
+            </div>
+
+            <div class="hub-calib-alert" data-calib-alert hidden>
+              <span class="hca-icon">✅</span>
+              <span class="hca-msg" data-calib-msg>Calibrage terminé avec succès ! Score de qualité : 98%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============================ ARCHITECTURE ============================ -->
 <section class="sec" id="architecture">
   <div class="shell">
@@ -208,6 +537,109 @@
     <h2 class="sec__title" data-i18n="g.title">Dix gestes, une souris virtuelle</h2>
     <p class="sec__lead" data-i18n="g.lead">Le suivi des 21 repères de la main est filtré par une moyenne exponentielle, puis interprété en gestes discrets. Survolez une carte pour voir la pose.</p>
     <ul class="gset" data-gestures></ul>
+  </div>
+</section>
+
+<!-- ============================ CALIBRATION ============================ -->
+<section class="sec sec--alt" id="calibration">
+  <div class="shell">
+    <p class="eyebrow" data-i18n="c.eyebrow">Calibration automatique</p>
+    <h2 class="sec__title" data-i18n="c.title">Aucun seuil n'est codé en dur</h2>
+    <p class="sec__lead" data-i18n="c.lead">Les valeurs de reconnaissance ne sont pas des constantes de développeur : elles sont mesurées sur votre main, puis maintenues à jour en continu. Un assistant en huit étapes suffit.</p>
+
+    <ol class="csteps">
+      <li class="cstep"><span class="cstep__n">01</span><div><h3 data-i18n="c.s1n">Périphériques</h3><p data-i18n="c.s1d">Énumération des caméras et microphones ; ceux qui ne délivrent aucune image sont grisés.</p></div></li>
+      <li class="cstep"><span class="cstep__n">02</span><div><h3 data-i18n="c.s2n">Caméra</h3><p data-i18n="c.s2d">Cadence soutenue et latence de la chaîne capture vers affichage.</p></div></li>
+      <li class="cstep"><span class="cstep__n">03</span><div><h3 data-i18n="c.s3n">Microphone</h3><p data-i18n="c.s3d">Bruit ambiant, puis seuil vocal dérivé de ce plancher.</p></div></li>
+      <li class="cstep"><span class="cstep__n">04</span><div><h3 data-i18n="c.s4n">Main</h3><p data-i18n="c.s4d">Confirme le suivi et affiche la zone de portée.</p></div></li>
+      <li class="cstep cstep--key"><span class="cstep__n">05</span><div><h3 data-i18n="c.s5n">Pincement</h3><p data-i18n="c.s5d">Trois pinces délibérées. L'histogramme des distances est coupé par la méthode d'Otsu pour placer le seuil exactement dans le vide entre vos deux groupes.</p></div></li>
+      <li class="cstep cstep--key"><span class="cstep__n">06</span><div><h3 data-i18n="c.s6n">Portée</h3><p data-i18n="c.s6d">Un balayage de cinq secondes devient la zone active, remappée ensuite sur tout l'écran.</p></div></li>
+      <li class="cstep"><span class="cstep__n">07</span><div><h3 data-i18n="c.s7n">Apprentissage</h3><p data-i18n="c.s7d">Réajustement en arrière-plan, activable ou non.</p></div></li>
+      <li class="cstep"><span class="cstep__n">08</span><div><h3 data-i18n="c.s8n">Résumé</h3><p data-i18n="c.s8d">Chaque valeur avec son niveau de confiance, avant toute écriture. Une étape passée ou incomplète ne change rien.</p></div></li>
+    </ol>
+
+    <div class="cdemo">
+      <div class="cdemo__head">
+        <div>
+          <p class="micro" data-i18n="c.demo_t">Le seuil de pincement, calculé en direct</p>
+          <p class="cdemo__hint" data-i18n="c.demo_h">Ajustez la taille de la main et la distance caméra. L'algorithme d'Otsu retrouve le seuil par lui-même.</p>
+        </div>
+        <div class="cdemo__readout">
+          <b data-c-thr>0.038</b>
+          <span data-i18n="c.demo_thr">seuil mesuré</span>
+        </div>
+      </div>
+
+      <div class="cdemo__body">
+        <figure class="hist">
+          <svg viewBox="0 0 340 132" preserveAspectRatio="none" role="img" data-i18n-attr="aria-label:c.demo_aria">
+            <g class="hist__grid" aria-hidden="true"><line x1="0" y1="26" x2="340" y2="26"/><line x1="0" y1="66" x2="340" y2="66"/><line x1="0" y1="106" x2="340" y2="106"/></g>
+            <g data-c-bars></g>
+            <g data-c-mark></g>
+          </svg>
+          <figcaption class="hist__cap">
+            <span class="hist__lg hist__lg--closed" data-i18n="c.demo_closed">fermé</span>
+            <span class="hist__lg hist__lg--open" data-i18n="c.demo_open">ouvert</span>
+            <span class="hist__lg hist__lg--thr" data-i18n="c.demo_sep">séparation</span>
+          </figcaption>
+        </figure>
+
+        <div class="cdemo__ctrl">
+          <label class="rng">
+            <span class="rng__l" data-i18n="c.r1">Taille de la main</span>
+            <input type="range" data-c-size min="0.55" max="1.9" step="0.01" value="1">
+            <output data-c-size-out>1.00</output>
+          </label>
+          <label class="rng">
+            <span class="rng__l" data-i18n="c.r2">Distance caméra</span>
+            <input type="range" data-c-dist min="0.6" max="1.7" step="0.01" value="1">
+            <output data-c-dist-out>1.00</output>
+          </label>
+          <label class="rng">
+            <span class="rng__l" data-i18n="c.r3">Régularité de la pince</span>
+            <input type="range" data-c-jit min="0.2" max="1.6" step="0.01" value="1">
+            <output data-c-jit-out>1.00</output>
+          </label>
+          <p class="cdemo__note" data-i18n="c.demo_note">Une main tremblante elargit les deux groupes et rend la separation moins nette — le seuil se stabilise moins vite, mais l'assistant continue de fonctionner.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cdemo cdemo--box">
+      <div class="cdemo__head">
+        <div>
+          <p class="micro" data-i18n="c.box_t">La zone active, remappee sur l'ecran</p>
+          <p class="cdemo__hint" data-i18n="c.box_h">Une camera cadre rarement toute votre amplitude de mouvement. Le rectangle mesure devient alors toute la surface exploitable.</p>
+        </div>
+      </div>
+      <div class="cdemo__body cdemo__body--box">
+        <figure class="reachfig">
+          <svg viewBox="0 0 300 176" role="img" data-i18n-attr="aria-label:c.box_aria">
+            <rect class="reach__frame" x="0" y="0" width="300" height="176" rx="4"/>
+            <g data-c-trail></g>
+            <rect class="reach__box" data-c-box x="60" y="44" width="180" height="88" rx="3"/>
+            <g data-c-hand><circle cx="150" cy="88" r="5.5"/></g>
+          </svg>
+          <figcaption class="reach__cap" data-i18n="c.box_cap">Champ camera</figcaption>
+        </figure>
+        <div class="reacharrow" aria-hidden="true">
+          <svg viewBox="0 0 40 16"><path d="M2 8h30M27 3l6 5-6 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <figure class="reachfig reachfig--screen">
+          <svg viewBox="0 0 300 176" role="img" data-i18n-attr="aria-label:c.box_aria2">
+            <rect class="reach__frame" x="0" y="0" width="300" height="176" rx="4"/>
+            <g data-c-screen></g>
+          </svg>
+          <figcaption class="reach__cap" data-i18n="c.box_cap2">Surface complete de l'ecran</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <ul class="cprops">
+      <li><h4 data-i18n="c.pr1n">Percentiles glissants</h4><p data-i18n="c.pr1d">Les valeurs sont lues par percentiles et non par moyennes : une image parasite ne peut pas deplacer le seuil.</p></li>
+      <li><h4 data-i18n="c.pr2n">Hysterese</h4><p data-i18n="c.pr2d">Une nouvelle valeur doit persister sur plusieurs fenetres avant d'etre ecrite, ce qui supprime les oscillations.</p></li>
+      <li><h4 data-i18n="c.pr3n">Valeurs conservees</h4><p data-i18n="c.pr3d">Une fenetre trop pauvre en echantillons, ou une phase ou vous n'avez pas pince, ne modifie rien.</p></li>
+    </ul>
   </div>
 </section>
 

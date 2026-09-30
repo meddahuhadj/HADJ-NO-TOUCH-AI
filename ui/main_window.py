@@ -118,12 +118,13 @@ class MainWindow(QMainWindow):
 
         root.addWidget(self._build_header())
         root.addLayout(self._build_sensor_bar())
+        root.addWidget(self._build_pc_control_dock())
         root.addLayout(self._build_workspace(), 1)
         root.addWidget(self._build_action_bar())
 
     def _build_header(self) -> QWidget:
         card = W.frame(self, "card")
-        lay = W.hbox(margins=(theme.PAD - 6, 14, theme.PAD - 6, 14))
+        lay = W.hbox(margins=(theme.PAD - 6, 12, theme.PAD - 6, 12))
 
         identity = QVBoxLayout()
         identity.setSpacing(3)
@@ -138,11 +139,55 @@ class MainWindow(QMainWindow):
         self.offline_badge = W.label(card, "", "badgeSuccess")
         lay.addWidget(self.offline_badge)
 
+        self.auto_calib_btn = QPushButton("⚡ Calibrage Auto", card)
+        self.auto_calib_btn.setObjectName("calibAuto")
+        self.auto_calib_btn.setCursor(Qt.PointingHandCursor)
+        self.auto_calib_btn.clicked.connect(self._on_quick_auto_calibration)
+        lay.addWidget(self.auto_calib_btn)
+
+        self.web_btn = QPushButton("🌐 Web Companion", card)
+        self.web_btn.setObjectName("companionBtn")
+        self.web_btn.setCursor(Qt.PointingHandCursor)
+        self.web_btn.clicked.connect(self._open_web_companion)
+        lay.addWidget(self.web_btn)
+
         self.emergency_btn = W.button(self, "", "danger", self.trigger_emergency_stop)
-        self.emergency_btn.setMinimumWidth(172)
+        self.emergency_btn.setMinimumWidth(150)
         self.emergency_btn.setCursor(Qt.PointingHandCursor)
         lay.addWidget(self.emergency_btn)
 
+        card.setLayout(lay)
+        return card
+
+    def _build_pc_control_dock(self) -> QWidget:
+        card = W.frame(self, "card")
+        lay = W.hbox(spacing=6, margins=(14, 8, 14, 8))
+
+        dock_title = W.label(card, "🎮 CONTRÔLE TOTAL DU PC :", "sectionTitle")
+        lay.addWidget(dock_title)
+
+        dock_actions = [
+            ("🖥️ Bureau", lambda: self.orchestrator.win_control.show_desktop()),
+            ("📑 Tâches", lambda: self.orchestrator.win_control.open_task_view()),
+            ("🗔 Ancrer G", lambda: self.orchestrator.win_control.snap_window_left()),
+            ("🗖 Ancrer D", lambda: self.orchestrator.win_control.snap_window_right()),
+            ("📸 Capture", self._take_screenshot_action),
+            ("🔊 Vol +", lambda: self.orchestrator.win_control.volume_up()),
+            ("🔉 Vol -", lambda: self.orchestrator.win_control.volume_down()),
+            ("🔇 Muet", lambda: self.orchestrator.win_control.volume_mute()),
+            ("⌨️ Clavier", self.toggle_virtual_keyboard),
+            ("🔒 Verrouiller", lambda: self.orchestrator.win_control.lock_pc()),
+            ("⚡ TaskMgr", lambda: self.orchestrator.win_control.open_task_manager()),
+        ]
+
+        for label, fn in dock_actions:
+            btn = QPushButton(label, card)
+            btn.setObjectName("quickAction")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(fn)
+            lay.addWidget(btn)
+
+        lay.addWidget(W.spacer())
         card.setLayout(lay)
         return card
 
@@ -582,6 +627,69 @@ class MainWindow(QMainWindow):
 
     def show_demo_mode(self):
         DemoModeDialog(self).exec()
+
+    # ------------------------------------------------------------------ #
+    # Auto-Calibration & Total PC Control Actions
+    # ------------------------------------------------------------------ #
+
+    def _take_screenshot_action(self):
+        try:
+            path = self.orchestrator.win_control.take_screenshot()
+            self.current_cmd_label.setText("📸 Capture d'écran enregistrée")
+            self.intent_details_label.setText(f"Enregistré: {path}")
+        except Exception as e:
+            self.intent_details_label.setText(f"Erreur capture: {e}")
+
+    def _on_quick_auto_calibration(self):
+        self.auto_calib_btn.setEnabled(False)
+        self.auto_calib_btn.setText("⚡ Analyse en cours...")
+        self.current_cmd_label.setText("⚡ Calibrage automatique en cours...")
+        self.intent_details_label.setText("Mesure caméra, FPS, bruit ambiant et calcul des seuils optimaux...")
+
+        def _run():
+            try:
+                from core.auto_calibration import perform_one_click_auto_calibration
+                res = perform_one_click_auto_calibration()
+                QTimer.singleShot(0, lambda: self._on_auto_calib_finished(res))
+            except Exception as e:
+                QTimer.singleShot(0, lambda: self._on_auto_calib_finished({"success": False, "error": str(e)}))
+
+        import threading
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _on_auto_calib_finished(self, res: dict):
+        self.auto_calib_btn.setEnabled(True)
+        self.auto_calib_btn.setText("⚡ Calibrage Auto")
+        if res.get("success"):
+            fps = res.get("fps", 30)
+            pinch = res.get("pinch_threshold", 0.045)
+            smooth = res.get("smoothing_factor", 0.45)
+            speed = res.get("cursor_speed", 1.6)
+            score = res.get("quality_score", 98)
+            self.current_cmd_label.setText(f"✅ Calibrage Auto Réussi (Score {score}%)")
+            self.intent_details_label.setText(f"Caméra: {fps} FPS | Seuil Pince: {pinch} | Lissage: {smooth} | Vitesse: {speed}")
+            try:
+                self.speech_engine.audio_effects.play_command_success()
+            except Exception:
+                pass
+        else:
+            self.current_cmd_label.setText("⚠️ Erreur Calibrage Auto")
+            self.intent_details_label.setText(str(res.get("error", "Échec")))
+
+    def _open_web_companion(self):
+        import webbrowser
+        import urllib.request
+        import subprocess
+        import os
+
+        try:
+            urllib.request.urlopen("http://127.0.0.1:8000/api/status", timeout=0.4)
+        except Exception:
+            web_srv = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web_server.py")
+            if os.path.exists(web_srv):
+                subprocess.Popen([sys.executable, web_srv], cwd=os.path.dirname(os.path.dirname(__file__)))
+
+        webbrowser.open("http://127.0.0.1:8000")
 
     # ------------------------------------------------------------------ #
     # Shutdown

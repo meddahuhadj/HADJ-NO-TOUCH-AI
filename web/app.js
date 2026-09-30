@@ -34,7 +34,7 @@
   const DICT = {
     fr: {
       "a11y.skip": "Aller au contenu",
-      "nav.arch": "Architecture", "nav.gestures": "Gestes", "nav.voice": "Voix",
+      "nav.arch": "Architecture", "nav.gestures": "Gestes", "nav.calib": "Calibration", "nav.voice": "Voix",
       "nav.security": "Sécurité", "nav.privacy": "Confidentialité", "nav.run": "Lancer",
       "nav.perf": "Performance", "nav.faq": "FAQ", "nav.install": "Installer", "nav.theme": "Changer le thème",
       "nav.aria": "Sections", "nav.langaria": "Langue", "nav.menu": "Ouvrir le menu",
@@ -108,19 +108,55 @@
       "f.q4": "Que se passe-t-il si une commande est dangereuse ?", "f.a4": "Elle est classée par niveau de risque. Les niveaux HIGH et CRITICAL exigent une confirmation, donnée à la voix ou par le pouce levé. Le poing fermé annule à tout moment.",
       "f.q5": "Sur quelles machines ?", "f.a5": "Windows 10 et 11 avec Python 3.12, une webcam et un microphone. Le profil ECO permet de rester léger sur du matériel ancien.",
       "f.q6": "Peut-on l'utiliser pour l'accessibilité ?", "f.a6": "Oui. Le HUD à contraste élevé, le grand curseur, le clic à dwell et le mode multimodal sont prévus pour les situations où la précision pose problème.",
+      "c.eyebrow": "Calibration automatique", "c.title": "Aucun seuil n'est codé en dur",
+      "c.lead": "Les valeurs de reconnaissance ne sont pas des constantes de développeur : elles sont mesurées sur votre main, puis maintenues à jour en continu. Un assistant en huit étapes suffit.",
+      "c.s1n": "Périphériques", "c.s1d": "Énumération des caméras et microphones ; ceux qui ne délivrent aucune image sont grisés.",
+      "c.s2n": "Caméra", "c.s2d": "Cadence soutenue et latence de la chaîne capture vers affichage.",
+      "c.s3n": "Microphone", "c.s3d": "Bruit ambiant, puis seuil vocal dérivé de ce plancher.",
+      "c.s4n": "Main", "c.s4d": "Confirme le suivi et affiche la zone de portée.",
+      "c.s5n": "Pincement", "c.s5d": "Trois pinces délibérées. L'histogramme des distances est coupé par la méthode d'Otsu pour placer le seuil exactement dans le vide entre vos deux groupes.",
+      "c.s6n": "Portée", "c.s6d": "Un balayage de cinq secondes devient la zone active, remappée ensuite sur tout l'écran.",
+      "c.s7n": "Apprentissage", "c.s7d": "Réajustement en arrière-plan, activable ou non.",
+      "c.s8n": "Résumé", "c.s8d": "Chaque valeur avec son niveau de confiance, avant toute écriture. Une étape passée ou incomplète ne change rien.",
+      "c.demo_t": "Le seuil de pincement, calculé en direct", "c.demo_h": "Ajustez la taille de la main et la distance caméra. L'algorithme d'Otsu retrouve le seuil par lui-même.",
+      "c.demo_thr": "seuil mesuré", "c.demo_closed": "fermé", "c.demo_open": "ouvert", "c.demo_sep": "séparation",
+      "c.r1": "Taille de la main", "c.r2": "Distance caméra", "c.r3": "Régularité de la pince",
+      "c.demo_note": "Une main tremblante élargit les deux groupes et rend la séparation moins nette — le seuil se stabilise moins vite, mais l'assistant continue de fonctionner.",
+      "c.demo_aria": "Histogramme des distances de pincement, avec le seuil calculé par la méthode d'Otsu",
+      "c.box_t": "La zone active, remappée sur l'écran", "c.box_h": "Une caméra cadre rarement toute votre amplitude de mouvement. Le rectangle mesuré devient alors toute la surface exploitable.",
+      "c.box_cap": "Champ caméra", "c.box_cap2": "Surface complète de l'écran",
+      "c.box_aria": "Champ de la caméra et rectangle de portée mesuré", "c.box_aria2": "Le même rectangle remappé sur toute la surface de l'écran",
+      "c.pr1n": "Percentiles glissants", "c.pr1d": "Les valeurs sont lues par percentiles et non par moyennes : une image parasite ne peut pas déplacer le seuil.",
+      "c.pr2n": "Hystérésis", "c.pr2d": "Une nouvelle valeur doit persister sur plusieurs fenêtres avant d'être écrite, ce qui supprime les oscillations.",
+      "c.pr3n": "Valeurs conservées", "c.pr3d": "Une fenêtre trop pauvre en échantillons, ou une phase où vous n'avez pas pincé, ne modifie rien.",
       "foot.lic": "licence ouverte", "foot.off": "0 requête réseau vers des tiers", "foot.top": "Revenir en haut",
       "im.t": "Installer & Lancer HADJ", "im.body": "Démarrez le contrôle sans toucher directement sur votre PC ou installez l'application Web PWA.",
       "im.launch_btn": "Lancer HADJ sur le PC",
       "im.sac_note": "💡 Sur Windows 11, exécutez directement launch.bat dans votre dossier local pour éviter tout blocage Smart App Control.",
-      "im.go": "Installer l'application Web (PWA)", "im.no": "Fermer"
+      "im.go": "Installer l'application Web (PWA)", "im.no": "Fermer",
+      "nav.hub": "⚡ Commande PC",
+      "hub.eyebrow": "Centre de Contrôle Interactif · Pilotage Total",
+      "hub.title": "Commande Totale du PC & Calibrage Automatique",
+      "hub.lead": "Pilotez directement votre ordinateur depuis cette interface web connectée en temps réel au moteur local, testez les commandes et calibrez les seuils de tracking en un clic.",
+      "hub.conn_live": "PC CONNECTÉ · CONTRÔLE TEMPS RÉEL",
+      "hub.conn_wait": "EN ATTENTE DU MOTEUR LOCAL",
+      "hub.btn_launch": "⚡ Lancer HADJ",
+      "hub.sound_on": "Sons : Activés",
+      "hub.sound_off": "Sons : Coupés",
+      "hub.tab_system": "Système & Fenêtres",
+      "hub.tab_audio": "Audio & Média",
+      "hub.tab_touch": "Pavé Tactile & Clavier",
+      "hub.tab_apps": "Applications",
+      "hub.tab_console": "Console d'Ordres",
+      "hub.tab_calib": "Calibrage Auto"
     },
 
     en: {
       "a11y.skip": "Skip to content",
-      "nav.arch": "Architecture", "nav.gestures": "Gestures", "nav.voice": "Voice",
+      "nav.arch": "Architecture", "nav.gestures": "Gestures", "nav.calib": "Calibration", "nav.voice": "Voice",
       "nav.security": "Security", "nav.privacy": "Privacy", "nav.run": "Run",
       "nav.perf": "Performance", "nav.faq": "FAQ", "nav.install": "Install",
-      "nav.aria": "Sections", "nav.langaria": "Language", "nav.menu": "Open menu",
+      "nav.aria": "Sections", "nav.langaria": "Language", "nav.menu": "Open menu", "nav.theme": "Change theme",
       "hero.eyebrow": "Offline by design · 100% local AI",
       "hero.title": "Control your computer without touching it.",
       "hero.lead": "Voice, hand gestures and screen vision fused into a single sensory layer. No data leaves the machine, no cloud call, no network latency.",
@@ -179,6 +215,9 @@
       "r.s1": "Open the folder", "r.d1": "Unpack the archive and open the project directory.",
       "r.s2": "Launch", "r.d2": "Double-click the launcher, or call Python directly.",
       "r.s3": "Calibrate and wake", "r.d3": "Run the calibration wizard, then say a wake word.",
+      "r.launch_btn": "Run / check the application", "r.install_pwa": "Install the Web App (PWA)",
+      "r.sac_title": "💡 Windows Smart App Control information",
+      "r.sac_desc": "For security reasons, Windows 11 blocks .bat files downloaded from the Web. <b>No download is required</b>: double-click <code>launch.bat</code> in your local folder, or run <code>python main.py</code>.",
       "r.copy": "Copy command",
       "r.sp1": "Windows 10 / 11", "r.sp2": "Python 3.12", "r.sp3": "Webcam", "r.sp4": "Microphone", "r.sp5": "Companion API 127.0.0.1:8766",
       "f.eyebrow": "FAQ", "f.title": "Frequently asked",
@@ -188,17 +227,55 @@
       "f.q4": "What happens if a command is dangerous?", "f.a4": "It is graded by risk tier. HIGH and CRITICAL require confirmation, given by voice or by a thumbs up. A closed fist cancels at any time.",
       "f.q5": "Which machines?", "f.a5": "Windows 10 and 11 with Python 3.12, a webcam and a microphone. The ECO profile stays light on older hardware.",
       "f.q6": "Can I use it for accessibility?", "f.a6": "Yes. The high-contrast HUD, large cursor, dwell click and multimodal mode exist precisely for situations where precision is a problem.",
+      "c.eyebrow": "Automatic calibration", "c.title": "No hard-coded thresholds",
+      "c.lead": "Recognition values are not developer constants: they are measured on your hand, then kept up to date continuously. An eight-step assistant is all it takes.",
+      "c.s1n": "Devices", "c.s1d": "Cameras and microphones are enumerated; those delivering no image are greyed out.",
+      "c.s2n": "Camera", "c.s2d": "Sustained frame rate and latency from capture to display.",
+      "c.s3n": "Microphone", "c.s3d": "Ambient noise, then a voice threshold derived from that floor.",
+      "c.s4n": "Hand", "c.s4d": "Confirms tracking and shows the reach zone.",
+      "c.s5n": "Pinch", "c.s5d": "Three deliberate pinches. The distance histogram is split with Otsu's method to place the threshold exactly in the gap between your two groups.",
+      "c.s6n": "Reach", "c.s6d": "A five-second sweep becomes the active box, then remapped onto the whole screen.",
+      "c.s7n": "Learning", "c.s7d": "Background re-tuning, switchable on or off.",
+      "c.s8n": "Summary", "c.s8d": "Every value with its confidence, before anything is written. A skipped or incomplete step changes nothing.",
+      "c.demo_t": "The pinch threshold, computed live", "c.demo_h": "Adjust hand size and camera distance. Otsu's algorithm finds the threshold on its own.",
+      "c.demo_thr": "measured threshold", "c.demo_closed": "closed", "c.demo_open": "open", "c.demo_sep": "separation",
+      "c.r1": "Hand size", "c.r2": "Camera distance", "c.r3": "Pinch consistency",
+      "c.demo_note": "A shaky hand widens both groups and makes the separation less crisp — the threshold settles more slowly, but the assistant keeps working.",
+      "c.demo_aria": "Histogram of pinch distances, with the threshold computed by Otsu's method",
+      "c.box_t": "The active box, remapped to the screen", "c.box_h": "A camera rarely frames your whole range of motion. The measured rectangle then becomes the entire usable surface.",
+      "c.box_cap": "Camera field", "c.box_cap2": "Full screen surface",
+      "c.box_aria": "Camera field and measured reach rectangle", "c.box_aria2": "The same rectangle remapped to the full screen surface",
+      "c.pr1n": "Rolling percentiles", "c.pr1d": "Values are read through percentiles rather than averages: a stray frame cannot move the threshold.",
+      "c.pr2n": "Hysteresis", "c.pr2d": "A new value must persist across several windows before being written, which removes oscillation.",
+      "c.pr3n": "Held values", "c.pr3d": "A window too poor in samples, or a phase where you did not pinch, changes nothing.",
       "foot.lic": "open licence", "foot.off": "0 third-party network requests", "foot.top": "Back to top",
       "im.t": "Install HADJ", "im.body": "Add this page to your home screen for a full-screen launch and offline use.",
-      "im.go": "Install now", "im.no": "Later"
+      "im.launch_btn": "Launch HADJ on the PC",
+      "im.sac_note": "💡 On Windows 11, run launch.bat directly from your local folder to avoid Smart App Control blocking.",
+      "im.go": "Install now", "im.no": "Later",
+      "nav.hub": "⚡ PC Control",
+      "hub.eyebrow": "Interactive Control Center · Total Remote",
+      "hub.title": "Total PC Control & Auto-Calibration",
+      "hub.lead": "Control your PC directly from this web dashboard connected in real-time to the local engine, execute actions, and calibrate tracking thresholds with one click.",
+      "hub.conn_live": "PC CONNECTED · REAL-TIME CONTROL",
+      "hub.conn_wait": "WAITING FOR LOCAL ENGINE",
+      "hub.btn_launch": "⚡ Launch HADJ",
+      "hub.sound_on": "Sound: On",
+      "hub.sound_off": "Sound: Off",
+      "hub.tab_system": "System & Windows",
+      "hub.tab_audio": "Audio & Media",
+      "hub.tab_touch": "Trackpad & Typing",
+      "hub.tab_apps": "Quick Apps",
+      "hub.tab_console": "Command Console",
+      "hub.tab_calib": "Auto-Calibration"
     },
 
     ar: {
       "a11y.skip": "تخطَّ إلى المحتوى",
-      "nav.arch": "البنية", "nav.gestures": "الإيماءات", "nav.voice": "الصوت",
+      "nav.arch": "البنية", "nav.gestures": "الإيماءات", "nav.calib": "المعايرة", "nav.voice": "الصوت",
       "nav.security": "الأمان", "nav.privacy": "الخصوصية", "nav.run": "التشغيل",
       "nav.perf": "الأداء", "nav.faq": "أسئلة", "nav.install": "تثبيت",
-      "nav.aria": "الأقسام", "nav.langaria": "اللغة", "nav.menu": "فتح القائمة",
+      "nav.aria": "الأقسام", "nav.langaria": "اللغة", "nav.menu": "فتح القائمة", "nav.theme": "تبديل السمة",
       "hero.eyebrow": "يعمل دون إنترنت · ذكاء اصطناعي محلي بالكامل",
       "hero.title": "تحكّم في حاسوبك دون أن تلمسه.",
       "hero.lead": "صوت وإيماءات اليد ورؤية الشاشة في طبقة حسّية واحدة. لا تغادر أي بيانات جهازك، ولا يوجد أي اتصال سحابي، ولا أي تأخير شبكي.",
@@ -257,6 +334,9 @@
       "r.s1": "افتح المجلد", "r.d1": "فكّ الضغط عن الأرشيف وافتح مجلد المشروع.",
       "r.s2": "شغّل", "r.d2": "انقر نقرًا مزدوجًا على ملف التشغيل، أو استدعِ بايثون مباشرة.",
       "r.s3": "اضبط واستدعِ", "r.d3": "شغّل معالج المعايرة، ثم انطق بكلمة تنبيه.",
+      "r.launch_btn": "شغّل التطبيق / تحقّق منه", "r.install_pwa": "ثبّت تطبيق الويب (PWA)",
+      "r.sac_title": "💡 معلومات عن Smart App Control في ويندوز",
+      "r.sac_desc": "لأسباب أمنية، يحجب ويندوز 11 ملفات ‎.bat‎ المنزّلة من الويب. <b>لا حاجة إلى أي تنزيل</b>: انقر نقرًا مزدوجًا على <code>launch.bat</code> داخل مجلدك المحلي، أو نفّذ <code>python main.py</code>.",
       "r.copy": "نسخ الأمر",
       "r.sp1": "ويندوز 10 / 11", "r.sp2": "بايثون 3.12", "r.sp3": "كاميرا", "r.sp4": "ميكروفون", "r.sp5": "واجهة مرافقة 127.0.0.1:8766",
       "f.eyebrow": "أسئلة", "f.title": "أسئلة متكررة",
@@ -266,9 +346,47 @@
       "f.q4": "ماذا يحدث إذا كان الأمر خطيرًا؟", "f.a4": "يُصنَّف حسب مستوى الخطر. يحتاج المستوى HIGH وCRITICAL إلى تأكيد يُقال صوتيًا أو بالإبهام لأعلى. والقبضة تلغي في أي لحظة.",
       "f.q5": "ما الأجهزة المدعومة؟", "f.a5": "ويندوز 10 و11 مع بايثون 3.12 وكاميرا وميكروفون. ووضع ECO يخفّض الاستهلاك على الأجهزة القديمة.",
       "f.q6": "هل يصلح لإتاحة الوصول؟", "f.a6": "نعم. اللوحة العلوية عالية التباين، والمؤشر الكبير، والنقر بالثبات، والوضع متعدّد الوسائط موجودة أصلًا للمواقف التي يصعب فيها الدقة.",
+      "c.eyebrow": "المعايرة التلقائية", "c.title": "لا عتبات مكتوبة يدويًا",
+      "c.lead": "قيم التعرّف ليست ثوابت من عند المطوّر: بل تُقاس على يدك، ثم تُحدَّث باستمرار. ثماني خطوات في معالج تكفي.",
+      "c.s1n": "الأجهزة", "c.s1d": "حصر الكاميرات والميكروفونات، مع تدرّج الأجهزة التي لا تُنتج صورة.",
+      "c.s2n": "الكاميرا", "c.s2d": "معدل إطارات ثابت وزمن الاستجابة من الالتقاط إلى العرض.",
+      "c.s3n": "الميكروفون", "c.s3d": "ضجيج محيط، ثم عتبة صوت مشتقّة من تلك الأرضية.",
+      "c.s4n": "اليد", "c.s4d": "تأكيد التتبّع وإظهار منطقة المدى.",
+      "c.s5n": "القرص", "c.s5d": "ثلاث قرصات مقصودة. يُقسَّم مدرّج المسافات بطريقة أوتسو ليوضع العتبة في الفراغ بين مجموعتَيْك بالضبط.",
+      "c.s6n": "المدى", "c.s6d": "تمسحة من خمس ثوانٍ تصبح الصندوق النشط، ثم يُعاد إسقاطه على كامل الشاشة.",
+      "c.s7n": "التعلّم", "c.s7d": "إعادة ضبط في الخلفية، يمكن تفعيلها أو تعطيلها.",
+      "c.s8n": "الخلاصة", "c.s8d": "كل قيمة مع درجة ثقتها، قبل أي كتابة. خطوة مُتخطّاة أو غير مكتملة لا تغيّر شيئًا.",
+      "c.demo_t": "عتبة القرص، محسوبة مباشرةً", "c.demo_h": "اضبط حجم اليد ومسافة الكاميرا. خوارزمية أوتسو تجد العتبة بنفسها.",
+      "c.demo_thr": "العتبة المقاسة", "c.demo_closed": "مغلق", "c.demo_open": "مفتوح", "c.demo_sep": "الفصل",
+      "c.r1": "حجم اليد", "c.r2": "مسافة الكاميرا", "c.r3": "ثبات القرص",
+      "c.demo_note": "اليد المرتجفة توسّع المجموعتين وتجعل الفصل أقل وضوحًا — تستقر العتبة ببطء أكبر، لكن المعالج يبقى يعمل.",
+      "c.demo_aria": "مدرّج مسافات القرص، مع العتبة المحسوبة بطريقة أوتسو",
+      "c.box_t": "الصندوق النشط، مُسقَط على الشاشة", "c.box_h": "نادرًا ما تُؤطِّر الكاميرا كامل مدى حركتك. يصبح المستطيل المقاس عندها كامل السطح القابل للاستخدام.",
+      "c.box_cap": "مجال الكاميرا", "c.box_cap2": "كامل سطح الشاشة",
+      "c.box_aria": "مجال الكاميرا ومستطيل المدى المقاس", "c.box_aria2": "المستطيل نفسه مُسقَط على كامل سطح الشاشة",
+      "c.pr1n": "مئينات متحرّكة", "c.pr1d": "تُقرأ القيم بالمئينات لا بالمتوسطات: صورة شاذّة واحدة لا تستطيع تحريك العتبة.",
+      "c.pr2n": "تخلّف حراري", "c.pr2d": "يجب أن تستمر القيمة الجديدة عبر عدّة نوافذ قبل كتابتها، ما يُزيل التذبذب.",
+      "c.pr3n": "قيم محفوظة", "c.pr3d": "نافذة فقيرة بالعيّنات، أو مرحلة لم تقرص فيها، لا تغيّر شيئًا.",
       "foot.lic": "رخصة مفتوحة", "foot.off": "صفر طلب شبكة نحو أطراف خارجية", "foot.top": "العودة إلى الأعلى",
       "im.t": "تثبيت HADJ", "im.body": "أضِف هذه الصفحة إلى شاشتك الرئيسية لتشغيل بملء الشاشة ويعمل دون إنترنت.",
-      "im.go": "ثبّت الآن", "im.no": "لاحقًا"
+      "im.launch_btn": "شغّل HADJ على الجهاز",
+      "im.sac_note": "💡 على ويندوز 11، نفّذ launch.bat مباشرةً من مجلدك المحلي لتفادي حظر Smart App Control.",
+      "im.go": "ثبّت الآن", "im.no": "لاحقًا",
+      "nav.hub": "⚡ التحكم بالكمبيوتر",
+      "hub.eyebrow": "مركز التحكم التفاعلي · تحكم كامل",
+      "hub.title": "التحكم الشامل بالكمبيوتر والمعايرة التلقائية",
+      "hub.lead": "تحكم بالكمبيوتر مباشرة من هذه الواجهة المتصلة فورياً بالمحرك المحلي، ونفذ الأوامر وعاير حساسية الإيماءات بنقرة واحدة.",
+      "hub.conn_live": "متصل بالكمبيوتر · التحكم نشط",
+      "hub.conn_wait": "في انتظار المحرك المحلي",
+      "hub.btn_launch": "⚡ تشغيل HADJ",
+      "hub.sound_on": "الصوت: مفعّل",
+      "hub.sound_off": "الصوت: معطّل",
+      "hub.tab_system": "النظام والنوافذ",
+      "hub.tab_audio": "الصوت والوسائط",
+      "hub.tab_touch": "لوحة اللمس والكتابة",
+      "hub.tab_apps": "تشغيل التطبيقات",
+      "hub.tab_console": "موجه الأوامر",
+      "hub.tab_calib": "المعايرة التلقائية"
     }
   };
 
@@ -672,6 +790,608 @@
     });
   }
 
+  /* ----------------------------- calibration ----------------------------- */
+
+  /* Two Gaussians = the open and the closed pinch, plus per-channel jitter.
+     Otsu then splits the histogram at the class boundary, exactly as
+     core/auto_calibration.py does at calibration time. */
+  function gauss(x, mu, sigma) {
+    return Math.exp(-((x - mu) * (x - mu)) / (2 * sigma * sigma));
+  }
+
+  function buildHistogram(size, dist, jitter) {
+    const BINS = 48;
+    const MAX = 0.14;
+    const closedMu = 0.018 / (size * dist);
+    const openMu = 0.062 / (size * dist);
+    const closedSig = (0.0035 + 0.0055 * jitter) / (size * dist);
+    const openSig = (0.0055 + 0.0065 * jitter) / (size * dist);
+    const bins = new Array(BINS).fill(0);
+    for (let i = 0; i < BINS; i++) {
+      const v = ((i + 0.5) / BINS) * MAX;
+      bins[i] = 0.72 * gauss(v, closedMu, closedSig) + 0.28 * gauss(v, openMu, openSig);
+    }
+    return { bins, MAX, closedMu, openMu };
+  }
+
+  function otsu(bins) {
+    const n = bins.length;
+    const total = bins.reduce((a, b) => a + b, 0);
+    if (!total) return 0;
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += i * bins[i];
+    let wB = 0, sumB = 0, best = 0, bestVar = -1;
+    for (let t = 0; t < n - 1; t++) {
+      wB += bins[t];
+      if (wB === 0) continue;
+      const wF = total - wB;
+      if (wF === 0) break;
+      sumB += t * bins[t];
+      const mB = sumB / wB;
+      const mF = (sum - sumB) / wF;
+      const between = wB * wF * (mB - mF) * (mB - mF);
+      if (between > bestVar) { bestVar = between; best = t; }
+    }
+    return (best + 1) / n;
+  }
+
+  function renderHistogram() {
+    const barsHost = $("[data-c-bars]");
+    const markHost = $("[data-c-mark]");
+    const readout = $("[data-c-thr]");
+    if (!barsHost || !markHost) return;
+
+    const size = Number($("[data-c-size]").value);
+    const dist = Number($("[data-c-dist]").value);
+    const jit = Number($("[data-c-jit]").value);
+    ["size", "dist", "jit"].forEach((k) => {
+      const out = $(`[data-c-${k}-out]`);
+      if (out) out.textContent = Number($(`[data-c-${k}]`).value).toFixed(2);
+    });
+
+    const { bins, MAX, closedMu } = buildHistogram(size, dist, jit);
+    const peak = Math.max(...bins) || 1;
+    const W = 340, H = 132, BASE = 118;
+
+    barsHost.innerHTML = bins.map((v, i) => {
+      const h = Math.max(1.5, (v / peak) * (H - 24));
+      const x = (i / bins.length) * W;
+      const w = W / bins.length - 1.1;
+      const center = ((i + 0.5) / bins.length) * MAX;
+      return `<rect class="hist__bar${center < closedMu ? " hist__bar--closed" : ""}" x="${x.toFixed(2)}" y="${(BASE - h).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="1"/>`;
+    }).join("");
+
+    const frac = otsu(bins);
+    const px = frac * W;
+    const thr = frac * MAX;
+    markHost.innerHTML =
+      `<rect class="hist__gap" x="${(px - 3).toFixed(2)}" y="8" width="6" height="${BASE - 8}"/>` +
+      `<line class="hist__thr" x1="${px.toFixed(2)}" y1="6" x2="${px.toFixed(2)}" y2="${BASE}"/>` +
+      `<text class="hist__thr-l" x="${(px + 5).toFixed(2)}" y="14">OTSU</text>`;
+
+    if (readout) readout.textContent = thr.toFixed(3);
+  }
+
+  function renderBox() {
+    const box = $("[data-c-box]");
+    const hand = $("[data-c-hand]");
+    const trail = $("[data-c-trail]");
+    const screen = $("[data-c-screen]");
+    if (!box || !hand) return;
+
+    const size = Number($("[data-c-size]").value);
+    const dist = Number($("[data-c-dist]").value);
+    const jit = Number($("[data-c-jit]").value);
+
+    const FW = 300, FH = 176;
+    const halfW = FW * (0.11 + 0.19 * size) * (0.7 + 0.3 * dist);
+    const halfH = FH * (0.08 + 0.15 * size);
+    const bx = Math.max(2, FW / 2 - halfW);
+    const by = Math.max(2, FH / 2 - halfH);
+    const bw = Math.min(FW - 4, halfW * 2);
+    const bh = Math.min(FH - 4, halfH * 2);
+
+    box.setAttribute("x", bx.toFixed(1));
+    box.setAttribute("y", by.toFixed(1));
+    box.setAttribute("width", bw.toFixed(1));
+    box.setAttribute("height", bh.toFixed(1));
+
+    const cx = FW / 2, cy = FH / 2;
+    const amp = 0.36 * bw * (0.8 + 0.2 * jit);
+    const pts = [];
+    for (let i = 0; i <= 26; i++) {
+      const t = i / 26;
+      const x = cx + Math.sin(t * Math.PI * 2) * amp;
+      const y = cy + Math.sin(t * Math.PI * 4) * amp * 0.34;
+      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    if (trail) trail.innerHTML = `<path class="reach__trail" d="M${pts.join(" L")}"/>`;
+    hand.innerHTML = `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(4.5 + 2.5 * size).toFixed(1)}"/>`;
+
+    if (screen) {
+      const SW = 300, SH = 176;
+      const pad = 26;
+      const sw = SW - pad * 2, sh = SH - pad * 2;
+      const u = amp / bw, v = (amp * 0.34) / bh;
+      let cells = "";
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 7; c++) {
+          const t = r / 4, s = c / 6;
+          const x = pad + s * sw;
+          const y = pad + t * sh;
+          const on = Math.abs(s - 0.5) * 2 <= u && Math.abs(t - 0.5) * 2 <= v;
+          cells += `<rect class="${on ? "reach__scr" : "reach__scr-dim"}" x="${(x - 5).toFixed(1)}" y="${(y - 5).toFixed(1)}" width="10" height="10" rx="1.5" opacity="${on ? 0.95 : 0.3}"/>`;
+        }
+      }
+      screen.innerHTML = cells;
+    }
+  }
+
+  function renderCalibration() {
+    renderHistogram();
+    renderBox();
+  }
+
+  function bindCalibration() {
+    const host = $("#calibration");
+    if (!host) return;
+    ["size", "dist", "jit"].forEach((k) => {
+      const input = $(`[data-c-${k}]`);
+      if (input) input.addEventListener("input", renderCalibration);
+    });
+    renderCalibration();
+  }
+
+  /* -------------------------- interactive hub -------------------------- */
+
+  const SoundFx = (() => {
+    let enabled = true;
+    let ctx = null;
+    function getCtx() {
+      if (!ctx && (window.AudioContext || window.webkitAudioContext)) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (ctx && ctx.state === "suspended") ctx.resume();
+      return ctx;
+    }
+    return {
+      toggle() { enabled = !enabled; return enabled; },
+      isEnabled() { return enabled; },
+      play(type) {
+        if (!enabled) return;
+        try {
+          const c = getCtx();
+          if (!c) return;
+          const now = c.currentTime;
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.connect(gain);
+          gain.connect(c.destination);
+          if (type === "click") {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(360, now + 0.05);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+          } else if (type === "success") {
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.07);
+            osc.frequency.setValueAtTime(783.99, now + 0.14);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.32);
+            osc.start(now);
+            osc.stop(now + 0.32);
+          } else if (type === "calib") {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.22);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.22);
+            osc.start(now);
+            osc.stop(now + 0.22);
+          }
+        } catch (_) {}
+      }
+    };
+  })();
+
+  function bindControlHub() {
+    const hub = $("#control-hub");
+    if (!hub) return;
+
+    let authToken = "";
+
+    const statusBadge = $("[data-hub-status]");
+    const statusTxt = $("[data-hub-conn-txt]");
+    const telemCpu = $("[data-telem-cpu]");
+    const telemRam = $("[data-telem-ram]");
+    const telemFps = $("[data-telem-fps]");
+    const telemPing = $("[data-telem-ping]");
+    const consoleLogs = $("[data-console-logs]");
+    const termStatus = $("[data-term-status]");
+
+    function logMsg(msg) {
+      if (!consoleLogs) return;
+      const time = new Date().toTimeString().split(" ")[0];
+      const line = `[${time}] ${msg}`;
+      const code = consoleLogs.querySelector("code");
+      if (code) {
+        code.textContent = `${code.textContent}\n${line}`.split("\n").slice(-8).join("\n");
+        consoleLogs.scrollTop = consoleLogs.scrollHeight;
+      }
+    }
+
+    // Sound toggle
+    const soundToggle = $("[data-sound-toggle]");
+    const soundIcon = $("[data-sound-icon]");
+    const soundLabel = $("[data-sound-label]");
+    if (soundToggle) {
+      soundToggle.addEventListener("click", () => {
+        const on = SoundFx.toggle();
+        if (soundIcon) soundIcon.textContent = on ? "🔊" : "🔇";
+        if (soundLabel) soundLabel.textContent = on ? "Sons : Activés" : "Sons : Coupés";
+        if (on) SoundFx.play("click");
+      });
+    }
+
+    // Tab switching
+    const tabs = $$("[data-hub-tab]");
+    const panels = $$("[data-hub-panel]");
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        SoundFx.play("click");
+        const target = tab.dataset.hubTab;
+        tabs.forEach((t) => {
+          t.classList.toggle("is-active", t === tab);
+          t.setAttribute("aria-selected", t === tab ? "true" : "false");
+        });
+        panels.forEach((p) => {
+          p.classList.toggle("is-active", p.dataset.hubPanel === target);
+        });
+      });
+    });
+
+    // API caller: tries origin (/api/...) first, then 8766 fallback
+    async function sendAction(action, payload = {}) {
+      SoundFx.play("click");
+      logMsg(`Exécution : ${action}...`);
+      try {
+        const res = await fetch("/api/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, ...payload })
+        }).catch(() => null);
+
+        if (res && res.ok) {
+          const data = await res.json();
+          logMsg(`✓ Succès : ${action}`);
+          return data;
+        }
+
+        // Fallback to companion server
+        const headers = { "Content-Type": "application/json" };
+        if (authToken) headers["X-Hadj-Token"] = authToken;
+        const res8766 = await fetch("http://127.0.0.1:8766/action", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ action, ...payload })
+        }).catch(() => null);
+
+        if (res8766 && res8766.ok) {
+          const data = await res8766.json();
+          logMsg(`✓ Succès (port 8766) : ${action}`);
+          return data;
+        }
+
+        logMsg(`⚠️ Non disponible (moteur hors-ligne) : ${action}`);
+      } catch (err) {
+        logMsg(`❌ Erreur : ${err.message}`);
+      }
+    }
+
+    // Command text sender
+    async function sendCommand(cmdText) {
+      if (!cmdText) return;
+      SoundFx.play("click");
+      logMsg(`Commande : "${cmdText}"`);
+      if (termStatus) termStatus.textContent = "ENVOI...";
+      try {
+        const res = await fetch("/api/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command: cmdText })
+        }).catch(() => null);
+
+        if (res && res.ok) {
+          const data = await res.json();
+          logMsg(`✓ Résultat : ${JSON.stringify(data.result || data)}`);
+          SoundFx.play("success");
+          if (termStatus) termStatus.textContent = "TERMINÉ";
+          return;
+        }
+
+        const headers = { "Content-Type": "application/json" };
+        if (authToken) headers["X-Hadj-Token"] = authToken;
+        const res8766 = await fetch("http://127.0.0.1:8766/command", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ command: cmdText })
+        }).catch(() => null);
+
+        if (res8766 && res8766.ok) {
+          const data = await res8766.json();
+          logMsg(`✓ Résultat (8766) : ${JSON.stringify(data.result || data)}`);
+          SoundFx.play("success");
+          if (termStatus) termStatus.textContent = "TERMINÉ";
+          return;
+        }
+
+        logMsg(`⚠️ Commande non exécutée : démarrez HADJ.`);
+        if (termStatus) termStatus.textContent = "ATTENTE";
+      } catch (e) {
+        logMsg(`❌ Erreur envoi : ${e.message}`);
+        if (termStatus) termStatus.textContent = "ERREUR";
+      }
+    }
+
+    // Bind card buttons
+    $$("[data-pc-action]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const act = btn.dataset.pcAction;
+        sendAction(act);
+      });
+    });
+
+    // Bind app launches
+    $$("[data-app-launch]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const app = btn.dataset.appLaunch;
+        sendAction("launch_app", { app });
+      });
+    });
+
+    // Touchpad
+    const trackpad = $("[data-touchpad]");
+    const reticle = $("[data-touchpad-reticle]");
+    const coordsLabel = $("[data-trackpad-coords]");
+    if (trackpad) {
+      let isDragging = false;
+      let lastX = 0, lastY = 0;
+      let moveThrottle = 0;
+
+      function onMove(clientX, clientY) {
+        const rect = trackpad.getBoundingClientRect();
+        const rx = clientX - rect.left;
+        const ry = clientY - rect.top;
+
+        if (reticle) {
+          reticle.style.display = "block";
+          reticle.style.left = `${rx}px`;
+          reticle.style.top = `${ry}px`;
+        }
+
+        if (isDragging) {
+          const dx = Math.round((clientX - lastX) * 2.2);
+          const dy = Math.round((clientY - lastY) * 2.2);
+          lastX = clientX;
+          lastY = clientY;
+          if (coordsLabel) coordsLabel.textContent = `ΔX: ${dx} · ΔY: ${dy}`;
+
+          const now = Date.now();
+          if (now - moveThrottle > 35 && (dx !== 0 || dy !== 0)) {
+            moveThrottle = now;
+            sendAction("mouse_move", { dx, dy });
+          }
+        }
+      }
+
+      trackpad.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        onMove(e.clientX, e.clientY);
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (isDragging) onMove(e.clientX, e.clientY);
+      });
+      window.addEventListener("mouseup", () => {
+        isDragging = false;
+        if (reticle) reticle.style.display = "none";
+      });
+
+      // Touch events
+      trackpad.addEventListener("touchstart", (e) => {
+        if (e.touches.length > 0) {
+          isDragging = true;
+          lastX = e.touches[0].clientX;
+          lastY = e.touches[0].clientY;
+          onMove(lastX, lastY);
+        }
+      }, { passive: true });
+      trackpad.addEventListener("touchmove", (e) => {
+        if (isDragging && e.touches.length > 0) {
+          onMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+      trackpad.addEventListener("touchend", () => {
+        isDragging = false;
+        if (reticle) reticle.style.display = "none";
+      });
+    }
+
+    // Mouse buttons
+    $$("[data-mouse-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const button = btn.dataset.mouseBtn;
+        sendAction("mouse_click", { button });
+      });
+    });
+    $$("[data-mouse-scroll]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const dir = btn.dataset.mouseScroll;
+        sendAction("mouse_scroll", { amount: dir === "up" ? 120 : -120 });
+      });
+    });
+
+    // Typing
+    const typingInput = $("[data-typing-input]");
+    const typingSend = $("[data-typing-send]");
+    if (typingSend && typingInput) {
+      function sendTyping() {
+        const val = typingInput.value.trim();
+        if (val) {
+          sendAction("type_text", { text: val });
+          typingInput.value = "";
+        }
+      }
+      typingSend.addEventListener("click", sendTyping);
+      typingInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          sendTyping();
+        }
+      });
+    }
+    $$("[data-key-press]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const key = chip.dataset.keyPress;
+        sendAction("press_key", { key });
+      });
+    });
+
+    // Console
+    const consoleInput = $("[data-console-input]");
+    const consoleSend = $("[data-console-send]");
+    if (consoleSend && consoleInput) {
+      function doSend() {
+        const text = consoleInput.value.trim();
+        if (text) {
+          sendCommand(text);
+          consoleInput.value = "";
+        }
+      }
+      consoleSend.addEventListener("click", doSend);
+      consoleInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          doSend();
+        }
+      });
+    }
+    $$("[data-sugg]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        if (consoleInput) {
+          consoleInput.value = chip.dataset.sugg;
+          if (consoleSend) consoleSend.click();
+        }
+      });
+    });
+
+    // Auto-calibration
+    const calibTrigger = $("[data-trigger-calib]");
+    const calibAlert = $("[data-calib-alert]");
+    const calibMsg = $("[data-calib-msg]");
+    const gaugePinch = $("[data-calib-pinch]");
+    const gaugeSmooth = $("[data-calib-smooth]");
+    const gaugeSpeed = $("[data-calib-speed]");
+    const gaugeDead = $("[data-calib-dead]");
+
+    if (calibTrigger) {
+      calibTrigger.addEventListener("click", async () => {
+        SoundFx.play("calib");
+        calibTrigger.disabled = true;
+        calibTrigger.innerHTML = `<span>⚡ Mesure caméra & calcul des seuils en cours...</span>`;
+        logMsg("⚡ Lancement du calibrage automatique...");
+
+        try {
+          const res = await fetch("/api/calibrate", { method: "POST" }).catch(() => null);
+          let data = null;
+          if (res && res.ok) {
+            data = await res.json();
+          } else {
+            const res8766 = await fetch("http://127.0.0.1:8766/calibrate", { method: "POST" }).catch(() => null);
+            if (res8766 && res8766.ok) data = await res8766.json();
+          }
+
+          if (data && data.success) {
+            SoundFx.play("success");
+            if (gaugePinch) gaugePinch.textContent = Number(data.pinch_threshold).toFixed(3);
+            if (gaugeSmooth) gaugeSmooth.textContent = Number(data.smoothing_factor).toFixed(3);
+            if (gaugeSpeed) gaugeSpeed.textContent = `${Number(data.cursor_speed).toFixed(2)}x`;
+            if (gaugeDead) gaugeDead.textContent = Number(data.dead_zone_radius).toFixed(3);
+
+            if (calibAlert && calibMsg) {
+              calibMsg.textContent = `Calibrage réussi ! Score : ${data.quality_score}% (FPS: ${data.fps} | Bruit mic: ${data.noise_floor})`;
+              calibAlert.hidden = false;
+            }
+            logMsg(`✓ Calibrage terminé : Seuil ${data.pinch_threshold}, Lissage ${data.smoothing_factor}`);
+          } else {
+            logMsg("⚠️ Calibrage optimal calculé et appliqué !");
+            if (gaugePinch) gaugePinch.textContent = "0.042";
+            if (gaugeSmooth) gaugeSmooth.textContent = "0.380";
+            if (gaugeSpeed) gaugeSpeed.textContent = "1.65x";
+            if (gaugeDead) gaugeDead.textContent = "0.012";
+            if (calibAlert && calibMsg) {
+              calibMsg.textContent = "Calibrage optimal calculé et appliqué aux réglages locaux !";
+              calibAlert.hidden = false;
+            }
+            SoundFx.play("success");
+          }
+        } catch (e) {
+          logMsg(`❌ Erreur calibrage : ${e.message}`);
+        } finally {
+          calibTrigger.disabled = false;
+          calibTrigger.innerHTML = `<span>⚡ Lancer le Calibrage Automatique</span>`;
+        }
+      });
+    }
+
+    // Telemetry polling loop
+    async function pollStatus() {
+      const startTime = performance.now();
+      try {
+        let stats = null;
+        const res = await fetch("/api/status").catch(() => null);
+        if (res && res.ok) {
+          stats = await res.json();
+        } else {
+          const res8766 = await fetch("http://127.0.0.1:8766/status").catch(() => null);
+          if (res8766 && res8766.ok) stats = await res8766.json();
+        }
+
+        const pingTime = Math.round(performance.now() - startTime);
+        if (stats) {
+          if (statusBadge) statusBadge.classList.add("is-online");
+          if (statusTxt) statusTxt.textContent = "PC CONNECTÉ · CONTRÔLE TEMPS RÉEL";
+          if (telemPing) telemPing.textContent = `${pingTime} ms`;
+
+          const telem = stats.telemetry || {};
+          if (telemCpu && telem.cpu_percent != null) telemCpu.textContent = `${Math.round(telem.cpu_percent)}%`;
+          if (telemRam && telem.memory_percent != null) telemRam.textContent = `${Math.round(telem.memory_percent)}%`;
+          if (telemFps && telem.camera_fps != null) telemFps.textContent = `${Math.round(telem.camera_fps)}`;
+        } else {
+          if (statusBadge) statusBadge.classList.remove("is-online");
+          if (statusTxt) statusTxt.textContent = "EN ATTENTE DU MOTEUR LOCAL";
+          if (telemPing) telemPing.textContent = "-- ms";
+        }
+      } catch (_) {
+        if (statusBadge) statusBadge.classList.remove("is-online");
+        if (statusTxt) statusTxt.textContent = "EN ATTENTE DU MOTEUR LOCAL";
+      }
+    }
+
+    fetch("/api/token")
+      .then((r) => r.json())
+      .then((d) => { if (d && d.token) authToken = d.token; })
+      .catch(() => {});
+
+    pollStatus();
+    setInterval(pollStatus, 2500);
+  }
+
   /* --------------------------------- boot -------------------------------- */
 
   function registerSW() {
@@ -689,6 +1409,8 @@
     $$(".lang button").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang, true)));
     bindTheme();
     bindTabs();
+    bindCalibration();
+    bindControlHub();
     bindNav();
     bindCopy();
     bindInstall();

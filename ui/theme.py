@@ -351,6 +351,54 @@ QPushButton#pillOn:hover, QPushButton.pill-on:hover {{
     color: #7FDCFA;
 }}
 
+QPushButton#quickAction, QPushButton.quick-action {{
+    background-color: #0E1728;
+    color: #E9EFF9;
+    border: 1px solid #1E2D48;
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 11px;
+    font-weight: 600;
+    min-height: 22px;
+}}
+QPushButton#quickAction:hover, QPushButton.quick-action:hover {{
+    background-color: #172642;
+    border-color: {ACCENT};
+    color: {ACCENT};
+}}
+QPushButton#quickAction:pressed, QPushButton.quick-action:pressed {{
+    background-color: #0A1220;
+}}
+
+QPushButton#calibAuto, QPushButton.calib-auto {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #065F46, stop:1 #059669);
+    color: #FFFFFF;
+    border: 1px solid #10B981;
+    font-weight: 700;
+    border-radius: {RADIUS_MD}px;
+    padding: 8px 16px;
+    min-height: 22px;
+}}
+QPushButton#calibAuto:hover, QPushButton.calib-auto:hover {{
+    background: #10B981;
+    border-color: #34D399;
+    color: #041A14;
+}}
+
+QPushButton#companionBtn, QPushButton.companion-btn {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1E1B4B, stop:1 #4338CA);
+    color: #FFFFFF;
+    border: 1px solid #6366F1;
+    font-weight: 700;
+    border-radius: {RADIUS_MD}px;
+    padding: 8px 16px;
+    min-height: 22px;
+}}
+QPushButton#companionBtn:hover, QPushButton.companion-btn:hover {{
+    background: #6366F1;
+    border-color: #818CF8;
+}}
+
 /* ============================ Inputs ============================ */
 QLineEdit, QTextEdit, QPlainTextEdit, QListWidget, QTreeWidget, QTableWidget {{
     background-color: {SURFACE_SUNK};
