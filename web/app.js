@@ -41,7 +41,7 @@
       "hero.eyebrow": "Hors ligne par conception · IA 100% locale",
       "hero.title": "Contrôlez votre ordinateur sans le toucher.",
       "hero.lead": "Voix, gestes de la main et vision de l'écran fusionnés en une seule couche sensorielle. Aucune donnée ne quitte la machine, aucun appel cloud, aucune latence réseau.",
-      "hero.cta1": "Lancer le projet", "hero.cta2": "Voir les gestes",
+      "hero.cta1": "Télécharger & Installer", "hero.cta2": "Voir les gestes",
       "hero.m1": "Windows 10 / 11", "hero.m2": "points de la main", "hero.m3": "avec RTL natif",
       "hero.hudaria": "Aperçu du tableau de bord temps réel : squelette de la main, curseur virtuel et journal d'audit local",
       "hero.hudlive": "EN DIRECT", "hero.hlisten": "ÉCOUTE", "hero.htrack": "MAIN SUIVIE", "hero.hlocal": "local",
