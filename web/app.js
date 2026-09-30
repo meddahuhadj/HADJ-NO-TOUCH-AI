@@ -1675,7 +1675,9 @@
   function registerSW() {
     if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
     addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(() => { /* offline cache unavailable */ });
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        if (reg) reg.update();
+      }).catch(() => { /* offline cache unavailable */ });
     });
   }
 
