@@ -191,7 +191,7 @@ button { font: inherit; color: inherit; }
 .sheet__panel a:hover { color: var(--accent); }
 
 /* --------------------------------- hero --------------------------------- */
-.hero { position: relative; padding-block: 132px 0; overflow: hidden; }
+.hero { position: relative; padding-block: 84px 0; overflow: hidden; }
 .hero__grid {
   position: absolute; inset: -10% -10% 0;
   background-image:

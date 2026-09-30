@@ -61,9 +61,12 @@
         <svg class="sun-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         <svg class="moon-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
       </button>
-      <button type="button" class="btn btn--p btn--sm install-btn" data-install>
-        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M8 1v9M4.5 6.5 8 10l3.5-3.5M2 13.5h12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span data-i18n="nav.install">Installer</span>
+      <a href="https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/archive/refs/heads/master.zip" class="btn btn--p btn--sm nav-download-btn" download target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" style="margin-inline-end: 4px;"><path d="M8 1v9M4.5 6.5 8 10l3.5-3.5M2 13.5h12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="nav.download_btn">Télécharger (.ZIP)</span>
+      </a>
+      <button type="button" class="btn btn--ghost btn--sm install-btn" data-install>
+        <span data-i18n="nav.install">Installer PWA</span>
       </button>
       <button type="button" class="burger" aria-expanded="false" aria-controls="mobile-menu" data-i18n-attr="aria-label:nav.menu">
         <span></span><span></span>
