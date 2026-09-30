@@ -42,6 +42,7 @@
     "hero.chips.4": "Arrêt d'urgence permanent",
     "hero.tray.title": "L'icône près de l'horloge",
     "hero.tray.hint": "Un seul coup d'œil : sept états réels, pas une approximation.",
+    "fqb.title": "Testeur Rapide",
 
     "stats.1": "octets envoyés sur Internet",
     "stats.2": "secondes pour enchaîner les commandes",
@@ -382,6 +383,7 @@
     "hero.chips.4": "إيقاف طارئ دائم",
     "hero.tray.title": "الأيقونة بجوار الساعة",
     "hero.tray.hint": "نظرة واحدة: سبع حالات حقيقية، لا تقديراً.",
+    "fqb.title": "اختبار سريع",
 
     "stats.1": "بايت تُرسَل عبر الإنترنت",
     "stats.2": "ثانية لتعاقب الأوامر",
@@ -722,6 +724,7 @@
     "hero.chips.4": "Permanent emergency stop",
     "hero.tray.title": "The icon next to the clock",
     "hero.tray.hint": "One glance: seven real states, not an approximation.",
+    "fqb.title": "Quick Tester",
 
     "stats.1": "bytes sent to the internet",
     "stats.2": "seconds to chain commands",

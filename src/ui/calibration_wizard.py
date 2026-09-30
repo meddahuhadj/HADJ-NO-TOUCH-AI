@@ -60,6 +60,7 @@ class CalibrationWizard(QWidget):
 
         self.hand = QLabel(body)
         self.hand.setAlignment(Qt.AlignCenter)
+        self.hand.setWordWrap(True)
         self.hand.setMinimumHeight(t.px(26))
 
         self.progress = QProgressBar()

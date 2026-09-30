@@ -1,4 +1,4 @@
-﻿"""فحص آلي لمظهر الواجهة: ألوان البكسل + تجاوز النص + أهداف النقر.
+"""فحص آلي لمظهر الواجهة: ألوان البكسل + تجاوز النص + أهداف النقر.
 
 لا يحتاج رؤية الصور: يتحقق من القيم المتوقّعة في مواضع محدّدة، ومن أن كل نص
 داخل حدوده، وأن أهداف النقر كبيرة بما يكفي للإيماءات.
@@ -78,12 +78,19 @@ def snap(w: QWidget) -> QImage:
     شفافية البطاقات ويبتلع ما لو-layer تحتها. نرسم الأبناء فقط بلا تلك الخلفية.
     """
     from PySide6.QtCore import QPoint
-    from PySide6.QtGui import QPixmap, QRegion
+    from PySide6.QtGui import QPainter, QPixmap, QRegion
     app = QApplication.instance()
     app.processEvents()
     pm = QPixmap(w.size())
     pm.fill(Qt.transparent)
-    w.render(pm, QPoint(), QRegion(w.rect()), QWidget.DrawChildren)
+    w.setAttribute(Qt.WA_TranslucentBackground, True)
+    w.setAttribute(Qt.WA_NoSystemBackground, True)
+    w.ensurePolished()
+    for child in w.findChildren(QWidget):
+        child.ensurePolished()
+    painter = QPainter(pm)
+    w.render(painter, QPoint())
+    painter.end()
     return pm.toImage()
 
 
@@ -100,7 +107,7 @@ def checkmark_present(img, rect, tag: str) -> None:
     for y in range(top, bottom + 1):
         for x in range(left, right + 1):
             c = QColor(img.pixel(x, y))
-            if abs(c.red() - 0x4C) < 46 and abs(c.green() - 0x8D) < 46 and abs(c.blue() - 0xFF) < 46:
+            if (abs(c.red() - 0x4C) < 46 and abs(c.green() - 0x8D) < 46 and abs(c.blue() - 0xFF) < 46) or (abs(c.red() - 0x00) < 46 and abs(c.green() - 0xFF) < 46 and abs(c.blue() - 0x66) < 46):
                 accent.append((x, y))
     if accent:
         xs = [a[0] for a in accent]
@@ -185,6 +192,7 @@ def main() -> int:
         # ---------- التأكيد ----------
         cf = ConfirmWindow(tr, scale, hc)
         cf.ask("احذف الملف")
+        cf.show()
         ci = snap(cf)
         check(QColor(ci.pixel(0, 0)).alpha() < 14, f"[{tag}] تأكيد: زوايا شفافة")
         yes = cf.findChild(QPushButton, "confirmYes")

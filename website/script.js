@@ -1488,6 +1488,19 @@
     paintTray();
   }
 
+  function initFloatingQuickBar() {
+    $$("[data-sim-cmd]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var cmdText = btn.getAttribute("data-sim-cmd");
+        toast(cmdText);
+        S.trayIdx = 1;
+        paintTray();
+        var wave = byId("trayWave");
+        if (wave) { runWave(wave, "dict"); }
+      });
+    });
+  }
+
   /* ================================================================= BOOT */
   function boot() {
     try {
@@ -1521,6 +1534,7 @@
     initGrid();
     initDictation();
     initCalibration();
+    initFloatingQuickBar();
     watchNav();
 
     w.setTimeout(moveLangThumb, 60);
