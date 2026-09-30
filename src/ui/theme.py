@@ -351,6 +351,49 @@ QPushButton#iconButton {{
 QPushButton#iconButton:hover {{ background: {t.alpha("text", 0.10)}; }}
 QPushButton#iconButton {{ image: url({cross}); }}
 
+/* ===== بلاطات شبكة الترتيب (Quick panel) ===== */
+QPushButton#snapTile {{
+    background-color: {t.alpha("text", 0.05) if not t.high_contrast else "transparent"};
+    border: {hair}px solid {t.c("line")};
+    border-radius: {r_sm};
+    min-height: {t.px(34)}px;
+    padding: {t.s(4)} {t.s(6)};
+    font-size: {t.pt(9)}pt;
+    font-weight: 600;
+    color: {t.c("text_faint")};
+}}
+QPushButton#snapTile:hover {{
+    background-color: {t.alpha("accent", 0.20) if not t.high_contrast else t.c("surface_hi")};
+    border-color: {accent};
+    color: {t.c("text") if not t.high_contrast else accent};
+}}
+QPushButton#snapTile:pressed {{
+    background: {gradient};
+    border-color: {accent};
+    color: {t.c("on_accent")};
+}}
+QPushButton#snapTile[tileMain="true"] {{
+    background-color: {t.alpha("accent", 0.12) if not t.high_contrast else "transparent"};
+    border-color: {t.alpha("accent", 0.45) if not t.high_contrast else accent};
+    color: {accent if not t.high_contrast else accent};
+}}
+
+/* ===== أزرار مُعيَّنة (مبدّل الميكروفون/الشاشة) ===== */
+QPushButton#toggleButton {{
+    background-color: {t.c("surface_alt")};
+    border: {hair}px solid {t.c("line")};
+    border-radius: {r_md};
+    min-height: {t.px(38)}px;
+    font-weight: 600;
+    color: {t.c("text_dim")};
+}}
+QPushButton#toggleButton:hover {{ border-color: {t.c("line_strong")}; color: {t.c("text")}; }}
+QPushButton#toggleButton[on="true"] {{
+    background-color: {t.alpha("accent", 0.16) if not t.high_contrast else t.c("surface_hi")};
+    border-color: {t.alpha("accent", 0.60) if not t.high_contrast else accent};
+    color: {accent if not t.high_contrast else accent};
+}}
+
 /* ===== الحقول ===== */
 QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit {{
     background-color: {t.c("surface_alt")};

@@ -1056,6 +1056,13 @@
 
     { c: "tabs",      d: false, ar: ["تبويب جديد"], en: ["new tab"], fr: ["nouvel onglet"] },
     { c: "tabs",      d: false, ar: ["أغلق التبويب"], en: ["close tab"], fr: ["ferme l'onglet"] },
+    { c: "tabs",      d: false, ar: ["التبويب التالي"], en: ["next tab"], fr: ["onglet suivant"] },
+    { c: "tabs",      d: false, ar: ["التبويب السابق"], en: ["previous tab"], fr: ["onglet précédent"] },
+    { c: "tabs",      d: false, ar: ["إعادة فتح التبويب المغلق"], en: ["reopen closed tab"], fr: ["rouvre l'onglet fermé"] },
+    { c: "tabs",      d: false, ar: ["الصفحة السابقة في المتصفح"], en: ["browser back"], fr: ["page précédente"] },
+    { c: "tabs",      d: false, ar: ["الصفحة التالية في المتصفح"], en: ["browser forward"], fr: ["page suivante"] },
+    { c: "tabs",      d: false, ar: ["ابحث في الويب عن {text}"], en: ["search web for {text}"], fr: ["cherche {text} sur le web"] },
+
 
     { c: "editing",   d: false, ar: ["انسخ"], en: ["copy"], fr: ["copie", "copier"] },
     { c: "editing",   d: false, ar: ["الصق"], en: ["paste"], fr: ["colle", "coller"] },
@@ -1086,9 +1093,17 @@
     { c: "sound",     d: false, ar: ["كتم الصوت"], en: ["mute"], fr: ["coupe le son", "muet"] },
 
     { c: "system",    d: false, ar: ["لقطة شاشة"], en: ["screenshot", "take a screenshot"], fr: ["capture d'écran", "capture l'écran"] },
+    { c: "system",    d: false, ar: ["افتح التحميلات"], en: ["open downloads"], fr: ["ouvre les téléchargements"] },
+    { c: "system",    d: false, ar: ["افتح المستندات"], en: ["open documents"], fr: ["ouvre mes documents"] },
+    { c: "system",    d: false, ar: ["افتح الصور"], en: ["open pictures"], fr: ["ouvre mes images"] },
+    { c: "system",    d: false, ar: ["افتح آخر تحميل"], en: ["open recent download"], fr: ["ouvre le dernier téléchargement"] },
+    { c: "system",    d: true,  ar: ["أفرغ سلة المهملات"], en: ["empty recycle bin"], fr: ["vide la corbeille"] },
+    { c: "system",    d: false, ar: ["إعدادات الويندوز"], en: ["windows settings"], fr: ["paramètres windows"] },
+    { c: "system",    d: false, ar: ["كيبورد الشاشة"], en: ["virtual keyboard"], fr: ["clavier virtuel"] },
     { c: "system",    d: true,  ar: ["اقفل الشاشة"], en: ["lock screen"], fr: ["verrouille l'écran"] },
     { c: "system",    d: true,  ar: ["أطفئ الجهاز"], en: ["shut down", "shutdown computer"], fr: ["éteins l'ordinateur"] },
     { c: "system",    d: true,  ar: ["أعد تشغيل الجهاز"], en: ["restart computer", "reboot"], fr: ["redémarre l'ordinateur"] },
+
 
     { c: "dictation", d: false, ar: ["ابدأ الإملاء"], en: ["start dictation", "dictation mode"], fr: ["commence la dictée", "mode dictée"] },
     { c: "dictation", d: false, ar: ["أوقف الإملاء"], en: ["stop dictation", "end dictation"], fr: ["arrête la dictée"] },

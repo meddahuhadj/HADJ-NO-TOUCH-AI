@@ -250,8 +250,6 @@ def _search(ctx, a):
 @action("media_play_pause")
 def _media_play(ctx, a):
     ctx.os.hotkey("playpause")
-
-
 @action("media_next")
 def _media_next(ctx, a):
     ctx.os.hotkey("nexttrack")
@@ -260,21 +258,6 @@ def _media_next(ctx, a):
 @action("media_prev")
 def _media_prev(ctx, a):
     ctx.os.hotkey("prevtrack")
-
-
-@action("snap_left")
-def _snap_left(ctx, a):
-    ctx.os.hotkey("win", "left")
-
-
-@action("snap_right")
-def _snap_right(ctx, a):
-    ctx.os.hotkey("win", "right")
-
-
-@action("snap_up")
-def _snap_up(ctx, a):
-    ctx.os.hotkey("win", "up")
 
 
 @action("task_view")
@@ -300,6 +283,121 @@ def _explorer(ctx, a):
 @action("open_task_manager")
 def _task_mgr(ctx, a):
     ctx.os.hotkey("ctrl", "shift", "esc")
+
+
+# ============================ النوافذ: التحكّم الدقيق ============================
+@action("focus_window")
+def _focus_window(ctx, a):
+    """ينقل التركيز إلى نافذة بالاسم: «انتقل إلى المتصفح»."""
+    query = str(a.get("query") or "").strip()
+    if not query:
+        raise ActionError("window_not_found", name="")
+    if not ctx.os.focus_window(query):
+        raise ActionError("window_not_found", name=query)
+
+
+@action("center_window")
+def _center_window(ctx, a):
+    if not ctx.os.center_window():
+        raise ActionError("no_window")
+
+
+@action("move_window")
+def _move_window(ctx, a):
+    step = int(a.get("step", 80))
+    if not ctx.os.move_window(int(a.get("dx", 0)) * step, int(a.get("dy", 0)) * step):
+        raise ActionError("no_window")
+
+
+@action("resize_window")
+def _resize_window(ctx, a):
+    step = int(a.get("step", 80))
+    if not ctx.os.resize_window(int(a.get("dw", 0)) * step, int(a.get("dh", 0)) * step):
+        raise ActionError("no_window")
+
+
+@action("snap")
+def _snap(ctx, a):
+    position = str(a.get("position", "left"))
+    if not ctx.os.snap_window(position):
+        raise ActionError("bad_position", name=position)
+
+
+@action("always_on_top")
+def _always_on_top(ctx, a):
+    if not ctx.os.set_always_on_top(bool(a.get("enabled", True))):
+        raise ActionError("no_window")
+
+
+# ============================ الشاشات والشاشات الافتراضية ============================
+@action("move_to_monitor")
+def _move_to_monitor(ctx, a):
+    index = int(a.get("index", 0))
+    if not ctx.os.move_window_to_monitor(index):
+        raise ActionError("no_monitor", index=index)
+
+
+@action("display_mode")
+def _display_mode(ctx, a):
+    mode = str(a.get("mode", "extend"))
+    if not ctx.os.set_display_mode(mode):
+        raise ActionError("bad_display_mode", name=mode)
+
+
+@action("virtual_desktop")
+def _virtual_desktop(ctx, a):
+    """op: next | prev | new | close"""
+    op = str(a.get("op", "next"))
+    os_ = ctx.os
+    ok = {"next": lambda: os_.switch_virtual_desktop("right"),
+          "prev": lambda: os_.switch_virtual_desktop("left"),
+          "new": os_.new_virtual_desktop,
+          "close": os_.close_virtual_desktop}.get(op, lambda: False)()
+    if not ok:
+        raise ActionError("bad_virtual_desktop", name=op)
+
+
+# ============================ العرض والصوت ============================
+@action("brightness_up")
+def _brightness_up(ctx, a):
+    if not ctx.os.brightness("up", int(a.get("steps", 10))):
+        raise ActionError("no_brightness")
+
+
+@action("brightness_down")
+def _brightness_down(ctx, a):
+    if not ctx.os.brightness("down", int(a.get("steps", 10))):
+        raise ActionError("no_brightness")
+
+
+@action("set_brightness")
+def _set_brightness(ctx, a):
+    percent = max(0, min(100, int(a.get("percent", 50))))
+    if not ctx.os.set_brightness(percent):
+        raise ActionError("no_brightness")
+
+
+@action("monitor_off")
+def _monitor_off(ctx, a):
+    if not ctx.os.monitor_power(False):
+        raise ActionError("monitor_off_failed")
+
+
+@action("monitor_on")
+def _monitor_on(ctx, a):
+    ctx.os.monitor_power(True)
+
+
+@action("dark_mode")
+def _dark_mode(ctx, a):
+    if not ctx.os.set_dark_mode(bool(a.get("enabled", True))):
+        raise ActionError("dark_mode_failed")
+
+
+@action("toggle_mic_mute")
+def _toggle_mic_mute(ctx, a):
+    if not ctx.os.toggle_microphone_mute():
+        raise ActionError("mic_mute_failed")
 
 
 # ============================ التطبيق نفسه ============================
@@ -361,3 +459,158 @@ def _calibrate(ctx, a):
 @action("app.open_settings")
 def _settings(ctx, a):
     ctx.app.open_settings()
+
+
+# ============================ التحكم الكامل بالمتصفح ============================
+@action("browser_new_tab")
+def _b_new_tab(ctx, a):
+    ctx.os.hotkey("ctrl", "t")
+
+
+@action("browser_close_tab")
+def _b_close_tab(ctx, a):
+    ctx.os.hotkey("ctrl", "w")
+
+
+@action("browser_next_tab")
+def _b_next_tab(ctx, a):
+    ctx.os.hotkey("ctrl", "tab")
+
+
+@action("browser_prev_tab")
+def _b_prev_tab(ctx, a):
+    ctx.os.hotkey("ctrl", "shift", "tab")
+
+
+@action("browser_reopen_tab")
+def _b_reopen_tab(ctx, a):
+    ctx.os.hotkey("ctrl", "shift", "t")
+
+
+@action("browser_back")
+def _b_back(ctx, a):
+    ctx.os.hotkey("alt", "left")
+
+
+@action("browser_forward")
+def _b_forward(ctx, a):
+    ctx.os.hotkey("alt", "right")
+
+
+@action("browser_refresh")
+def _b_refresh(ctx, a):
+    ctx.os.key("f5")
+
+
+@action("browser_fullscreen")
+def _b_fullscreen(ctx, a):
+    ctx.os.key("f11")
+
+
+@action("browser_search")
+def _b_search(ctx, a):
+    query = str(a.get("query") or a.get("text") or "").strip()
+    ctx.os.hotkey("ctrl", "l")
+    time.sleep(0.2)
+    if query:
+        ctx.os.type_text(query)
+        time.sleep(0.05)
+        ctx.os.key("enter")
+
+
+# ============================ التحكم الكامل بالملفات والمجلدات ============================
+import os
+import glob
+import subprocess
+
+_USER_HOME = os.path.expanduser("~")
+_FOLDER_MAP = {
+    "downloads": os.path.join(_USER_HOME, "Downloads"),
+    "téléchargements": os.path.join(_USER_HOME, "Downloads"),
+    "telechargements": os.path.join(_USER_HOME, "Downloads"),
+    "التحميلات": os.path.join(_USER_HOME, "Downloads"),
+    "التنزيلات": os.path.join(_USER_HOME, "Downloads"),
+    "documents": os.path.join(_USER_HOME, "Documents"),
+    "المستندات": os.path.join(_USER_HOME, "Documents"),
+    "ملفاتي": os.path.join(_USER_HOME, "Documents"),
+    "desktop": os.path.join(_USER_HOME, "Desktop"),
+    "bureau": os.path.join(_USER_HOME, "Desktop"),
+    "سطح المكتب": os.path.join(_USER_HOME, "Desktop"),
+    "pictures": os.path.join(_USER_HOME, "Pictures"),
+    "images": os.path.join(_USER_HOME, "Pictures"),
+    "الصور": os.path.join(_USER_HOME, "Pictures"),
+    "music": os.path.join(_USER_HOME, "Music"),
+    "musique": os.path.join(_USER_HOME, "Music"),
+    "الموسيقى": os.path.join(_USER_HOME, "Music"),
+    "videos": os.path.join(_USER_HOME, "Videos"),
+    "vidéos": os.path.join(_USER_HOME, "Videos"),
+    "الفيديو": os.path.join(_USER_HOME, "Videos"),
+    "c_drive": "C:\\",
+    "disque_c": "C:\\",
+    "القرص c": "C:\\",
+}
+
+
+@action("open_folder")
+def _open_folder(ctx, a):
+    target = str(a.get("name") or a.get("folder") or "downloads").strip().lower()
+    path = _FOLDER_MAP.get(target, target)
+    if not os.path.exists(path):
+        cand = os.path.join(_USER_HOME, target)
+        if os.path.exists(cand):
+            path = cand
+        else:
+            path = _FOLDER_MAP["downloads"]
+    try:
+        os.startfile(path)
+    except Exception:
+        subprocess.Popen(["explorer.exe", path])
+
+
+@action("open_recent_download")
+def _open_recent_download(ctx, a):
+    dl_dir = _FOLDER_MAP["downloads"]
+    if not os.path.exists(dl_dir):
+        raise ActionError("action_failed")
+    files = glob.glob(os.path.join(dl_dir, "*"))
+    if not files:
+        raise ActionError("action_failed")
+    latest = max(files, key=os.path.getmtime)
+    try:
+        os.startfile(latest)
+    except Exception:
+        subprocess.Popen(["explorer.exe", latest])
+
+
+@action("empty_recycle_bin")
+def _empty_recycle_bin(ctx, a):
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-Command", "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"],
+                       timeout=5, capture_output=True)
+    except Exception:
+        pass
+
+
+# ============================ أدوات النظام الأساسية ============================
+@action("open_windows_settings")
+def _win_settings(ctx, a):
+    ctx.os.hotkey("win", "i")
+
+
+@action("open_run_dialog")
+def _run_dlg(ctx, a):
+    ctx.os.hotkey("win", "r")
+
+
+@action("toggle_virtual_keyboard")
+def _osk(ctx, a):
+    try:
+        subprocess.Popen(["osk.exe"])
+    except Exception:
+        ctx.os.hotkey("win", "ctrl", "o")
+
+
+@action("open_action_center")
+def _action_center(ctx, a):
+    ctx.os.hotkey("win", "a")
+

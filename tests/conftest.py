@@ -14,7 +14,7 @@ from commands.wake import WakeGate  # noqa: E402
 from config.loader import load_command_specs  # noqa: E402
 from config.schema import AppConfig  # noqa: E402
 from os_layer.apps_index import AppIndex  # noqa: E402
-from os_layer.base import AppEntry, OSBackend  # noqa: E402
+from os_layer.base import AppEntry, MonitorInfo, OSBackend, WindowInfo  # noqa: E402
 
 FIXTURES = ROOT / "tests" / "fixtures"
 
@@ -57,6 +57,42 @@ class FakeOS(OSBackend):
                 AppEntry("Microsoft Word", "Word.exe", "appid"),
                 AppEntry("Visual Studio Code", "Code", "appid"),
                 AppEntry("VLC media player", "vlc", "appid")]
+
+    # ---- النوافذ والشاشات والعرض ----
+    def list_windows(self):
+        return [WindowInfo(hwnd=1, title="Google Chrome", pid=10)]
+
+    def focus_window(self, query):
+        self._rec("focus_window", query)
+        return self.window
+    def center_window(self): self._rec("center_window"); return self.window
+    def move_window(self, dx, dy): self._rec("move_window", dx, dy); return self.window
+    def resize_window(self, dw, dh): self._rec("resize_window", dw, dh); return self.window
+    def set_window_rect(self, x, y, w, h):
+        self._rec("set_window_rect", x, y, w, h); return True
+    def snap_window(self, position):
+        self._rec("snap_window", position); return position != "sideways"
+    def set_always_on_top(self, enabled):
+        self._rec("always_on_top", enabled); return self.window
+
+    def list_monitors(self):
+        return [MonitorInfo(index=0, name="Fake", rect=(0, 0, 1920, 1080), primary=True)]
+    def move_window_to_monitor(self, index):
+        self._rec("move_to_monitor", index); return index == 0
+    def set_display_mode(self, mode):
+        self._rec("display_mode", mode); return mode != "sideways"
+    def switch_virtual_desktop(self, direction):
+        self._rec("vdesktop", direction); return direction in ("left", "right")
+    def new_virtual_desktop(self): self._rec("vdesktop", "new"); return True
+    def close_virtual_desktop(self): self._rec("vdesktop", "close"); return True
+
+    def brightness(self, change, steps=10):
+        self._rec("brightness", change, steps); return self.window
+    def set_brightness(self, percent):
+        self._rec("set_brightness", percent); return self.window
+    def monitor_power(self, on): self._rec("monitor_power", on); return True
+    def set_dark_mode(self, enabled): self._rec("dark_mode", enabled); return True
+    def toggle_microphone_mute(self): self._rec("mic_mute"); return True
 
 
 class FakeApp:

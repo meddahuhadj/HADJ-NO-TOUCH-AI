@@ -12,8 +12,10 @@ from ctypes import wintypes
 
 from core import paths
 from core.sounds import ensure_sounds
-from os_layer.base import AppEntry, OSBackend
+from os_layer.base import AppEntry, MonitorInfo, OSBackend, WindowInfo
+from os_layer.windows import display as win_display
 from os_layer.windows import input as win_input
+from os_layer.windows import winapi
 from os_layer.windows.apps import list_installed_apps
 
 log = logging.getLogger(__name__)
@@ -148,6 +150,184 @@ class WindowsBackend(OSBackend):
         buf = ctypes.create_unicode_buffer(512)
         user32.GetWindowTextW(hwnd, buf, 512)
         return buf.value
+
+    # ---- النوافذ: التحكّم الدقيق ----
+    def list_windows(self) -> list[WindowInfo]:
+        out: list[WindowInfo] = []
+        for hwnd in winapi.enumerate_windows():
+            title = winapi.window_title(hwnd).strip()
+            if not title:
+                continue
+            pid = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            out.append(WindowInfo(hwnd=hwnd, title=title, pid=pid.value,
+                                  minimized=bool(user32.IsIconic(hwnd)),
+                                  monitor=winapi.monitor_index_of(hwnd)))
+        return out
+
+    def focus_window(self, query: str) -> bool:
+        """يجلب أول نافذة عنوانها يحتوي `query` إلى الأمام (أطول تطابق يُفضَّل)."""
+        needle = query.strip().lower()
+        if not needle:
+            return False
+        candidates = [(w, w.title.lower()) for w in self.list_windows()]
+        exact = [w for w, t in candidates if t == needle]
+        partial = [w for w, t in candidates if needle in t]
+        target = (exact or partial)
+        if not target:
+            return False
+        # عند تعدد الاحتواء نفضّل العنوان الأقصر (أدق عادةً)
+        target.sort(key=lambda w: len(w.title))
+        return winapi.bring_to_front(target[0].hwnd)
+
+    def move_window(self, dx: int, dy: int) -> bool:
+        hwnd = self._target_window()
+        rect = winapi.window_rect(hwnd) if hwnd else None
+        if not rect:
+            return False
+        left, top, width, height = rect
+        return self._apply_rect(hwnd, left + int(dx), top + int(dy), width, height)
+
+    def resize_window(self, dw: int, dh: int) -> bool:
+        hwnd = self._target_window()
+        rect = winapi.window_rect(hwnd) if hwnd else None
+        if not rect:
+            return False
+        left, top, width, height = rect
+        return self._apply_rect(hwnd, left, top,
+                                max(200, width + int(dw)), max(120, height + int(dh)))
+
+    def _apply_rect(self, hwnd, x: int, y: int, width: int, height: int) -> bool:
+        """يحرّك/يعدّل نافذة محدّدة — يُستخدم بعد حلّ hwnd مرّة واحدة."""
+        if not hwnd:
+            return False
+        if user32.IsIconic(hwnd):     # لا تقيس نافذة مصغّرة
+            user32.ShowWindow(hwnd, winapi.SW_RESTORE)
+        return bool(winapi.user32.MoveWindow(hwnd, int(x), int(y),
+                                             max(1, int(width)), max(1, int(height)), True))
+
+    def set_window_rect(self, x: int, y: int, width: int, height: int) -> bool:
+        return self._apply_rect(self._target_window(), x, y, width, height)
+
+    def center_window(self) -> bool:
+        hwnd = self._target_window()
+        rect = winapi.window_rect(hwnd) if hwnd else None
+        if not rect:
+            return False
+        left, top, width, height = rect
+        ax, ay, aw, ah = self._work_area_of(hwnd)
+        return self._apply_rect(hwnd, ax + (aw - width) // 2,
+                                ay + (ah - height) // 2, width, height)
+
+    def _work_area_of(self, hwnd) -> tuple[int, int, int, int]:
+        """مساحة عمل الشاشة التي فيها النافذة (بلا شريط المهام)."""
+        handle = winapi.user32.MonitorFromWindow(hwnd, winapi.MONITOR_DEFAULTTONEAREST)
+        for _h, mi in winapi.enumerate_monitors():
+            if _h == handle:
+                return mi.rcWork.as_tuple()
+        return self.screen_rect()
+
+    def snap_window(self, position: str) -> bool:
+        hwnd = self._target_window()
+        if not hwnd:
+            return False
+        if position == "maximize":
+            user32.ShowWindow(hwnd, winapi.SW_MAXIMIZE)
+            return True
+        if position == "restore":
+            user32.ShowWindow(hwnd, winapi.SW_RESTORE)
+            return True
+        rect = winapi.snap_rect(position, self._work_area_of(hwnd))
+        if rect is None:
+            return False
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, winapi.SW_RESTORE)
+        return bool(winapi.user32.MoveWindow(hwnd, rect[0], rect[1], rect[2], rect[3], True))
+
+    def set_always_on_top(self, enabled: bool) -> bool:
+        hwnd = self._target_window()
+        return bool(hwnd) and winapi.set_always_on_top(hwnd, bool(enabled))
+
+    # ---- الشاشات ----
+    def list_monitors(self) -> list[MonitorInfo]:
+        out: list[MonitorInfo] = []
+        for index, (handle, mi) in enumerate(winapi.enumerate_monitors()):
+            out.append(MonitorInfo(index=index, name=winapi.friendly_monitor_name(mi.szDevice),
+                                   rect=mi.rcMonitor.as_tuple(),
+                                   primary=bool(mi.dwFlags & winapi.MONITORINFOF_PRIMARY)))
+        return out
+
+    def move_window_to_monitor(self, index: int) -> bool:
+        hwnd = self._target_window()
+        monitors = self.list_monitors()
+        if not hwnd or not monitors:
+            return False
+        if not 0 <= int(index) < len(monitors):
+            return False            # لا صمت في Fallback: خطأ صريح
+        monitor = monitors[int(index)]
+        left, top, width, height = monitor.rect
+        rect = winapi.window_rect(hwnd)
+        if not rect:
+            return False
+        # نحافظ على أبعاد النافذة كما هي
+        cur_w, cur_h = rect[2], rect[3]
+        return self._apply_rect(hwnd, left + (width - cur_w) // 2,
+                                top + (height - cur_h) // 2, cur_w, cur_h)
+
+    def set_display_mode(self, mode: str) -> bool:
+        """تبديل طريقة عرض الشاشات عبر اختصارات Windows الرسمية.
+
+        Windows لا يوفّر اختصاراً لوضع «الشاشة الثانية فقط» (يحتاج زر F10
+        عتادياً)، لذا لا ندّعي دعماً له.
+        """
+        if mode == "extend":
+            self.hotkey("win", "shift", "right")     # ادفع إلى شاشة ثانية
+            return True
+        if mode == "duplicate":
+            self.hotkey("win", "shift", "d")          # تكرار على الشاشتين
+            return True
+        if mode == "next":
+            self.hotkey("win", "ctrl", "right")       # تبديل العرض للشاشة التالية
+            return True
+        return False
+
+    def switch_virtual_desktop(self, direction: str) -> bool:
+        if direction not in ("left", "right"):
+            return False
+        self.hotkey("win", "ctrl", "right" if direction == "right" else "left")
+        return True
+
+    def new_virtual_desktop(self) -> bool:
+        self.hotkey("win", "ctrl", "d")
+        return True
+
+    def close_virtual_desktop(self) -> bool:
+        self.hotkey("win", "ctrl", "f4")
+        return True
+
+    # ---- العرض والصوت ----
+    def brightness(self, change: str, steps: int = 10) -> bool:
+        delta = abs(int(steps)) * (1 if change == "up" else -1)
+        return win_display.adjust_brightness(delta) is not None
+
+    def set_brightness(self, percent: int) -> bool:
+        return win_display.set_brightness(percent)
+
+    def current_brightness(self) -> int | None:
+        return win_display.get_brightness()
+
+    def monitor_power(self, on: bool) -> bool:
+        return winapi.monitor_power(bool(on))
+
+    def set_dark_mode(self, enabled: bool) -> bool:
+        return win_display.set_dark_mode(bool(enabled))
+
+    def dark_mode_enabled(self) -> bool | None:
+        return win_display.get_dark_mode()
+
+    def toggle_microphone_mute(self) -> bool:
+        """WM_APPCOMMAND يدعمها Windows رسمياً، بلا أي اعتماد إضافي."""
+        return winapi.send_appcommand(winapi.APPCOMMAND_MICROPHONE_VOLUME_MUTE)
 
     # ---- النظام ----
     def volume(self, change: str, steps: int = 1) -> None:

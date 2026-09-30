@@ -16,6 +16,25 @@ class AppEntry:
     kind: str = "path"   # path | appid | uri | command
 
 
+@dataclass
+class WindowInfo:
+    """نافذة مفتوحة يمكن التعرّف عليها بالعنوان."""
+    hwnd: int
+    title: str
+    pid: int = 0
+    minimized: bool = False
+    monitor: int = 0
+
+
+@dataclass
+class MonitorInfo:
+    """شاشة فعلية (منفصلة عن سطح المكتب الافتراضي)."""
+    index: int
+    name: str
+    rect: tuple[int, int, int, int]   # left, top, width, height
+    primary: bool = False
+
+
 class OSBackend(ABC):
     # ---- لوحة المفاتيح ----
     @abstractmethod
@@ -67,6 +86,94 @@ class OSBackend(ABC):
 
     @abstractmethod
     def active_window_title(self) -> str: ...
+
+    # ---- النوافذ: التحكّم الدقيق ----
+    # كلها اختيارية (قيمة افتراضية صادقة كـ"غير مدعوم") حتى لا تتعطّل أي
+    # خلفية نظام أخرى عند إضافة هذه الإمكانات تدريجياً.
+    def list_windows(self) -> list[WindowInfo]:
+        """كل النوافذ المرئية التي لها عنوان (بلا أشرطة النظام ومربعات الحوار)."""
+        return []
+
+    def focus_window(self, query: str) -> bool:
+        """يجلب نافذة عنوانها يحتوي على `query` إلى الأمام."""
+        return False
+
+    def move_window(self, dx: int, dy: int) -> bool:
+        """يزيح النافذة النشطة بمقدار نسبي (بكسل)."""
+        return False
+
+    def resize_window(self, dw: int, dh: int) -> bool:
+        """يغيّر حجم النافذة النشطة بمقدار نسبي (بكسل)."""
+        return False
+
+    def set_window_rect(self, x: int, y: int, width: int, height: int) -> bool:
+        """يضبط النافذة النشطة على إحداثيات مطلقة."""
+        return False
+
+    def center_window(self) -> bool:
+        return False
+
+    def snap_window(self, position: str) -> bool:
+        """position: left | right | top | bottom | topleft | topright | bottomleft
+        | bottomright | maximize | restore"""
+        return False
+
+    def set_always_on_top(self, enabled: bool) -> bool:
+        return False
+
+    # ---- الشاشات ----
+    def list_monitors(self) -> list[MonitorInfo]:
+        return []
+
+    def move_window_to_monitor(self, index: int) -> bool:
+        """ينقل النافذة النشطة إلى الشاشة رقم `index` (0 = الأساسية)."""
+        return False
+
+    def set_display_mode(self, mode: str) -> bool:
+        """mode: extend | duplicate | next"""
+        return False
+
+    def switch_virtual_desktop(self, direction: str) -> bool:
+        """direction: left | right"""
+        return False
+
+    def new_virtual_desktop(self) -> bool:
+        return False
+
+    def close_virtual_desktop(self) -> bool:
+        return False
+
+    # ---- العرض والصوت ----
+    def brightness(self, change: str, steps: int = 10) -> bool:
+        """change: up | down. يعمل على الشاشات الداخلية (أجهزة لوحية) غالباً."""
+        return False
+
+    def set_brightness(self, percent: int) -> bool:
+        return False
+
+    def current_brightness(self) -> int | None:
+        """السطوع الحالي 0..100، أو None إن لم تدعمه الشاشة (شاشات مكتبية)."""
+        return None
+
+    def monitor_power(self, on: bool) -> bool:
+        """إطفاء/تشغيل كل الشاشات (يوقظها أي إدخال)."""
+        return False
+
+    def set_dark_mode(self, enabled: bool) -> bool:
+        """الوضع الداكن/الفاتح لتطبيقات النظام."""
+        return False
+
+    def dark_mode_enabled(self) -> bool | None:
+        """الوضع الداكن الحالي، أو None إن تعذّرت القراءة."""
+        return None
+
+    def toggle_microphone_mute(self) -> bool:
+        """يبدّل كتم الميكروفون.
+
+        التبديل لا الضبط: واجهة Win32 لا تكشف حالة الكتم بلا مكتبة
+        إضافية (pycaw)، فنبقيها أمراً واحداً صريحاً.
+        """
+        return False
 
     # ---- النظام ----
     @abstractmethod

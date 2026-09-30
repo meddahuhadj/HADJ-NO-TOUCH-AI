@@ -230,16 +230,15 @@ commands:
       ar: ["تبويب جديد", "علامة تبويب جديدة"]
       en: ["new tab"]
       fr: ["nouvel onglet"]
-    action: hotkey
-    args: {keys: [ctrl, t]}
+    action: browser_new_tab
 
   - id: close_tab
     phrases:
       ar: ["اغلق التبويب", "اغلق علامة التبويب"]
       en: ["close tab"]
       fr: ["ferme l'onglet"]
-    action: hotkey
-    args: {keys: [ctrl, w]}
+    action: browser_close_tab
+
 
   # ---------------- التحرير ----------------
   - id: copy
@@ -363,3 +362,305 @@ commands:
     dangerous: true
     phrases: {ar: ["اعد تشغيل الجهاز", "اعادة التشغيل"], en: ["restart computer", "reboot"], fr: ["redémarre l'ordinateur"]}
     action: restart
+
+  # ---------------- الوسائط والنوافذ المساعدة ----------------
+  - id: media_play_pause
+    phrases: {ar: ["شغل او اوقف الموسيقى", "شغل الموسيقى", "وقف الموسيقى"], en: ["play or pause music", "play music", "pause music"], fr: ["lecture ou pause", "lance la musique", "met la musique en pause"]}
+    action: media_play_pause
+
+  - id: media_next
+    phrases: {ar: ["المقطع التالي", "الاغنية التالية", "تخطي"], en: ["next track", "next song", "skip"], fr: ["morceau suivant", "chanson suivante", "passer"]}
+    action: media_next
+
+  - id: media_prev
+    phrases: {ar: ["المقطع السابق", "الاغنية السابقة"], en: ["previous track", "previous song"], fr: ["morceau précédent", "chanson précédente"]}
+    action: media_prev
+
+  - id: task_view
+    phrases: {ar: ["عرض كل النوافذ", "كل النوافذ"], en: ["task view", "show all windows", "show tasks"], fr: ["afficher toutes les fenêtres", "vue des tâches"]}
+    action: task_view
+
+  - id: clipboard_history
+    phrases: {ar: ["سجل الحافظة", "سجل النسخ"], en: ["clipboard history", "paste history"], fr: ["historique du presse-papiers"]}
+    action: show_clipboard_history
+
+  - id: emoji_picker
+    phrases: {ar: ["الرموز التعبيرية", "الايموجي", "الملصقات"], en: ["emoji picker", "open emojis"], fr: ["picker d'émojis", "ouvre les emojis"]}
+    action: show_emoji_picker
+
+  - id: open_explorer
+    phrases: {ar: ["افتح مستكشف الملفات", "مستكشف الملفات"], en: ["open file explorer", "file explorer"], fr: ["ouvre l'explorateur de fichiers"]}
+    action: open_explorer
+
+  - id: open_task_manager
+    phrases: {ar: ["افتح مدير المهام", "مدير المهام"], en: ["open task manager", "task manager"], fr: ["ouvre le gestionnaire des tâches"]}
+    action: open_task_manager
+
+  # ---------------- ترتيب النافذة الحالية ----------------
+  - id: snap_left
+    phrases: {ar: ["النافذة لليسار", "ثبتها لليسار"], en: ["snap window left", "snap to the left"], fr: ["fenêtre à gauche", "aligne à gauche"]}
+    action: snap
+    args: {position: left}
+
+  - id: snap_right
+    phrases: {ar: ["النافذة لليمين", "ثبتها لليمين"], en: ["snap window right", "snap to the right"], fr: ["fenêtre à droite", "aligne à droite"]}
+    action: snap
+    args: {position: right}
+
+  - id: snap_top
+    phrases: {ar: ["النافذة للاعلى"], en: ["snap window up", "snap to the top"], fr: ["fenêtre en haut"]}
+    action: snap
+    args: {position: top}
+
+  - id: snap_bottom
+    phrases: {ar: ["النافذة للاسفل"], en: ["snap window down", "snap to the bottom"], fr: ["fenêtre en bas"]}
+    action: snap
+    args: {position: bottom}
+
+  - id: snap_topleft
+    phrases: {ar: ["النافذة في الزاوية العليا اليسرى"], en: ["snap window to the top left"], fr: ["fenêtre en haut à gauche"]}
+    action: snap
+    args: {position: topleft}
+
+  - id: snap_topright
+    phrases: {ar: ["النافذة في الزاوية العليا اليمنى"], en: ["snap window to the top right"], fr: ["fenêtre en haut à droite"]}
+    action: snap
+    args: {position: topright}
+
+  - id: snap_bottomleft
+    phrases: {ar: ["النافذة في الزاوية السفلى اليسرى"], en: ["snap window to the bottom left"], fr: ["fenêtre en bas à gauche"]}
+    action: snap
+    args: {position: bottomleft}
+
+  - id: snap_bottomright
+    phrases: {ar: ["النافذة في الزاوية السفلى اليمنى"], en: ["snap window to the bottom right"], fr: ["fenêtre en bas à droite"]}
+    action: snap
+    args: {position: bottomright}
+
+  - id: window_restore
+    phrases: {ar: ["اعد النافذة لحجمها", "ارجع النافذة"], en: ["restore window", "unmaximize window"], fr: ["restaure la fenêtre"]}
+    action: snap
+    args: {position: restore}
+
+  - id: center_window
+    phrases: {ar: [" ضع النافذة في الوسط", "وسط النافذة"], en: ["center the window"], fr: ["centre la fenêtre"]}
+    action: center_window
+
+  - id: window_move_right
+    phrases: {ar: ["حرك النافذة لليمين"], en: ["move window right"], fr: ["déplace la fenêtre à droite"]}
+    action: move_window
+    args: {dx: 1, dy: 0, step: 80}
+
+  - id: window_move_left
+    phrases: {ar: ["حرك النافذة لليسار"], en: ["move window left"], fr: ["déplace la fenêtre à gauche"]}
+    action: move_window
+    args: {dx: -1, dy: 0, step: 80}
+
+  - id: window_move_up
+    phrases: {ar: ["حرك النافذة للاعلى"], en: ["move window up"], fr: ["déplace la fenêtre en haut"]}
+    action: move_window
+    args: {dx: 0, dy: -1, step: 80}
+
+  - id: window_move_down
+    phrases: {ar: ["حرك النافذة للاسفل"], en: ["move window down"], fr: ["déplace la fenêtre en bas"]}
+    action: move_window
+    args: {dx: 0, dy: 1, step: 80}
+
+  - id: window_grow
+    phrases: {ar: ["وسع النافذة", "اجعل النافذة اكبر تدريجيا"], en: ["make window bigger", "grow window"], fr: ["agrandis la fenêtre", "étends la fenêtre"]}
+    action: resize_window
+    args: {dw: 1, dh: 1, step: 80}
+
+  - id: window_shrink
+    phrases: {ar: ["قلص النافذة", "اجعل النافذة اصغر تدريجيا"], en: ["make window smaller", "shrink window"], fr: ["réduis la fenêtre"]}
+    action: resize_window
+    args: {dw: -1, dh: -1, step: 80}
+
+  - id: window_always_on_top
+    phrases: {ar: ["النافذة فوق كل شيء", "ثبت النافذة في الاعلى"], en: ["keep window on top", "always on top"], fr: ["fenêtre toujours au premier plan"]}
+    action: always_on_top
+    args: {enabled: true}
+
+  # الانتقال إلى نافذة بالاسم: {app} يلتقط باقي الكلام
+  - id: focus_window
+    phrases: {ar: ["انتقل الى {app}", "افتح نافذة {app}", "اذهب الى {app}"], en: ["switch to {app}", "go to {app}", "focus {app}"], fr: ["passe à {app}", "va vers {app}", "affiche {app}"]}
+    action: focus_window
+    args: {query: "{app}"}
+
+  # ---------------- الشاشات ----------------
+  - id: move_to_second_screen
+    phrases: {ar: ["انقل النافذة للشاشة الثانية", "اعرضها على الشاشة الثانية"], en: ["move window to second screen", "show on second monitor"], fr: ["déplace la fenêtre sur le second écran"]}
+    action: move_to_monitor
+    args: {index: 1}
+
+  - id: move_to_first_screen
+    phrases: {ar: ["انقل النافذة للشاشة الرئيسية", "الشاشة الأولى"], en: ["move window to main screen", "first monitor"], fr: ["déplace la fenêtre sur l'écran principal"]}
+    action: move_to_monitor
+    args: {index: 0}
+
+  - id: display_extend
+    phrases: {ar: ["وسع الشاشتين", "ادمج الشاشتين"], en: ["extend both screens", "extend displays"], fr: ["étends les deux écrans"]}
+    action: display_mode
+    args: {mode: extend}
+
+  - id: display_duplicate
+    phrases: {ar: ["كرر الصورة على الشاشتين", "انسخ الشاشة"], en: ["duplicate the screen", "mirror displays"], fr: ["duplique l'écran", "miroir les écrans"]}
+    action: display_mode
+    args: {mode: duplicate}
+
+  - id: display_next
+    phrases: {ar: ["بدل شاشة العرض", "انتقل للشاشة التالية"], en: ["switch display", "next display"], fr: ["change d'écran", "écran suivant"]}
+    action: display_mode
+    args: {mode: next}
+
+  # ---------------- أسطح المكتب الافتراضية ----------------
+  - id: desktop_next
+    phrases: {ar: ["سطح المكتب التالي", "المكتب التالي"], en: ["next virtual desktop", "next desktop"], fr: ["bureau virtuel suivant"]}
+    action: virtual_desktop
+    args: {op: next}
+
+  - id: desktop_prev
+    phrases: {ar: ["سطح المكتب السابق", "المكتب السابق"], en: ["previous virtual desktop", "previous desktop"], fr: ["bureau virtuel précédent"]}
+    action: virtual_desktop
+    args: {op: prev}
+
+  - id: desktop_new
+    phrases: {ar: ["مكتب جديد", "سطح مكتب جديد"], en: ["new virtual desktop", "new desktop"], fr: ["nouveau bureau virtuel"]}
+    action: virtual_desktop
+    args: {op: new}
+
+  - id: desktop_close
+    dangerous: true
+    phrases: {ar: ["اغلق المكتب الافتراضي", "احذف المكتب"], en: ["close virtual desktop", "delete this desktop"], fr: ["ferme le bureau virtuel"]}
+    action: virtual_desktop
+    args: {op: close}
+
+  # ---------------- السطوع والوضع الداكن ----------------
+  - id: brightness_up
+    phrases: {ar: ["ارفع سطوع الشاشة", "زد السطوع", "انر الشاشة"], en: ["increase brightness", "brighter", "brighten the screen"], fr: ["augmente la luminosité", "plus lumineux"]}
+    action: brightness_up
+
+  - id: brightness_down
+    phrases: {ar: ["اخفض سطوع الشاشة", "قلل السطوع", "طفئ الشاشة شوية"], en: ["decrease brightness", "dimmer", "dim the screen"], fr: ["baisse la luminosité", "moins lumineux"]}
+    action: brightness_down
+
+  - id: brightness_half
+    phrases: {ar: ["السطوع نص", "اجعل السطوع اربعين"], en: ["set brightness to forty", "half brightness"], fr: ["luminosité à quarante"]}
+    action: set_brightness
+    args: {percent: 40}
+
+  - id: brightness_full
+    phrases: {ar: ["السطوع كامل", "اجعل السطوع مية"], en: ["set brightness to one hundred", "full brightness"], fr: ["luminosité au maximum"]}
+    action: set_brightness
+    args: {percent: 100}
+
+  - id: dark_mode_on
+    phrases: {ar: ["شغل الوضع الداكن", "الوضع الليلي"], en: ["turn on dark mode", "enable dark mode"], fr: ["active le mode sombre"]}
+    action: dark_mode
+    args: {enabled: true}
+
+  - id: dark_mode_off
+    phrases: {ar: ["الوضع الفاتح", "ارجع للوضع العادي"], en: ["turn off dark mode", "light mode"], fr: ["désactive le mode sombre", "mode clair"]}
+    action: dark_mode
+    args: {enabled: false}
+
+  # إطفاء الشاشة عملية غير قابلة للتراجع بالأوامر (أي حركة فأرة تُوقظها)
+  - id: monitor_off
+    phrases: {ar: ["اطفي الشاشة", "صفر الشاشة", "خلي الشاشة سوداء"], en: ["turn off the screen", "blank the screen"], fr: ["éteins l'écran", "écran noir"]}
+    action: monitor_off
+
+  - id: monitor_on
+    phrases: {ar: ["شغل الشاشة", "رجع الشاشة"], en: ["turn on the screen"], fr: ["allume l'écran", "réveille l'écran"]}
+    action: monitor_on
+
+  # ---------------- الميكروفون ----------------
+  - id: toggle_mic_mute
+    phrases: {ar: ["كتم الميكروفون", "افتح الميكروفون", "بدل كتم الميكروفون"], en: ["mute microphone", "unmute microphone", "toggle microphone"], fr: ["coupe le micro", "active le micro"]}
+    action: toggle_mic_mute
+
+  # ---------------- أوامر المتصفح والإنترنت ----------------
+  - id: browser_next_tab
+    phrases: {ar: ["التبويب التالي", "علامة التبويب التالية"], en: ["next tab", "browser next tab"], fr: ["onglet suivant", "passe à l'onglet suivant"]}
+    action: browser_next_tab
+
+  - id: browser_prev_tab
+    phrases: {ar: ["التبويب السابق", "علامة التبويب السابقة"], en: ["previous tab", "prev tab"], fr: ["onglet précédent", "reviens à l'onglet précédent"]}
+    action: browser_prev_tab
+
+  - id: browser_reopen_tab
+    phrases: {ar: ["اعد فتح التبويب المغلق", "استرجع التبويب"], en: ["reopen tab", "reopen closed tab"], fr: ["rouvre l'onglet", "rouvrir l'onglet fermé"]}
+    action: browser_reopen_tab
+
+  - id: browser_back
+    phrases: {ar: ["الصفحة السابقة في المتصفح", "ارجع للخلف"], en: ["go back", "browser back"], fr: ["page précédente", "retour en arrière"]}
+    action: browser_back
+
+  - id: browser_forward
+    phrases: {ar: ["الصفحة التالية في المتصفح", "تقدم للامام"], en: ["go forward", "browser forward"], fr: ["page suivante", "avance d'une page"]}
+    action: browser_forward
+
+  - id: browser_refresh
+    phrases: {ar: ["حدث صفحة الويب", "اعد تحميل الصفحة"], en: ["refresh page", "reload web page"], fr: ["actualise la page", "recharge la page"]}
+    action: browser_refresh
+
+  - id: browser_fullscreen
+    phrases: {ar: ["ملء الشاشة في المتصفح", "شاشة كاملة"], en: ["toggle fullscreen", "fullscreen browser"], fr: ["plein écran", "bascule en plein écran"]}
+    action: browser_fullscreen
+
+  - id: browser_search
+    phrases: {ar: ["ابحث في الويب عن {text}", "بحث انترنت {text}"], en: ["search web for {text}", "google {text}"], fr: ["cherche {text} sur le web", "recherche google {text}"]}
+    action: browser_search
+    args: {query: "{text}"}
+
+  # ---------------- أوامر الملفات والمجلدات ----------------
+  - id: open_downloads
+    phrases: {ar: ["افتح التحميلات", "افتح التنزيلات", "مجلد التنزيلات"], en: ["open downloads", "downloads folder"], fr: ["ouvre les téléchargements", "dossier téléchargements"]}
+    action: open_folder
+    args: {name: "downloads"}
+
+  - id: open_documents
+    phrases: {ar: ["افتح المستندات", "افتح ملفاتي", "مجلد المستندات"], en: ["open documents", "documents folder"], fr: ["ouvre mes documents", "dossier documents"]}
+    action: open_folder
+    args: {name: "documents"}
+
+  - id: open_desktop_folder
+    phrases: {ar: ["افتح مجلد سطح المكتب"], en: ["open desktop folder"], fr: ["ouvre le dossier bureau"]}
+    action: open_folder
+    args: {name: "desktop"}
+
+  - id: open_pictures
+    phrases: {ar: ["افتح الصور", "مجلد الصور"], en: ["open pictures", "pictures folder"], fr: ["ouvre mes images", "dossier photos"]}
+    action: open_folder
+    args: {name: "pictures"}
+
+  - id: open_videos
+    phrases: {ar: ["افتح الفيديو", "مجلد الفيديو"], en: ["open videos", "videos folder"], fr: ["ouvre les vidéos", "dossier vidéos"]}
+    action: open_folder
+    args: {name: "videos"}
+
+  - id: open_recent_download
+    phrases: {ar: ["افتح اخر تحميل", "افتح الملف الاخير"], en: ["open recent download", "open latest download"], fr: ["ouvre le dernier téléchargement", "dernier fichier téléchargé"]}
+    action: open_recent_download
+
+  - id: empty_recycle_bin
+    dangerous: true
+    phrases: {ar: ["افرغ سلة المهملات", "تفريغ سلة المحذوفات"], en: ["empty recycle bin"], fr: ["vide la corbeille", "vider la corbeille"]}
+    action: empty_recycle_bin
+
+  # ---------------- أدوات النظام المتقدمة ----------------
+  - id: open_windows_settings
+    phrases: {ar: ["افتح اعدادات الويندوز", "اعدادات النظام"], en: ["open windows settings", "windows settings"], fr: ["ouvre les paramètres windows", "réglages système"]}
+    action: open_windows_settings
+
+  - id: open_run_dialog
+    phrases: {ar: ["نافذة التشغيل", "افتح تشغيل"], en: ["open run dialog", "run dialog"], fr: ["ouvre exécuter", "boîte exécuter"]}
+    action: open_run_dialog
+
+  - id: toggle_virtual_keyboard
+    phrases: {ar: ["لوحة المفاتيح على الشاشة", "كيبورد الشاشة"], en: ["on screen keyboard", "virtual keyboard"], fr: ["clavier virtuel", "clavier visuel"]}
+    action: toggle_virtual_keyboard
+
+  - id: open_action_center
+    phrases: {ar: ["مركز الاشعارات", "لوحة الاشعارات"], en: ["open action center", "notifications center"], fr: ["centre de notifications", "panneau de notifications"]}
+    action: open_action_center
+
