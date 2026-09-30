@@ -2,7 +2,7 @@
    The only third-party origin is Google Fonts, cached opportunistically so a
    second offline visit keeps the typography intact. */
 
-const VERSION = "hadj-v1.1.0";
+const VERSION = "hadj-v1.2.0";
 const SHELL = `${VERSION}-shell`;
 const FONTS = `${VERSION}-fonts`;
 
@@ -23,11 +23,11 @@ const PRECACHE = [
 ];
 
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches
       .open(SHELL)
       .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -66,29 +66,22 @@ self.addEventListener("fetch", (event) => {
 
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(SHELL).then((c) => c.put(request, copy));
-          return res;
-        })
-        .catch(async () => (await caches.match(request)) || (await caches.match("./offline.html")))
-    );
-    return;
-  }
-
+  // Network-First strategy for local scripts/html/css to ensure immediate updates from server/Vercel
   event.respondWith(
-    caches.match(request).then((hit) => {
-      if (hit) return hit;
-      return fetch(request).then((res) => {
-        if (res && res.ok && res.type === "basic") {
+    fetch(request)
+      .then((res) => {
+        if (res && res.ok) {
           const copy = res.clone();
           caches.open(SHELL).then((c) => c.put(request, copy));
         }
         return res;
-      });
-    })
+      })
+      .catch(async () => {
+        const hit = await caches.match(request);
+        if (hit) return hit;
+        if (request.mode === "navigate") {
+          return (await caches.match("./index.html")) || (await caches.match("./offline.html"));
+        }
+      })
   );
 });
