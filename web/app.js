@@ -169,6 +169,7 @@
       "lm.step3_title": "Démarrer la passerelle Web Companion",
       "lm.step3_sub": "Permet le pilotage depuis ce site ou un mobile.",
       "lm.btn_recheck": "Re-tester la connexion",
+      "lm.btn_start_app": "Lancer l'Application sur mon PC",
       "lm.btn_open_local": "Ouvrir en Local (Port 8000)",
       "lm.btn_demo": "Tester le Cockpit (Mode Démo)",
       "lm.btn_goto_hub": "Accéder au Cockpit de Commande",
@@ -314,6 +315,7 @@
       "lm.step3_title": "Start Web Companion gateway",
       "lm.step3_sub": "Enables remote control from this website or mobile.",
       "lm.btn_recheck": "Re-test connection",
+      "lm.btn_start_app": "Launch Application on my PC",
       "lm.btn_open_local": "Open local dashboard (Port 8000)",
       "lm.btn_demo": "Try Cockpit in Demo Mode",
       "lm.btn_goto_hub": "Go to Command Cockpit",
@@ -459,6 +461,7 @@
       "lm.step3_title": "شغّل بوابة الويب المحلية",
       "lm.step3_sub": "يتيح التحكم الكامل من هذا الموقع أو الهاتف.",
       "lm.btn_recheck": "إعادة فحص الاتصال",
+      "lm.btn_start_app": "تشغيل التطبيق على الحاسوب",
       "lm.btn_open_local": "فتح التطبيق المحلي (منفذ 8000)",
       "lm.btn_demo": "تجربة لوحة التحكم (محاكاة)",
       "lm.btn_goto_hub": "الذهاب إلى مركز التحكم الكامل",
@@ -940,10 +943,36 @@
     });
 
     const btnRecheck = $("[data-lm-recheck]", modal);
+    const btnStartApp = $("[data-lm-start-app]", modal);
     const btnGotoHub = $("[data-lm-goto-hub]", modal);
     const btnCalib = $("[data-lm-calib]", modal);
     const btnTestAction = $("[data-lm-test-action]", modal);
     const btnDemo = $("[data-lm-demo-mode]", modal);
+
+    if (btnStartApp) {
+      btnStartApp.addEventListener("click", async () => {
+        SoundFx.play("click");
+        btnStartApp.disabled = true;
+        try {
+          let res = await fetch("/api/launch", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+          if (!res || !res.success) {
+            res = await fetch("http://127.0.0.1:8000/api/launch", { mode: "cors", cache: "no-store" }).then((r) => r.json()).catch(() => null);
+          }
+
+          if (res && res.success) {
+            SoundFx.play("success");
+            alert(res.alreadyRunning 
+              ? "✅ HADJ NO-TOUCH AI est déjà actif et en cours d'exécution sur votre PC !" 
+              : "🚀 Ordre de lancement envoyé !\n\nLe moteur HADJ NO-TOUCH AI est en cours de démarrage sur votre ordinateur.");
+            runDiagnostics();
+          } else {
+            alert("💡 Pour lancer l'application sur votre PC :\n\n1️⃣ Téléchargez le package ZIP du projet\n2️⃣ Décompressez-le et double-cliquez sur launch.bat (ou python main.py)\n3️⃣ Exécutez python web_server.py pour connecter la passerelle Web.");
+          }
+        } finally {
+          btnStartApp.disabled = false;
+        }
+      });
+    }
 
     if (btnRecheck) {
       btnRecheck.addEventListener("click", () => {
