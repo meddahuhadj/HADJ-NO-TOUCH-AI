@@ -69,12 +69,12 @@ class MainWindow(QMainWindow):
         self.floating_hud = FloatingOverlayHUD()
         self.floating_hud.show()
         self.cursor_overlay = VirtualCursorOverlay()
-        self.cursor_overlay.show()
+        # Overlay window is kept hidden so it never intercepts mouse clicks or saturates DWM
         self.virtual_keyboard = VirtualKeyboardHUD()
 
         # Connect thread-safe QtBridge signals directly to GUI slots
         self.qt_bridge.frame_ready.connect(self._on_frame_update)
-        self.qt_bridge.cursor_moved.connect(self.cursor_overlay.update_position)
+        # cursor_overlay connects cursor_moved internally — no double connection
         self.qt_bridge.gesture_detected.connect(self.floating_hud.update_gesture)
         self.qt_bridge.speech_state.connect(self._update_listening_state)
         self.qt_bridge.speech_command.connect(self._on_speech_command)
@@ -418,10 +418,8 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
 
     def _wire_events(self):
-        self.event_bus.subscribe(EventType.SPEECH_LISTENING_START, lambda _: self._update_listening_state(True))
-        self.event_bus.subscribe(EventType.SPEECH_LISTENING_END, lambda _: self._update_listening_state(False))
-        self.event_bus.subscribe(EventType.EMERGENCY_STOP, self._handle_emergency_stop_event)
-        self.event_bus.subscribe(EventType.SECURITY_CONFIRM_REQUEST, self._show_security_prompt)
+        # All cross-thread GUI updates route via QtBridge queued signals connected in __init__
+        pass
 
     def _update_listening_state(self, is_listening: bool):
         self._listening = is_listening
@@ -429,16 +427,35 @@ class MainWindow(QMainWindow):
 
     def _on_frame_update(self, frame_bgr: np.ndarray, gesture_name: str, confidence: float):
         self.camera_widget.update_frame(frame_bgr, gesture_name, confidence)
-        self.gesture_info_label.setText(
-            tr("main.gesture_info",
-               gesture=tr_gesture(gesture_name),
-               conf=int(confidence * 100))
-        )
+        info_text = tr("main.gesture_info",
+                       gesture=tr_gesture(gesture_name),
+                       conf=int(confidence * 100))
+        if getattr(self, "_last_gesture_info", None) != info_text:
+            self._last_gesture_info = info_text
+            self.gesture_info_label.setText(info_text)
 
     def _on_speech_command(self, cmd_text: str, latency_ms: float):
         self._set_current_command(f'"{cmd_text}"')
         res = self.orchestrator.execute_command_text(cmd_text, source="VOICE", latency_ms=latency_ms)
-        self._update_command_details(res)
+
+    def trigger_emergency_stop(self):
+        if self.security.is_emergency_stopped:
+            self.security.reset_emergency_stop()
+        else:
+            self.security.trigger_emergency_stop("USER_CLICKED_STOP")
+        self._handle_emergency_stop_event("RESTORED" if not self.security.is_emergency_stopped else "STOP")
+
+    def _handle_emergency_stop_event(self, reason: str = ""):
+        self._has_command = True
+        if reason == "RESTORED" or not self.security.is_emergency_stopped:
+            self.current_cmd_label.setText(tr("main.status_ready"))
+            self.intent_details_label.setText(tr("main.ready_desc"))
+            self.emergency_btn.setText(tr("main.emergency_stop"))
+        else:
+            self.current_cmd_label.setText(tr("main.emergency_active"))
+            self.intent_details_label.setText(tr("main.emergency_halted"))
+            self.emergency_btn.setText(tr("main.emergency_restore"))
+        self._refresh_tray()
         self._refresh_event_log()
 
     def _on_manual_command(self):

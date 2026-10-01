@@ -73,6 +73,13 @@ class CameraStream(threading.Thread):
         self._last_hand_time: float = 0.0
         self._hand_lost_grace_s: float = 0.40  # Eliminates flickering 'hand not visible'
 
+        # GUI throttle: cap visual-only updates at ~15 FPS so the Qt event
+        # queue never backs up with stale frames while the cursor/click
+        # actions remain at full camera frame rate.
+        self._gui_interval: float = 1.0 / 15.0
+        self._last_gui_emit: float = 0.0
+        self._last_emitted_gesture: str = "NONE"
+
         # Safety / Privacy
         self.camera_enabled = self.settings.get("privacy.camera_enabled", True)
         self.cursor_control_active = True
@@ -207,17 +214,19 @@ class CameraStream(threading.Thread):
     def run(self):
         self.running = True
 
-        # Open camera with DirectShow backend for instant initialization on Windows
+        # Open camera with default high-performance backend (Windows Media Foundation)
         try:
-            self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
-            if not self.cap.isOpened():
-                self.cap = cv2.VideoCapture(self.camera_index)
+            self.cap = cv2.VideoCapture(self.camera_index)
+            if not self.cap or not self.cap.isOpened():
+                self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
         except Exception:
             self.cap = cv2.VideoCapture(self.camera_index)
 
         if self.cap and self.cap.isOpened():
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)
 
         print("[CameraStream] Camera stream pipeline started.")
 
@@ -279,7 +288,6 @@ class CameraStream(threading.Thread):
                         if gesture == HandGesture.INDEX_POINT:
                             self.win_control.move_mouse(sx, sy)
                             self.qt_bridge.cursor_moved.emit(sx, sy)
-                            self.event_bus.publish(EventType.CURSOR_MOVED, {"x": sx, "y": sy})
 
                     # Pinch -> Left Click (debounced: exactly one click per pinch)
                     if gesture == HandGesture.PINCH:
@@ -326,19 +334,26 @@ class CameraStream(threading.Thread):
                 if self.settings.get("gestures.show_hand_skeleton", True):
                     frame = self.detector.draw_skeleton(frame, landmarks_data, gesture.value, conf)
 
-                self.qt_bridge.gesture_detected.emit(gesture.value, conf)
             else:
                 # Apply temporal grace period before declaring hand lost to avoid flickering
                 if (time.time() - self._last_hand_time) >= self._hand_lost_grace_s:
                     self.latest_gesture = HandGesture.NONE
                     self.cursor.reset()
                     self._feed_calibration(None)
-                    self.qt_bridge.gesture_detected.emit("NONE", 0.0)
 
             self.latest_frame = frame
 
-            # Emit frame safely to Qt GUI via signal
-            self.qt_bridge.frame_ready.emit(frame, gesture.value, conf)
+            # Throttled GUI emission: only push frames and gesture updates
+            # to the Qt main thread at ~15 FPS to prevent event queue backup
+            # that causes 'reageert niet' / Not Responding.
+            now_gui = time.time()
+            if (now_gui - self._last_gui_emit) >= self._gui_interval:
+                self._last_gui_emit = now_gui
+                self.qt_bridge.frame_ready.emit(frame, gesture.value, conf)
+                # Only emit gesture_detected when the gesture actually changes
+                if gesture.value != self._last_emitted_gesture:
+                    self._last_emitted_gesture = gesture.value
+                    self.qt_bridge.gesture_detected.emit(gesture.value, conf)
 
             # Calculate FPS and throttle according to Profile
             elapsed_ms = (time.time() - start_t) * 1000.0

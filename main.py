@@ -18,8 +18,8 @@ except (ModuleNotFoundError, ImportError, AttributeError):
         import subprocess
         sys.exit(subprocess.call([py312] + sys.argv))
 
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import Qt, QLockFile, QDir
 from ui.main_window import MainWindow
 
 
@@ -28,6 +28,19 @@ def main():
     app.setApplicationName("HADJ NO-TOUCH OFFLINE AI")
     app.setOrganizationName("HADJ AI Systems")
 
+    # Single-instance lock: prevents camera access collisions
+    lock_path = os.path.join(QDir.tempPath(), "hadj_notouch_ai.lock")
+    lock = QLockFile(lock_path)
+    lock.setStaleLockTime(0)
+    if not lock.tryLock(100):
+        QMessageBox.warning(
+            None,
+            "HADJ NO-TOUCH AI",
+            "Une instance de HADJ NO-TOUCH AI est déjà en cours d'exécution.\n"
+            "Veuillez fermer l'autre instance pour libérer la caméra."
+        )
+        sys.exit(0)
+
     window = MainWindow()
 
     if "--minimized" in sys.argv:
@@ -35,7 +48,9 @@ def main():
     else:
         window.show()
 
-    sys.exit(app.exec())
+    code = app.exec()
+    lock.unlock()
+    sys.exit(code)
 
 
 if __name__ == "__main__":

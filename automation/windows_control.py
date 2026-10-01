@@ -87,27 +87,54 @@ class WindowsControlEngine:
     def click(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> None:
         if x is not None and y is not None:
             self.move_mouse(x, y)
-        pyautogui.click(button=button)
+        if HAS_WIN32:
+            down_flag = win32con.MOUSEEVENTF_LEFTDOWN if button == "left" else win32con.MOUSEEVENTF_RIGHTDOWN
+            up_flag = win32con.MOUSEEVENTF_LEFTUP if button == "left" else win32con.MOUSEEVENTF_RIGHTUP
+            win32api.mouse_event(down_flag, 0, 0, 0, 0)
+            win32api.mouse_event(up_flag, 0, 0, 0, 0)
+        else:
+            pyautogui.click(button=button)
 
     def double_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         if x is not None and y is not None:
             self.move_mouse(x, y)
-        pyautogui.doubleClick()
+        if HAS_WIN32:
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+        else:
+            pyautogui.doubleClick()
 
     def right_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         if x is not None and y is not None:
             self.move_mouse(x, y)
-        pyautogui.rightClick()
+        if HAS_WIN32:
+            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+        else:
+            pyautogui.rightClick()
 
     def mouse_down(self, button: str = "left") -> None:
-        pyautogui.mouseDown(button=button)
+        if HAS_WIN32:
+            flag = win32con.MOUSEEVENTF_LEFTDOWN if button == "left" else win32con.MOUSEEVENTF_RIGHTDOWN
+            win32api.mouse_event(flag, 0, 0, 0, 0)
+        else:
+            pyautogui.mouseDown(button=button)
 
     def mouse_up(self, button: str = "left") -> None:
-        pyautogui.mouseUp(button=button)
+        if HAS_WIN32:
+            flag = win32con.MOUSEEVENTF_LEFTUP if button == "left" else win32con.MOUSEEVENTF_RIGHTUP
+            win32api.mouse_event(flag, 0, 0, 0, 0)
+        else:
+            pyautogui.mouseUp(button=button)
 
     def scroll(self, amount: int) -> None:
         """Scrolls vertically. Positive amount scrolls UP, negative scrolls DOWN."""
-        pyautogui.scroll(int(amount))
+        if HAS_WIN32:
+            win32api.mouse_event(win32con.MOUSEEVENTF_WHEEL, 0, 0, int(amount * 3), 0)
+        else:
+            pyautogui.scroll(int(amount))
 
     # ==========================
     # KEYBOARD HOTKEYS & SHORTCUTS

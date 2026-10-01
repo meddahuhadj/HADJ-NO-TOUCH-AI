@@ -168,9 +168,20 @@ class SecurityEngine:
         self.is_emergency_stopped = True
         self.cancel_pending("EMERGENCY_STOP")
         self.event_bus.publish(EventType.EMERGENCY_STOP, {"reason": reason})
+        try:
+            from core.qt_bridge import QtBridge
+            QtBridge().emergency_stop.emit(reason)
+        except Exception:
+            pass
         print(f"[SecurityEngine] [EMERGENCY STOP ACTIVATED]: {reason}")
 
     def reset_emergency_stop(self) -> None:
         """Restores normal operation."""
         self.is_emergency_stopped = False
+        self.event_bus.publish(EventType.EMERGENCY_RESTORED, {})
+        try:
+            from core.qt_bridge import QtBridge
+            QtBridge().emergency_stop.emit("RESTORED")
+        except Exception:
+            pass
         print("[SecurityEngine] Emergency stop reset. Normal operations resumed.")

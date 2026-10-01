@@ -268,18 +268,22 @@ class CalibrationPreview(QWidget):
 
     def _repaint(self) -> None:
         frame = self._frame
-        if frame is None:
+        if frame is None or frame.size == 0:
             return
 
         height, width = frame.shape[:2]
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        target = self._target_size()
+
+        scale = min(target[0] / float(width), target[1] / float(height))
+        new_w = max(1, int(width * scale))
+        new_h = max(1, int(height * scale))
+
+        resized_bgr = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+        rgb = cv2.cvtColor(resized_bgr, cv2.COLOR_BGR2RGB)
         image = QImage(
-            rgb.data, width, height, frame.shape[2] * width, QImage.Format_RGB888
+            rgb.data, new_w, new_h, resized_bgr.shape[2] * new_w, QImage.Format_RGB888
         ).copy()
         pixmap = QPixmap.fromImage(image)
-
-        target = self._target_size()
-        pixmap = pixmap.scaled(target[0], target[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)

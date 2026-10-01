@@ -9,6 +9,7 @@ class EventType(Enum):
     SYSTEM_STARTED = auto()
     SYSTEM_STOPPED = auto()
     EMERGENCY_STOP = auto()
+    EMERGENCY_RESTORED = auto()
     PROFILE_CHANGED = auto()
     SETTINGS_UPDATED = auto()
     PERFORMANCE_STATS = auto()

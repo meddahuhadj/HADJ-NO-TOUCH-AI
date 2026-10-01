@@ -103,12 +103,19 @@ class FloatingOverlayHUD(QWidget):
         layout.addWidget(self.gesture_badge)
 
     def _wire_events(self):
-        self.event_bus.subscribe(EventType.SPEECH_LISTENING_START, lambda _: self.set_listening_mode(True))
-        self.event_bus.subscribe(EventType.SPEECH_LISTENING_END, lambda _: self.set_listening_mode(False))
-        self.event_bus.subscribe(EventType.SPEECH_RECOGNIZED, lambda d: self.show_command(d.get("command", "")))
-        self.event_bus.subscribe(EventType.GESTURE_RECOGNIZED, lambda d: self.update_gesture(d.get("gesture", "")))
-        self.event_bus.subscribe(EventType.EMERGENCY_STOP, lambda _: self.show_emergency())
-        self.event_bus.subscribe(EventType.SECURITY_CONFIRM_REQUEST, lambda d: self.show_security_alert(d.get("command", "")))
+        from core.qt_bridge import QtBridge
+        self.qt_bridge = QtBridge()
+        self.qt_bridge.speech_state.connect(self.set_listening_mode)
+        self.qt_bridge.speech_command.connect(lambda cmd, _: self.show_command(cmd))
+        self.qt_bridge.gesture_detected.connect(lambda gest, _: self.update_gesture(gest))
+        self.qt_bridge.emergency_stop.connect(self._handle_emergency_signal)
+        self.qt_bridge.security_prompt.connect(lambda payload: self.show_security_alert(payload.get("command", "")))
+
+    def _handle_emergency_signal(self, reason: str):
+        if reason == "RESTORED":
+            self.set_listening_mode(False)
+        else:
+            self.show_emergency()
 
     # ------------------------------------------------------------------ #
     # Painting
@@ -144,7 +151,10 @@ class FloatingOverlayHUD(QWidget):
         self.fade_timer.start()
 
     def update_gesture(self, gesture_name: str):
-        self._active_gesture = gesture_name if gesture_name and gesture_name != "NONE" else ""
+        active = gesture_name if gesture_name and gesture_name != "NONE" else ""
+        if active == self._active_gesture:
+            return
+        self._active_gesture = active
         if self._active_gesture:
             self.gesture_badge.setText(tr_gesture(self._active_gesture))
             self._set_badge_tone("active")

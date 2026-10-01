@@ -71,23 +71,26 @@ class CameraWidget(QWidget):
     # ------------------------------------------------------------------ #
 
     def update_frame(self, frame_bgr: np.ndarray, gesture_name: str = "", confidence: float = 0.0):
-        if frame_bgr is None:
+        if frame_bgr is None or frame_bgr.size == 0:
             return
-        height, width, channels = frame_bgr.shape
-        rgb_frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        q_image = QImage(rgb_frame.data, width, height,
-                         channels * width, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(q_image)
+
         lbl_size = self.image_label.size()
-        if lbl_size.width() <= 1 or lbl_size.height() <= 1:
-            lbl_size = self.image_label.minimumSize()
-        self.image_label.setPixmap(
-            pixmap.scaled(
-                lbl_size,
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation,
-            )
-        )
+        target_w = lbl_size.width() if lbl_size.width() > 1 else self.PLACEHOLDER_SIZE[0]
+        target_h = lbl_size.height() if lbl_size.height() > 1 else self.PLACEHOLDER_SIZE[1]
+
+        h, w, c = frame_bgr.shape
+        scale = min(target_w / float(w), target_h / float(h))
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
+
+        # Fast SIMD resize with OpenCV to eliminate main-thread Qt software scaling lag
+        resized_bgr = cv2.resize(frame_bgr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+        rgb_frame = cv2.cvtColor(resized_bgr, cv2.COLOR_BGR2RGB)
+
+        # .copy() ensures QImage owns its memory buffer, preventing memory leaks & dangling pointers
+        q_image = QImage(rgb_frame.data, new_w, new_h, c * new_w, QImage.Format_RGB888).copy()
+        pixmap = QPixmap.fromImage(q_image)
+        self.image_label.setPixmap(pixmap)
 
     def set_camera_off(self):
         self._create_placeholder()

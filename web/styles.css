@@ -1667,4 +1667,112 @@ html[data-theme="light"] .lm-footer {
   border-top-color: #E2E8F0;
 }
 
+/* ==========================================================================
+   HADJ NO-TOUCH OFFLINE AI — Interactive HUD, Dwell Mode & Sound Feedback
+   ========================================================================== */
+
+/* Dwell Mode Cursor Overlay */
+.dwell-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  margin-top: -22px;
+  margin-left: -22px;
+  pointer-events: none;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.08s ease-out;
+}
+.dwell-cursor-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.dwell-cursor-ring .dwell-bg {
+  stroke: rgba(76, 201, 240, 0.25);
+  fill: rgba(6, 10, 18, 0.4);
+}
+.dwell-cursor-ring .dwell-progress {
+  stroke: #4CC9F0;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 0.05s linear;
+}
+.dwell-cursor-ring .dwell-center-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #A78BFA;
+  box-shadow: 0 0 10px #4CC9F0;
+}
+
+/* Dwell Active Glow Class */
+body.dwell-mode-active {
+  cursor: crosshair !important;
+}
+
+/* HUD View Interactive */
+.hud__view {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.hud__cursor {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+  transition: top 0.08s ease-out, left 0.08s ease-out;
+}
+.cur__pulse {
+  fill: rgba(76, 201, 240, 0.2);
+  stroke: #4CC9F0;
+  stroke-width: 1.5;
+  animation: curPulseAnim 1.8s infinite ease-in-out;
+}
+.cur__ring {
+  fill: none;
+  stroke: #A78BFA;
+  stroke-width: 1.5;
+}
+.cur__dot {
+  fill: #FFFFFF;
+}
+
+@keyframes curPulseAnim {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.6; }
+}
+
+/* Pulse trigger animation */
+.cur__pulse.is-clicking {
+  animation: clickRipple 0.35s ease-out;
+}
+
+@keyframes clickRipple {
+  0% { transform: scale(0.5); opacity: 1; stroke-width: 4; }
+  100% { transform: scale(2.2); opacity: 0; stroke-width: 0.5; }
+}
+
+/* Hub Dwell toggle button style */
+.hub-dwell-toggle {
+  border-color: rgba(167, 139, 250, 0.3);
+  color: var(--text);
+}
+.hub-dwell-toggle.is-active {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: #A78BFA;
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.3);
+}
+
+
 
