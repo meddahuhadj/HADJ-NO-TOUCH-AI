@@ -896,15 +896,16 @@
     if (!storedTheme && matchMedia("(prefers-color-scheme: light)").matches) {
       storedTheme = "light";
     }
-    if (storedTheme) setTheme(storedTheme);
+    setTheme(storedTheme || "dark");
 
-    const toggleBtn = $("[data-theme-toggle]");
-    if (toggleBtn) {
-      toggleBtn.addEventListener("click", () => {
+    $$("[data-theme-toggle], [data-action='toggle-theme'], .theme-toggle").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        SoundFx.play("click");
         const isLight = document.documentElement.getAttribute("data-theme") === "light";
         setTheme(isLight ? "dark" : "light");
       });
-    }
+    });
   }
 
   /* --------------------------------- launcher -------------------------------- */
@@ -1304,60 +1305,6 @@
   }
 
   /* -------------------------- interactive hub -------------------------- */
-
-  const SoundFx = (() => {
-    let enabled = true;
-    let ctx = null;
-    function getCtx() {
-      if (!ctx && (window.AudioContext || window.webkitAudioContext)) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (ctx && ctx.state === "suspended") ctx.resume();
-      return ctx;
-    }
-    return {
-      toggle() { enabled = !enabled; return enabled; },
-      isEnabled() { return enabled; },
-      play(type) {
-        if (!enabled) return;
-        try {
-          const c = getCtx();
-          if (!c) return;
-          const now = c.currentTime;
-          const osc = c.createOscillator();
-          const gain = c.createGain();
-          osc.connect(gain);
-          gain.connect(c.destination);
-          if (type === "click") {
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(800, now);
-            osc.frequency.exponentialRampToValueAtTime(360, now + 0.05);
-            gain.gain.setValueAtTime(0.06, now);
-            gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
-            osc.start(now);
-            osc.stop(now + 0.05);
-          } else if (type === "success") {
-            osc.type = "triangle";
-            osc.frequency.setValueAtTime(523.25, now);
-            osc.frequency.setValueAtTime(659.25, now + 0.07);
-            osc.frequency.setValueAtTime(783.99, now + 0.14);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.linearRampToValueAtTime(0.001, now + 0.32);
-            osc.start(now);
-            osc.stop(now + 0.32);
-          } else if (type === "calib") {
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(440, now);
-            osc.frequency.exponentialRampToValueAtTime(880, now + 0.22);
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.linearRampToValueAtTime(0.001, now + 0.22);
-            osc.start(now);
-            osc.stop(now + 0.22);
-          }
-        } catch (_) {}
-      }
-    };
-  })();
 
   function bindControlHub() {
     const hub = $("#control-hub");
@@ -1911,7 +1858,8 @@
     runLog();
     registerSW();
 
-    $("[data-top]").addEventListener("click", () => scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
+    const topBtn = $("[data-top]");
+    if (topBtn) topBtn.addEventListener("click", () => scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
   }
 
   if (document.readyState === "loading") addEventListener("DOMContentLoaded", init);

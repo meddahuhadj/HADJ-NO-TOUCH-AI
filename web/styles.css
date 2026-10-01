@@ -34,6 +34,27 @@
   --ease: cubic-bezier(.22, .68, .28, 1);
 }
 
+html[data-theme="light"] {
+  --canvas: #F8FAFC;
+  --canvas-deep: #F1F5F9;
+  --surface: #FFFFFF;
+  --raised: #F8FAFC;
+  --sunk: #F1F5F9;
+  --border: #CBD5E1;
+  --border-strong: #94A3B8;
+  --faint: #E2E8F0;
+  --text: #0F172A;
+  --muted: #334155;
+  --dim: #64748B;
+  --accent: #0284C7;
+  --accent-deep: #0369A1;
+  --accent-soft: #E0F2FE;
+  --violet: #7C3AED;
+  --ok: #059669;
+  --warn: #D97706;
+  --bad: #DC2626;
+}
+
 * { box-sizing: border-box; }
 
 [hidden] { display: none !important; }
@@ -1772,6 +1793,48 @@ body.dwell-mode-active {
   background: rgba(167, 139, 250, 0.2);
   border-color: #A78BFA;
   box-shadow: 0 0 15px rgba(167, 139, 250, 0.3);
+}
+
+/* ============================ Theme Toggle ============================ */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--sunk);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease);
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.theme-toggle .sun-icon { display: block; }
+.theme-toggle .moon-icon { display: none; }
+
+html[data-theme="light"] .theme-toggle .sun-icon { display: none; }
+html[data-theme="light"] .theme-toggle .moon-icon { display: block; }
+
+/* Light mode overrides for structural elements */
+html[data-theme="light"] .nav.is-stuck {
+  background: rgba(248, 250, 252, .88);
+  border-block-end-color: var(--border);
+}
+html[data-theme="light"] .sheet {
+  background: rgba(248, 250, 252, .96);
+}
+html[data-theme="light"] .hud {
+  background: linear-gradient(180deg, var(--surface), var(--canvas-deep));
+  box-shadow: 0 20px 50px -30px rgba(0, 0, 0, .15);
+}
+html[data-theme="light"] .hud__bar,
+html[data-theme="light"] .hud__log {
+  background: rgba(241, 245, 249, .7);
 }
 
 
