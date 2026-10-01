@@ -1,6 +1,7 @@
+import re
 import time
 import threading
-from typing import Optional, Callable
+from typing import Iterable, Optional, Callable
 from voice.wake_word import WakeWordDetector
 from voice.audio_listener import AudioListener
 from voice.tts_engine import TTSEngine
@@ -12,6 +13,94 @@ from core.audio_effects import AudioEffects
 from intents.local_ai_adapter import LocalAIAdapter
 from intents.intent_definitions import IntentType
 from config.settings_manager import SettingsManager
+
+
+AFFIRMATIVE_REPLIES = frozenset({
+    "yes", "y", "yeah", "yep", "yup", "sure", "ok", "okay", "affirmative",
+    "confirm", "confirmed", "do it", "go ahead", "proceed",
+    "oui", "ouais", "d'accord", "d accord", "confirmer",
+    "نعم", "نعم،", "أجل", "اجل", "ايوه", "أكيد", "تمام", "ماشي", "افعل",
+    "اكيد", "تأكيد", "تاكيد", "موافق", "هذا موافق",
+})
+
+NEGATIVE_REPLIES = frozenset({
+    "no", "n", "nope", "nah", "negative",
+    "don't", "dont", "do not", "don't do it", "dont do it", "do not do it",
+    "cancel", "abort", "stop", "halt", "never mind", "nevermind",
+    "non", "nein", "annuler", "annule", "non merci",
+    "لا", "لأ", "لا شكرا", "الغاء", "إلغاء", "تراجع", "توقف", "إيقاف",
+    "ما تعملش", "ما تبقاش",
+})
+
+# Politeness that may wrap a decision without changing it.
+_REPLY_FILLERS = frozenset({
+    "please", "thanks", "thank", "you", "now", "pls", "merci",
+    "s'il", "vous", "plaît", "plait",
+    "من", "فضلك", "لو", "سمحت", "شكرا",
+})
+
+_REPLY_FILLER_PHRASES = frozenset({
+    "please", "thanks", "thank", "you", "now", "pls", "merci",
+    "s il vous plaît", "s il vous plait", "sil vous plait",
+    "من فضلك", "لو سمحت", "لو سمحت من فضلك", "شكرا", "من",
+})
+
+
+def _reply_tokens(text: str) -> list:
+    """Normalises a spoken reply into comparable word tokens."""
+    normalized = re.sub(r"[^\w؀-ۿ\s']", " ", text.strip().lower())
+    normalized = normalized.replace("'", " ")
+    return [t for t in normalized.split() if t]
+
+
+def _normalise_phrase(phrase: str) -> str:
+    return " ".join(_reply_tokens(phrase))
+
+
+def _as_reply_phrases(phrases: Iterable[str]) -> frozenset:
+    return frozenset(p for p in (_normalise_phrase(x) for x in phrases) if p)
+
+
+def _consume_decisions(tokens: list, phrases: frozenset) -> bool:
+    """
+    Consumes `tokens` as decisions drawn from `phrases`, allowing politeness.
+
+    Multi-word decisions such as "go ahead" or "do not" only survive
+    tokenisation if neighbouring tokens re-join into a known phrase, so the
+    longest known phrase is always taken first. Returns False if any token is
+    neither a decision nor a filler.
+    """
+    usable = phrases | _REPLY_FILLER_PHRASES
+    max_len = max((len(p.split()) for p in usable), default=1)
+    index = 0
+    matched_decision = False
+    while index < len(tokens):
+        for size in range(min(max_len, len(tokens) - index), 0, -1):
+            candidate = " ".join(tokens[index:index + size])
+            if candidate in usable:
+                matched_decision = matched_decision or candidate in phrases
+                index += size
+                break
+        else:
+            return False
+    return matched_decision
+
+
+def is_confirmation_reply(text: str, replies: Iterable[str]) -> bool:
+    """
+    Decides whether an utterance is a clean yes/no answer to a prompt.
+
+    A reply only counts when it is *made of* decisions plus optional
+    politeness. Plain substring matching resolved prompts from unrelated
+    speech: "no problem thanks" and "cancel my subscription" were treated as
+    rejections, and "the confirmation is fine" as an approval. Approving a
+    destructive action by accident is the worst outcome this gate can have,
+    so anything ambiguous must not decide.
+    """
+    tokens = _reply_tokens(text)
+    if not tokens:
+        return False
+    return _consume_decisions(tokens, _as_reply_phrases(replies))
 
 
 class SpeechEngine:
@@ -94,12 +183,11 @@ class SpeechEngine:
 
         # 2. Check Security Confirmation responses
         if self.security.is_waiting_confirmation():
-            lower = clean.lower()
-            if any(w in lower for w in ["نعم", "أكيد", "تأكيد", "yes", "oui", "confirm"]):
+            if is_confirmation_reply(clean, AFFIRMATIVE_REPLIES):
                 self.security.confirm_pending(source="VOICE")
                 self.tts.speak("تم التأكيد", self.current_language)
                 return
-            elif any(w in lower for w in ["لا", "إلغاء", "تراجع", "no", "non", "cancel"]):
+            if is_confirmation_reply(clean, NEGATIVE_REPLIES):
                 self.security.cancel_pending(reason="VOICE_REJECT")
                 self.tts.speak("تم الإلغاء", self.current_language)
                 return
