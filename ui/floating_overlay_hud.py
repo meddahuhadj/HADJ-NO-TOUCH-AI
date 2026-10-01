@@ -45,6 +45,7 @@ class FloatingOverlayHUD(QWidget):
         self._badge_key = "hud.badge_ready"
         self._badge_tone = "idle"
         self._active_gesture = ""
+        self._security_alert_active = False
 
         self._reposition()
         self._init_ui()
@@ -110,6 +111,7 @@ class FloatingOverlayHUD(QWidget):
         self.qt_bridge.gesture_detected.connect(lambda gest, _: self.update_gesture(gest))
         self.qt_bridge.emergency_stop.connect(self._handle_emergency_signal)
         self.qt_bridge.security_prompt.connect(lambda payload: self.show_security_alert(payload.get("command", "")))
+        self.qt_bridge.security_cleared.connect(lambda _reason: self.clear_security_alert())
 
     def _handle_emergency_signal(self, reason: str):
         if reason == "RESTORED":
@@ -170,8 +172,22 @@ class FloatingOverlayHUD(QWidget):
     def show_security_alert(self, cmd: str):
         self.fade_timer.stop()
         self._raw_command = ""
+        self._security_alert_active = True
         self._set_status("hud.confirm", theme.WARNING, 700, command=cmd)
         self._set_badge("hud.badge_confirm", "alert")
+
+    def clear_security_alert(self):
+        """
+        Drops the confirmation badge once the prompt is resolved.
+
+        Without this the HUD keeps showing a warning and a "confirm" prompt for
+        a decision the engine already took, so the user is asked to confirm
+        something that is no longer waiting on them.
+        """
+        if not getattr(self, "_security_alert_active", False):
+            return
+        self._security_alert_active = False
+        self._reset_to_idle()
 
     def _reset_to_idle(self):
         self.fade_timer.stop()

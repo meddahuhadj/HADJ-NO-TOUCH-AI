@@ -78,7 +78,7 @@ class IntentRecognizer:
         if re.search(r'(اغلق\s+النافذة|أغلق\s+النافذة|close\s+window|ferme\s+la\s+fen[eê]tre)', lower):
             return IntentResult(IntentType.CLOSE_WINDOW, confidence=0.97, original_text=text)
 
-        if re.search(r'(صغر\s+النافذة|صغّر\s+النافذة|minimize\s+window|minimis[er]\s+la\s+fen[eê]tre|réduire\s+la\s+fen[eê]tre)', lower):
+        if re.search(r'(صغر\s+النافذة|صغّر\s+النافذة|minimize\s+window|minimis(?:er|ée)?\s+la\s+fen[eê]tre|réduire\s+la\s+fen[eê]tre)', lower):
             return IntentResult(IntentType.MINIMIZE_WINDOW, confidence=0.97, original_text=text)
 
         if re.search(r'(كبر\s+النافذة|كبّر\s+النافذة|maximize\s+window|agrandir\s+la\s+fen[eê]tre)', lower):
@@ -233,14 +233,40 @@ class IntentRecognizer:
         if re.search(r'(الملف\s+الاخير|الملف\s+الأخير|latest\s+download|dernier\s+fichier)', lower):
             return IntentResult(IntentType.OPEN_RECENT_FILE, confidence=0.95, original_text=text)
 
-        create_dir_match = re.match(r'(?:انشئ\s+مجلدا\s+جديدا|أنشئ\s+مجلداً\s+جديداً|create\s+folder|cr[eé]er\s+un\s+dossier)(?:\s+(?:اسمه|سمه|named)\s+(.*))?', lower)
+        # The name is optional and, in the common "create folder invoices" form,
+        # is simply whatever follows the verb. Previously only an explicit
+        # "named X" was captured, so every other phrasing silently created a
+        # directory called "New Folder".
+        create_dir_match = re.match(
+            r'(?:انشئ\s+مجلدا\s+جديدا|أنشئ\s+مجلداً\s+جديداً|أنشئ\s+مجلد|create\s+(?:a\s+)?folder|cr[eé]er\s+un\s+dossier)'
+            r'(?:\s+(?:اسمه|سمه|named|appel[eé]e))?'
+            r'(?:\s+(.+))?$',
+            lower
+        )
         if create_dir_match:
-            name = create_dir_match.group(1) or "New Folder"
-            return IntentResult(IntentType.CREATE_FOLDER, target=name.strip(), confidence=0.94, original_text=text)
+            name = (create_dir_match.group(1) or "").strip()
+            return IntentResult(
+                IntentType.CREATE_FOLDER,
+                target=name or "New Folder",
+                confidence=0.94,
+                original_text=text
+            )
 
-        delete_file_match = re.match(r'(?:احذف\s+هذا\s+الملف|احذف\s+الملف|delete\s+file|supprime\s+le\s+fichier)', lower)
+        delete_file_match = re.match(
+            r'(?:احذف\s+هذا\s+الملف|احذف\s+الملف|delete\s+file|supprime\s+le\s+fichier)'
+            r'(?:\s+(.+))?$',
+            lower
+        )
         if delete_file_match:
-            return IntentResult(IntentType.DELETE_FILE, confidence=0.95, original_text=text)
+            # Without a named target the orchestrator has nothing safe to act
+            # on, so the target stays None and the action is refused rather
+            # than guessed at.
+            return IntentResult(
+                IntentType.DELETE_FILE,
+                target=(delete_file_match.group(1) or "").strip() or None,
+                confidence=0.95,
+                original_text=text
+            )
 
         # ==========================================
         # APPLICATION LAUNCH / CLOSE

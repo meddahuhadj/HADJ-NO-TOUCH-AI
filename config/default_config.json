@@ -28,6 +28,7 @@
     "pinch_click_threshold": 0.045,
     "pinch_hold_drag_delay": 0.35,
     "double_pinch_window": 0.40,
+    "fist_debounce": 0.12,
     "scroll_speed": 40,
     "show_hand_skeleton": true,
     "virtual_cursor_preview": true,
@@ -71,6 +72,7 @@
       "stop"
     ],
     "listen_timeout_seconds": 6.0,
+    "hands_free_mode": false,
     "phrase_time_limit_seconds": 5.0,
     "tts_feedback_enabled": true,
     "tts_volume": 0.9,

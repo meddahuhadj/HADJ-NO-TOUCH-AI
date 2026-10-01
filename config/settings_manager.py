@@ -1,6 +1,7 @@
 import json
 import os
 import copy
+import threading
 from typing import Any, Dict, Callable, List
 
 DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "default_config.json")
@@ -11,6 +12,7 @@ class SettingsManager:
     """Manages application settings, persistence, and reactive updates."""
 
     _instance = None
+    AUTOSAVE_DELAY: float = 0.75
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -19,11 +21,17 @@ class SettingsManager:
         return cls._instance
 
     def __init__(self):
-        if self._initialized:
+        if getattr(self, "_initialized", False):
             return
-        self._initialized = True
         self._listeners: List[Callable[[Dict[str, Any]], None]] = []
         self._config: Dict[str, Any] = self._load_defaults()
+        # Batched writes. Applying a calibration report touches a dozen keys in
+        # a row, and one JSON dump per key meant a dozen disk writes for a single
+        # user action. Writes are now coalesced and flushed by flush() or by
+        # save(), so nothing is lost on an orderly shutdown.
+        self._dirty: bool = False
+        self._autosave_timer = threading.Timer(self.AUTOSAVE_DELAY, self._autosave_flush)
+        self._autosave_timer.daemon = True
         self.load()
 
     def _load_defaults(self) -> Dict[str, Any]:
@@ -45,15 +53,45 @@ class SettingsManager:
         return self._config
 
     def save(self) -> bool:
-        """Persists current configuration to user_settings.json."""
+        """Persists current configuration to user_settings.json immediately."""
         try:
             with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
                 json.dump(self._config, f, indent=2, ensure_ascii=False)
+            self._dirty = False
             self._notify_listeners()
             return True
         except Exception as e:
             print(f"[SettingsManager] Error saving user settings: {e}")
             return False
+
+    def flush(self) -> bool:
+        """
+        Writes only if something changed since the last save.
+
+        Call this on shutdown: set() defers its disk write, so without an
+        explicit flush a setting changed in the last fraction of a second
+        before exit would be lost.
+        """
+        if not self._dirty:
+            return True
+        return self.save()
+
+    def _autosave_flush(self) -> None:
+        """Timer callback that performs the deferred write."""
+        try:
+            if self._dirty:
+                self.save()
+        except Exception as e:
+            print(f"[SettingsManager] Deferred save failed: {e}")
+
+    def _schedule_autosave(self) -> None:
+        """Restarts the coalescing timer on every write."""
+        self._dirty = True
+        if self._autosave_timer.is_alive():
+            self._autosave_timer.cancel()
+        self._autosave_timer = threading.Timer(self.AUTOSAVE_DELAY, self._autosave_flush)
+        self._autosave_timer.daemon = True
+        self._autosave_timer.start()
 
     def get(self, key_path: str, default: Any = None) -> Any:
         """Retrieves a nested setting value using dot notation (e.g. 'gestures.cursor_speed')."""
@@ -76,11 +114,14 @@ class SettingsManager:
             d = d[k]
         d[keys[-1]] = value
         if auto_save:
-            self.save()
+            self._schedule_autosave()
 
     def reset_to_defaults(self) -> None:
         """Resets all configuration values to factory defaults."""
         self._config = self._load_defaults()
+        if self._autosave_timer.is_alive():
+            self._autosave_timer.cancel()
+        self._dirty = False
         if os.path.exists(USER_CONFIG_PATH):
             try:
                 os.remove(USER_CONFIG_PATH)

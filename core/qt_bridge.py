@@ -17,6 +17,7 @@ class QtBridge(QObject):
     speech_command = Signal(str, float)             # (command_text, latency_ms)
     emergency_stop = Signal(str)                    # reason
     security_prompt = Signal(dict)                  # prompt payload
+    security_cleared = Signal(str)                  # reason the prompt closed
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:

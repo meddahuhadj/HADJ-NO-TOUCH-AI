@@ -1,3 +1,4 @@
+import os
 import time
 import threading
 from typing import Dict, Any, Optional
@@ -9,7 +10,7 @@ from automation.windows_control import WindowsControlEngine
 from automation.app_launcher import AppLauncher
 from automation.file_manager import FileManager
 from automation.browser_control import BrowserControl
-from core.security_engine import SecurityEngine
+from core.security_engine import SecurityEngine, RiskLevel
 from core.macro_engine import MacroEngine
 from core.logger import EventLogger
 from core.event_bus import EventBus, EventType
@@ -53,7 +54,22 @@ class CommandOrchestrator:
         self.current_language = self.settings.get("language", "ar")
 
     def execute_command_text(self, text: str, source: str = "VOICE", latency_ms: float = 0.0) -> Dict[str, Any]:
-        """Entry point for incoming voice or simulated text command."""
+        """
+        Entry point for incoming voice, GUI or API text commands.
+
+        The emergency stop is checked here as well as in the gesture pipeline:
+        this is the only gate that voice, the manual input and the companion
+        REST API all pass through, so a halt has to be enforced before parsing
+        rather than only where gestures are handled.
+        """
+        if self.security.is_emergency_stopped:
+            return {
+                "status": "BLOCKED",
+                "reason": "EMERGENCY_STOP_ACTIVE",
+                "action": "COMMAND_BLOCKED",
+                "success": False,
+            }
+
         self.current_language = self.settings.get("language", "ar")
 
         # Parse intent
@@ -72,7 +88,9 @@ class CommandOrchestrator:
 
     def _execute_compound_plan(self, sub_intents, source: str) -> Dict[str, Any]:
         def _runner():
-            for idx, sub_res in enumerate(sub_intents):
+            for sub_res in sub_intents:
+                # A halt raised mid-plan must abandon the remaining steps, not
+                # just skip the next one, so every step is re-checked.
                 if self.security.is_emergency_stopped:
                     break
                 self._execute_single_intent(sub_res, source)
@@ -85,6 +103,18 @@ class CommandOrchestrator:
         intent_name = intent_res.intent_type.name
         risk = self.security.evaluate_risk(intent_name)
 
+        # A halt has to stop every action, including the LOW-risk ones that
+        # normally bypass the confirmation gate. Re-checking here covers callers
+        # that reach this method directly rather than through
+        # execute_command_text.
+        if self.security.is_emergency_stopped:
+            return {
+                "status": "BLOCKED",
+                "reason": "EMERGENCY_STOP_ACTIVE",
+                "action": "COMMAND_BLOCKED",
+                "success": False,
+            }
+
         # Check if Security Confirmation is required
         if self.security.requires_confirmation(intent_name):
             self.audio_effects.play_warning_prompt()
@@ -95,10 +125,16 @@ class CommandOrchestrator:
             }.get(self.current_language, "Confirmation required")
 
             self.tts.speak(prompt_text, self.current_language)
+
+            def _run_confirmed() -> Dict[str, Any]:
+                result = self._dispatch_action(intent_res)
+                self._log_result(intent_res, result, risk, source)
+                return result
+
             self.security.request_confirmation(
                 intent_name=intent_name,
                 command_text=intent_res.original_text,
-                action_fn=lambda: self._dispatch_action(intent_res)
+                action_fn=_run_confirmed
             )
             return {"status": "AWAITING_CONFIRMATION", "intent": intent_name, "risk": risk.value}
 
@@ -106,19 +142,32 @@ class CommandOrchestrator:
         result = self._dispatch_action(intent_res)
         if result.get("success", True):
             self.audio_effects.play_command_success()
+        self._log_result(intent_res, result, risk, source)
 
-        # Log event
+        return result
+
+    def _log_result(
+        self,
+        intent_res: IntentResult,
+        result: Dict[str, Any],
+        risk: RiskLevel,
+        source: str
+    ) -> None:
+        """Writes one audit record.
+
+        A confirmed command is logged here too, from inside the action closure:
+        logging only on the immediate path meant every gated command — the ones
+        that actually delete and shut down — left no trace in the audit log.
+        """
         self.logger.log(
             command=intent_res.original_text,
-            intent=intent_name,
-            action=str(result.get("action", intent_name)),
+            intent=intent_res.intent_type.name,
+            action=str(result.get("action", intent_res.intent_type.name)),
             result="SUCCESS" if result.get("success", True) else "FAILED",
             confidence=intent_res.confidence,
             risk_level=risk.value,
             source=source
         )
-
-        return result
 
     def _dispatch_action(self, intent_res: IntentResult) -> Dict[str, Any]:
         t = intent_res.intent_type
@@ -229,8 +278,10 @@ class CommandOrchestrator:
             return {"action": "OPEN_RECENT_FILE", "success": ok}
 
         elif t == IntentType.DELETE_FILE:
-            # Requires confirmation through security engine
-            return {"action": "DELETE_FILE", "success": True}
+            return self._delete_file_target(intent_res)
+
+        elif t == IntentType.DELETE_FOLDER:
+            return self._delete_folder_target(intent_res)
 
         # ==========================================
         # BROWSER
@@ -372,6 +423,69 @@ class CommandOrchestrator:
             return {"action": "EXECUTE_MACRO", "macro": target, "success": ok}
 
         return {"action": "UNKNOWN_INTENT", "success": False}
+
+    def _resolve_existing_path(self, target: Optional[str]) -> Optional[str]:
+        """
+        Resolves a spoken folder/file alias to an absolute path that exists.
+
+        Resolution is deliberately narrow: a known alias, an absolute path, or a
+        path relative to the last folder that was opened. Nothing is invented,
+        so a misheard word cannot resolve to an unrelated directory.
+        """
+        if not target:
+            return None
+        from automation.file_manager import STANDARD_FOLDERS
+
+        candidate = target.strip()
+        if not candidate:
+            return None
+
+        alias_path = STANDARD_FOLDERS.get(candidate.lower())
+        if alias_path:
+            return alias_path if os.path.exists(alias_path) else None
+
+        expanded = os.path.expanduser(candidate)
+        if os.path.exists(expanded):
+            return expanded
+
+        relative = os.path.join(self.file_manager.last_accessed_dir, candidate)
+        if os.path.exists(relative):
+            return relative
+
+        return None
+
+    def _delete_file_target(self, intent_res: IntentResult) -> Dict[str, Any]:
+        """
+        Deletes a single named file after the security gate has cleared it.
+
+        Reaching this point means the gate already ran, so the only remaining
+        question is whether the target actually resolves. A refusal here is
+        reported as a failure so the audit log never records a deletion that
+        did not happen.
+        """
+        path = self._resolve_existing_path(intent_res.target)
+        if path is None or not os.path.isfile(path):
+            return {
+                "action": "DELETE_FILE",
+                "success": False,
+                "reason": "TARGET_NOT_RESOLVED",
+                "target": intent_res.target,
+            }
+        ok = self.file_manager.delete_path(path)
+        return {"action": "DELETE_FILE", "success": bool(ok), "target": path}
+
+    def _delete_folder_target(self, intent_res: IntentResult) -> Dict[str, Any]:
+        """Deletes a whole directory. Gated as HIGH risk before it gets here."""
+        path = self._resolve_existing_path(intent_res.target)
+        if path is None or not os.path.isdir(path):
+            return {
+                "action": "DELETE_FOLDER",
+                "success": False,
+                "reason": "TARGET_NOT_RESOLVED",
+                "target": intent_res.target,
+            }
+        ok = self.file_manager.delete_path(path)
+        return {"action": "DELETE_FOLDER", "success": bool(ok), "target": path}
 
     def _execute_macro_step(self, action: str, target: Any):
         """Dispatches an individual macro step."""

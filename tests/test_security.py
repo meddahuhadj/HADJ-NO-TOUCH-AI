@@ -18,7 +18,7 @@ class TestSecurityEngine(unittest.TestCase):
 
     def test_risk_evaluation(self):
         self.assertEqual(self.security.evaluate_risk("LAUNCH_APP"), RiskLevel.LOW)
-        self.assertEqual(self.security.evaluate_risk("DELETE_FILE"), RiskLevel.MEDIUM)
+        self.assertEqual(self.security.evaluate_risk("DELETE_FILE"), RiskLevel.HIGH)
         self.assertEqual(self.security.evaluate_risk("SYSTEM_SHUTDOWN"), RiskLevel.HIGH)
         self.assertEqual(self.security.evaluate_risk("FORMAT_DISK"), RiskLevel.CRITICAL)
 

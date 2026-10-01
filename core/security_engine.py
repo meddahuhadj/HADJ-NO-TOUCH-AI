@@ -2,6 +2,7 @@ import time
 from enum import Enum, auto
 from typing import Optional, Callable, Dict, Any
 from core.event_bus import EventBus, EventType
+from config.settings_manager import SettingsManager
 
 
 class RiskLevel(Enum):
@@ -29,7 +30,9 @@ class SecurityEngine:
         self.event_bus = event_bus or EventBus()
         self.pending_command: Optional[Dict[str, Any]] = None
         self.pending_timestamp: float = 0.0
-        self.timeout_seconds: float = 10.0
+        self.timeout_seconds: float = float(
+            SettingsManager().get("security.confirmation_timeout_seconds", 10.0)
+        )
         self.is_emergency_stopped: bool = False
 
         # Intent risk mappings
@@ -66,7 +69,10 @@ class SecurityEngine:
             "OPEN_FOLDER": RiskLevel.LOW,
             "CREATE_FOLDER": RiskLevel.MEDIUM,
             "RENAME_FILE": RiskLevel.MEDIUM,
-            "DELETE_FILE": RiskLevel.MEDIUM,
+            # HIGH, not MEDIUM: the shipped default auto-executes MEDIUM, so a
+            # single file would be destroyed by a misheard command with no
+            # prompt. Irreversible actions are gated whatever their blast radius.
+            "DELETE_FILE": RiskLevel.HIGH,
             "DELETE_FOLDER": RiskLevel.HIGH,
             "EMPTY_RECYCLE_BIN": RiskLevel.HIGH,
             "SYSTEM_LOCK": RiskLevel.LOW,
@@ -80,13 +86,25 @@ class SecurityEngine:
     def evaluate_risk(self, intent_name: str) -> RiskLevel:
         return self._risk_map.get(intent_name, RiskLevel.MEDIUM)
 
+    def _confirm_required_for(self, risk: RiskLevel) -> bool:
+        """Reads the per-tier confirmation policy from settings."""
+        settings = SettingsManager()
+        key = {
+            RiskLevel.LOW: "security.low_risk_auto_execute",
+            RiskLevel.MEDIUM: "security.medium_risk_confirm",
+            RiskLevel.HIGH: "security.high_risk_confirm",
+            RiskLevel.CRITICAL: "security.critical_risk_confirm",
+        }[risk]
+        if risk == RiskLevel.LOW:
+            # low_risk_auto_execute is the inverse switch: confirming LOW risks
+            # would make every volume nudge wait on a spoken "yes".
+            return not bool(settings.get(key, True))
+        return bool(settings.get(key, risk in (RiskLevel.HIGH, RiskLevel.CRITICAL)))
+
     def requires_confirmation(self, intent_name: str) -> bool:
         if self.is_emergency_stopped:
             return True
-        risk = self.evaluate_risk(intent_name)
-        if risk in (RiskLevel.HIGH, RiskLevel.CRITICAL):
-            return True
-        return False
+        return self._confirm_required_for(self.evaluate_risk(intent_name))
 
     def request_confirmation(
         self,
@@ -111,12 +129,23 @@ class SecurityEngine:
         }
         self.pending_timestamp = time.time()
 
-        self.event_bus.publish(EventType.SECURITY_CONFIRM_REQUEST, {
+        payload = {
             "intent": intent_name,
             "command": command_text,
             "risk": risk.value,
             "timeout": self.timeout_seconds
-        })
+        }
+        self.event_bus.publish(EventType.SECURITY_CONFIRM_REQUEST, payload)
+
+        # The main window and the floating HUD listen on this signal, not on the
+        # event bus. Without the emit a HIGH command would only ever be heard
+        # through TTS, and the visual confirmation gate would never appear.
+        try:
+            from core.qt_bridge import QtBridge
+            QtBridge().security_prompt.emit(payload)
+        except Exception:
+            pass
+
         return True
 
     def is_waiting_confirmation(self) -> bool:
@@ -139,6 +168,11 @@ class SecurityEngine:
             "command": cmd["command"],
             "source": source
         })
+        try:
+            from core.qt_bridge import QtBridge
+            QtBridge().security_cleared.emit("CONFIRMED")
+        except Exception:
+            pass
 
         try:
             if callable(cmd.get("action")):
@@ -162,6 +196,13 @@ class SecurityEngine:
                 "intent": cmd["intent"],
                 "reason": reason
             })
+            # Tell the UI the prompt is gone, otherwise the visual gate would
+            # stay on screen after a timeout or a rejection.
+            try:
+                from core.qt_bridge import QtBridge
+                QtBridge().security_cleared.emit(reason)
+            except Exception:
+                pass
 
     def trigger_emergency_stop(self, reason: str = "USER_TRIGGERED") -> None:
         """Halts all automation immediately."""

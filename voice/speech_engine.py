@@ -48,6 +48,13 @@ class SpeechEngine:
         self.listen_timeout: float = self.settings.get("voice.listen_timeout_seconds", 6.0)
         self.current_language: str = self.settings.get("language", "ar")
 
+        # When False, only the wake word (and a pending security prompt) can put
+        # the engine into action. Off by design: an always-on recogniser acting
+        # on room noise is a safety problem, not a convenience.
+        self.hands_free_enabled: bool = bool(
+            self.settings.get("voice.hands_free_mode", False)
+        )
+
         # Command consumer callback
         self.command_handler: Optional[Callable[[str, float], None]] = None
 
@@ -97,19 +104,7 @@ class SpeechEngine:
                 self.tts.speak("تم الإلغاء", self.current_language)
                 return
 
-        # 3. Check Language Switching commands
-        lower = clean.lower()
-        if "العربية" in lower or "arabic" in lower:
-            self.set_language("ar")
-            return
-        elif "français" in lower or "francais" in lower or "french" in lower:
-            self.set_language("fr")
-            return
-        elif "english" in lower or "الإنجليزية" in lower or "anglais" in lower:
-            self.set_language("en")
-            return
-
-        # 4. Check Wake Word
+        # 3. Check Wake Word
         is_ww, remainder = self.wake_detector.check_wake_word(clean)
         if is_ww:
             self.audio_effects.play_wake_chime()
@@ -121,7 +116,10 @@ class SpeechEngine:
 
             if remainder:
                 # Direct command followed wake word (e.g. "Hey Hadj open chrome")
-                self._dispatch_command(remainder, latency_ms)
+                if self._try_language_switch(remainder):
+                    pass
+                else:
+                    self._dispatch_command(remainder, latency_ms)
                 self.is_listening = False
                 self.qt_bridge.speech_state.emit(False)
                 self.event_bus.publish(EventType.SPEECH_LISTENING_END, {})
@@ -135,7 +133,7 @@ class SpeechEngine:
                 self.tts.speak(prompt, self.current_language)
             return
 
-        # 5. If already in Listening Mode
+        # 4. If already in Listening Mode
         if self.is_listening:
             if time.time() - self.listening_start_time > self.listen_timeout:
                 self.is_listening = False
@@ -143,21 +141,56 @@ class SpeechEngine:
                 self.event_bus.publish(EventType.SPEECH_LISTENING_END, {})
                 return
 
-            self._dispatch_command(clean, latency_ms)
+            # A language request inside the listening window switches the
+            # interface instead of being parsed as a command.
+            if not self._try_language_switch(clean):
+                self._dispatch_command(clean, latency_ms)
             self.is_listening = False
             self.qt_bridge.speech_state.emit(False)
             self.event_bus.publish(EventType.SPEECH_LISTENING_END, {})
             return
 
-        # 6. Check Dictation / Voice Editing
-        if self.dictation.handle_voice_edit_or_dictation(clean):
-            return
+        # 5. Nothing was spoken while the mic was closed for commands.
+        #
+        # Dictation and direct commands are deliberately *not* reachable from
+        # this branch. An always-on recogniser would otherwise act on whatever
+        # the room happens to say — a passing conversation could open apps or
+        # type into the focused window. The wake word is the gate; anything
+        # outside it is discarded.
+        if self.hands_free_enabled:
+            # 6. Dictation / Voice Editing
+            if self.dictation.handle_voice_edit_or_dictation(clean):
+                return
 
-        # 7. Check Direct Command (e.g. "ouvre chrome", "lance le bloc-notes", "monte le son")
-        intent_res = self.ai_adapter.parse_with_fallback(clean)
-        if intent_res.intent_type != IntentType.UNKNOWN:
-            self._dispatch_command(clean, latency_ms)
-            return
+            # 7. Direct Command (e.g. "ouvre chrome", "lance le bloc-notes")
+            intent_res = self.ai_adapter.parse_with_fallback(clean)
+            if intent_res.intent_type != IntentType.UNKNOWN:
+                self._dispatch_command(clean, latency_ms)
+                return
+        else:
+            self.event_bus.publish(EventType.NOTIFICATION, {
+                "message": "WAKE_WORD_REQUIRED",
+                "heard": clean
+            })
+
+    def _try_language_switch(self, text: str) -> bool:
+        """
+        Switches the interface language when the phrase is a language request.
+
+        Kept out of the idle path: "English" appearing in an ordinary sentence
+        used to change the whole UI language without the wake word.
+        """
+        lower = text.lower()
+        if "العربية" in lower or "arabic" in lower or "بالعربية" in lower:
+            self.set_language("ar")
+            return True
+        if "français" in lower or "francais" in lower or "french" in lower:
+            self.set_language("fr")
+            return True
+        if "english" in lower or "الإنجليزية" in lower or "anglais" in lower:
+            self.set_language("en")
+            return True
+        return False
 
     def _dispatch_command(self, cmd_text: str, latency_ms: float = 0.0):
         self.qt_bridge.speech_command.emit(cmd_text, latency_ms)

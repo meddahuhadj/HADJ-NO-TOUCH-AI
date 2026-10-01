@@ -42,6 +42,16 @@ class GestureRecognizer:
 
         # Fist tracking (for Emergency Stop detection)
         self.fist_start_time: Optional[float] = None
+        # A fist has to be seen for `fist_debounce` before the hold timer
+        # starts, otherwise a single noisy frame could register as a hold.
+        self.fist_candidate_since: Optional[float] = None
+        self.fist_debounce: float = self.settings.get("gestures.fist_debounce", 0.12)
+        # When the pose drops, the hold is kept alive for this long before being
+        # discarded, so brief tracking dropouts do not restart the timer.
+        self.fist_lost_since: Optional[float] = None
+        self.fist_dropout_tolerance: float = self.settings.get(
+            "gestures.fist_dropout_tolerance", 0.25
+        )
 
         # Two-finger scroll tracking
         self.prev_scroll_y: Optional[float] = None
@@ -86,8 +96,28 @@ class GestureRecognizer:
     def classify(self, data: HandLandmarksData) -> Tuple[HandGesture, float]:
         """
         Evaluates geometric landmarks and returns (HandGesture, confidence).
+
+        Order matters and is deliberate: closed and confirmation poses gate
+        everything, pinch owns thumb+index contact before any open-hand pose is
+        considered, and the swipe test runs before the two-finger branch so a
+        two-finger sweep is not swallowed by the scroll dead band.
         """
         now = time.time()
+
+        # The scroll reference belongs to the two-finger pose alone. It is
+        # cleared here rather than at the end of the function because most
+        # branches return early (fist, thumb-up, pinch, open palm) and would
+        # otherwise leave a stale reference behind. Re-entering the two-finger
+        # pose would then be compared against wherever the hand was several
+        # gestures ago, which shows up as one phantom scroll.
+        two_fingers = (
+            data.index_extended and
+            data.middle_extended and
+            not data.ring_extended and
+            not data.pinky_extended
+        )
+        if not two_fingers:
+            self.prev_scroll_y = None
 
         # 1. Evaluate FIST (Emergency Stop / Cancel)
         # All 4 fingers folded, thumb folded across fingers
@@ -99,11 +129,30 @@ class GestureRecognizer:
         )
 
         if all_fingers_folded and not data.thumb_extended:
-            if self.fist_start_time is None:
-                self.fist_start_time = now
-            return HandGesture.FIST, 0.95
+            # The candidate and the hold share one lifetime. Both survive short
+            # dropouts: clearing them on the first missing frame would restart
+            # the debounce every time, so on an intermittent tracker it never
+            # elapses and the emergency stop becomes unreachable.
+            if self.fist_candidate_since is None:
+                self.fist_candidate_since = now
+            self.fist_lost_since = None
+
+            if now - self.fist_candidate_since >= self.fist_debounce:
+                if self.fist_start_time is None:
+                    # A brand new hold starts at the first frame the pose was
+                    # seen, not at the frame the debounce elapsed, so what gets
+                    # measured is the gesture the user is actually performing.
+                    self.fist_start_time = self.fist_candidate_since
+                return HandGesture.FIST, 0.95
         else:
-            self.fist_start_time = None
+            if self.fist_candidate_since is not None:
+                if self.fist_lost_since is None:
+                    self.fist_lost_since = now
+                elif now - self.fist_lost_since > self.fist_dropout_tolerance:
+                    # Genuinely released the pose: forget everything.
+                    self.fist_start_time = None
+                    self.fist_candidate_since = None
+                    self.fist_lost_since = None
 
         # 2. Evaluate THUMB UP (Confirmation)
         # Thumb extended upwards (thumb tip above thumb IP and wrist), other 4 fingers folded
@@ -149,47 +198,29 @@ class GestureRecognizer:
         ):
             return HandGesture.OPEN_PALM, 0.95
 
-        # 5. Evaluate TWO FINGER SCROLL (Index + Middle extended, Ring + Pinky folded)
-        two_fingers = (
-            data.index_extended and
-            data.middle_extended and
-            not data.ring_extended and
-            not data.pinky_extended
-        )
+        # 5. Evaluate SWIPE (Fast horizontal displacement of Index tip)
+        #
+        # Tested before the two-finger branch on purpose. The previous ordering
+        # returned from that branch unconditionally, so a two-finger sweep was
+        # always classified as a stationary point and a swipe could never fire
+        # with more than one finger raised.
+        swipe = self._detect_swipe(now, data.index_tip[0])
+        if swipe is not None:
+            return swipe, 0.88
+
+        # 6. Evaluate TWO FINGER SCROLL (Index + Middle extended, Ring + Pinky folded)
         if two_fingers:
             avg_y = (data.index_tip[1] + data.middle_tip[1]) / 2.0
-            gesture = HandGesture.NONE
-            if self.prev_scroll_y is not None:
-                dy = avg_y - self.prev_scroll_y
-                # dy > 0 means hand moved down on screen -> scroll down
-                # dy < 0 means hand moved up on screen -> scroll up
-            if dy < -self.scroll_dead_band:
-                gesture = HandGesture.TWO_FINGER_SCROLL_UP
-            elif dy > self.scroll_dead_band:
-                gesture = HandGesture.TWO_FINGER_SCROLL_DOWN
-
+            prev_y = self.prev_scroll_y
             self.prev_scroll_y = avg_y
-            if gesture != HandGesture.NONE:
-                return gesture, 0.92
+            if prev_y is not None:
+                # dy > 0 means the hand moved down on screen -> scroll down
+                dy = avg_y - prev_y
+                if dy < -self.scroll_dead_band:
+                    return HandGesture.TWO_FINGER_SCROLL_UP, 0.92
+                if dy > self.scroll_dead_band:
+                    return HandGesture.TWO_FINGER_SCROLL_DOWN, 0.92
             return HandGesture.INDEX_POINT, 0.70  # Still pointing if stationary
-        else:
-            self.prev_scroll_y = None
-
-        # 6. Evaluate SWIPE (Fast horizontal displacement of Index tip)
-        self.swipe_history.append((now, data.index_tip[0]))
-        # Keep last 0.3 seconds of history
-        self.swipe_history = [(t, x) for t, x in self.swipe_history if (now - t) <= 0.3]
-        if len(self.swipe_history) >= 3 and (now - self.last_swipe_trigger_time) > 0.7:
-            dx = self.swipe_history[-1][1] - self.swipe_history[0][1]
-            dt = self.swipe_history[-1][0] - self.swipe_history[0][0]
-            if dt > 0.05:
-                velocity = dx / dt
-                if velocity < -self.swipe_velocity_threshold:  # Fast move to left
-                    self.last_swipe_trigger_time = now
-                    return HandGesture.SWIPE_LEFT, 0.88
-                elif velocity > self.swipe_velocity_threshold:  # Fast move to right
-                    self.last_swipe_trigger_time = now
-                    return HandGesture.SWIPE_RIGHT, 0.88
 
         # 7. Evaluate INDEX POINT (Virtual Mouse Movement)
         # Index finger extended, while avoiding open palm (all fingers extended)
@@ -197,6 +228,56 @@ class GestureRecognizer:
             return HandGesture.INDEX_POINT, 0.94
 
         return HandGesture.NONE, 0.50
+
+    def _detect_swipe(self, now: float, norm_x: float) -> Optional[HandGesture]:
+        """
+        Returns SWIPE_LEFT / SWIPE_RIGHT for a fast horizontal sweep, else None.
+
+        History is trimmed to the last 0.3 s on every call, so a slow drift can
+        never accumulate into a velocity that looks like a deliberate swipe.
+        """
+        self.swipe_history.append((now, norm_x))
+        self.swipe_history = [(t, x) for t, x in self.swipe_history if (now - t) <= 0.3]
+
+        if len(self.swipe_history) < 3:
+            return None
+        if (now - self.last_swipe_trigger_time) <= 0.7:
+            return None
+
+        dx = self.swipe_history[-1][1] - self.swipe_history[0][1]
+        dt = self.swipe_history[-1][0] - self.swipe_history[0][0]
+        if dt <= 0.05:
+            return None
+
+        velocity = dx / dt
+        if velocity < -self.swipe_velocity_threshold:  # Fast move to left
+            self.last_swipe_trigger_time = now
+            return HandGesture.SWIPE_LEFT
+        if velocity > self.swipe_velocity_threshold:  # Fast move to right
+            self.last_swipe_trigger_time = now
+            return HandGesture.SWIPE_RIGHT
+        return None
+
+    def reset(self) -> None:
+        """
+        Clears every temporal filter, e.g. after the hand leaves the frame.
+
+        last_pinch_release_time has to be cleared as well: it is what decides
+        whether the next pinch counts as a double-click, so leaving it behind
+        would make the first pinch after a re-entry open a double-click menu on
+        an item the user only clicked once.
+        """
+        self.is_pinching = False
+        self.in_drag_mode = False
+        self.pinch_start_time = 0.0
+        self.last_pinch_release_time = 0.0
+        self.last_pinch_click_time = 0.0
+        self.fist_start_time = None
+        self.fist_candidate_since = None
+        self.fist_lost_since = None
+        self.prev_scroll_y = None
+        self.swipe_history = []
+        self.last_swipe_trigger_time = 0.0
 
     def get_fist_hold_duration(self) -> float:
         """Returns how long the fist has been continuously held."""

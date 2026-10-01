@@ -6,8 +6,11 @@ from datetime import datetime
 from typing import Tuple, Optional
 import pyautogui
 
-# Configure pyautogui safety and responsiveness
-pyautogui.FAILSAFE = False  # Controlled via our own emergency stop engine
+# Configure pyautogui safety and responsiveness.
+# FAILSAFE stays enabled: slamming the cursor into a screen corner raises
+# FailSafeException, which is the one escape hatch that still works if the
+# camera thread wedges and the gesture-based emergency stop never fires.
+pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0
 
 try:
@@ -73,7 +76,17 @@ class WindowsControlEngine:
         return pyautogui.position()
 
     def move_mouse(self, x: int, y: int) -> None:
-        """Instantly moves mouse cursor to (x, y) coordinates clamped to screen boundaries."""
+        """
+        Instantly moves the cursor to (x, y), clamped to the screen bounds.
+
+        The explicit failsafe check matters because the fast path below uses
+        win32api.SetCursorPos, which bypasses pyautogui's own corner detection.
+        Without this call a virtual pointer pushed into a corner would never
+        raise FailSafeException and the escape hatch would be dead code.
+        """
+        if pyautogui.FAILSAFE:
+            pyautogui.failSafeCheck()
+
         clamped_x = max(0, min(self.screen_width - 1, int(x)))
         clamped_y = max(0, min(self.screen_height - 1, int(y)))
         if HAS_WIN32:
@@ -245,6 +258,21 @@ class WindowsControlEngine:
 
     def press_key(self, key_name: str) -> None:
         pyautogui.press(key_name)
+
+    # ==========================
+    # HISTORY NAVIGATION
+    # ==========================
+    def go_back(self) -> None:
+        """Back navigation, as Alt+Left. Works in browsers and in Explorer."""
+        pyautogui.hotkey("alt", "left")
+
+    def go_forward(self) -> None:
+        """Forward navigation, as Alt+Right."""
+        pyautogui.hotkey("alt", "right")
+
+    def go_home(self) -> None:
+        """Home navigation, as Alt+Home."""
+        pyautogui.hotkey("alt", "home")
 
     # ==========================
     # VOLUME & MEDIA CONTROLS

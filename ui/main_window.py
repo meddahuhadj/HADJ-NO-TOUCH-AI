@@ -64,6 +64,9 @@ class MainWindow(QMainWindow):
         self.skeleton_enabled = bool(self.settings.get("gestures.show_hand_skeleton", True))
         self._listening = False
         self._has_command = False
+        # Whether a confirmation banner is currently on screen, so the clear
+        # handler knows whether a security_cleared signal concerns it.
+        self._security_prompt_active = False
 
         # HUD overlays
         self.floating_hud = FloatingOverlayHUD()
@@ -80,6 +83,7 @@ class MainWindow(QMainWindow):
         self.qt_bridge.speech_command.connect(self._on_speech_command)
         self.qt_bridge.emergency_stop.connect(self._handle_emergency_stop_event)
         self.qt_bridge.security_prompt.connect(self._show_security_prompt)
+        self.qt_bridge.security_cleared.connect(self._clear_security_prompt)
 
         theme.apply_to(self)
         self._init_ui()
@@ -139,16 +143,15 @@ class MainWindow(QMainWindow):
         self.offline_badge = W.label(card, "", "badgeSuccess")
         lay.addWidget(self.offline_badge)
 
-        self.auto_calib_btn = QPushButton("⚡ Calibrage Auto", card)
+        self.auto_calib_btn = QPushButton("", card)
         self.auto_calib_btn.setObjectName("calibAuto")
         self.auto_calib_btn.setCursor(Qt.PointingHandCursor)
         self.auto_calib_btn.clicked.connect(self._on_quick_auto_calibration)
         lay.addWidget(self.auto_calib_btn)
 
-        self.web_btn = QPushButton("🌐 Web Companion", card)
+        self.web_btn = W.button(self, "", "ghost", self._open_web_companion)
         self.web_btn.setObjectName("companionBtn")
         self.web_btn.setCursor(Qt.PointingHandCursor)
-        self.web_btn.clicked.connect(self._open_web_companion)
         lay.addWidget(self.web_btn)
 
         self.emergency_btn = W.button(self, "", "danger", self.trigger_emergency_stop)
@@ -163,28 +166,32 @@ class MainWindow(QMainWindow):
         card = W.frame(self, "card")
         lay = W.hbox(spacing=6, margins=(14, 8, 14, 8))
 
-        dock_title = W.label(card, "🎮 CONTRÔLE TOTAL DU PC :", "sectionTitle")
-        lay.addWidget(dock_title)
+        self.dock_title_label = W.label(card, "", "sectionTitle")
+        lay.addWidget(self.dock_title_label)
 
-        dock_actions = [
-            ("🖥️ Bureau", lambda: self.orchestrator.win_control.show_desktop()),
-            ("📑 Tâches", lambda: self.orchestrator.win_control.open_task_view()),
-            ("🗔 Ancrer G", lambda: self.orchestrator.win_control.snap_window_left()),
-            ("🗖 Ancrer D", lambda: self.orchestrator.win_control.snap_window_right()),
-            ("📸 Capture", self._take_screenshot_action),
-            ("🔊 Vol +", lambda: self.orchestrator.win_control.volume_up()),
-            ("🔉 Vol -", lambda: self.orchestrator.win_control.volume_down()),
-            ("🔇 Muet", lambda: self.orchestrator.win_control.volume_mute()),
-            ("⌨️ Clavier", self.toggle_virtual_keyboard),
-            ("🔒 Verrouiller", lambda: self.orchestrator.win_control.lock_pc()),
-            ("⚡ TaskMgr", lambda: self.orchestrator.win_control.open_task_manager()),
+        # (i18n key, slot) — labels are resolved in retranslate() so the dock
+        # follows the interface language like every other surface.
+        self.dock_actions = [
+            ("dock.desktop", lambda: self.orchestrator.win_control.show_desktop()),
+            ("dock.task_view", lambda: self.orchestrator.win_control.open_task_view()),
+            ("dock.snap_left", lambda: self.orchestrator.win_control.snap_window_left()),
+            ("dock.snap_right", lambda: self.orchestrator.win_control.snap_window_right()),
+            ("dock.screenshot", self._take_screenshot_action),
+            ("dock.volume_up", lambda: self.orchestrator.win_control.volume_up()),
+            ("dock.volume_down", lambda: self.orchestrator.win_control.volume_down()),
+            ("dock.volume_mute", lambda: self.orchestrator.win_control.volume_mute()),
+            ("dock.keyboard", self.toggle_virtual_keyboard),
+            ("dock.lock", lambda: self.orchestrator.win_control.lock_pc()),
+            ("dock.task_manager", lambda: self.orchestrator.win_control.open_task_manager()),
         ]
 
-        for label, fn in dock_actions:
-            btn = QPushButton(label, card)
+        self.dock_buttons = []
+        for key, fn in self.dock_actions:
+            btn = QPushButton("", card)
             btn.setObjectName("quickAction")
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(fn)
+            self.dock_buttons.append((key, btn))
             lay.addWidget(btn)
 
         lay.addWidget(W.spacer())
@@ -348,6 +355,12 @@ class MainWindow(QMainWindow):
             else tr("main.emergency_stop")
         )
 
+        self.web_btn.setText(tr("main.web_companion"))
+        self.auto_calib_btn.setText(tr("calib.auto_btn"))
+        self.dock_title_label.setText(tr("main.dock_title"))
+        for key, btn in self.dock_buttons:
+            btn.setText(tr(key))
+
         self._refresh_switch(self.voice_pill, "main.voice", self.voice_enabled)
         self._refresh_switch(self.gesture_pill, "main.gesture", self.gesture_enabled)
         self._refresh_switch(self.vision_pill, "main.vision", self.vision_enabled)
@@ -437,26 +450,6 @@ class MainWindow(QMainWindow):
     def _on_speech_command(self, cmd_text: str, latency_ms: float):
         self._set_current_command(f'"{cmd_text}"')
         res = self.orchestrator.execute_command_text(cmd_text, source="VOICE", latency_ms=latency_ms)
-
-    def trigger_emergency_stop(self):
-        if self.security.is_emergency_stopped:
-            self.security.reset_emergency_stop()
-        else:
-            self.security.trigger_emergency_stop("USER_CLICKED_STOP")
-        self._handle_emergency_stop_event("RESTORED" if not self.security.is_emergency_stopped else "STOP")
-
-    def _handle_emergency_stop_event(self, reason: str = ""):
-        self._has_command = True
-        if reason == "RESTORED" or not self.security.is_emergency_stopped:
-            self.current_cmd_label.setText(tr("main.status_ready"))
-            self.intent_details_label.setText(tr("main.ready_desc"))
-            self.emergency_btn.setText(tr("main.emergency_stop"))
-        else:
-            self.current_cmd_label.setText(tr("main.emergency_active"))
-            self.intent_details_label.setText(tr("main.emergency_halted"))
-            self.emergency_btn.setText(tr("main.emergency_restore"))
-        self._refresh_tray()
-        self._refresh_event_log()
 
     def _on_manual_command(self):
         text = self.manual_cmd_input.text().strip()
@@ -590,20 +583,35 @@ class MainWindow(QMainWindow):
             self.security.reset_emergency_stop()
         else:
             self.security.trigger_emergency_stop("USER_CLICKED_STOP")
-        self.emergency_btn.setText(
-            tr("main.emergency_restore")
-            if self.security.is_emergency_stopped
-            else tr("main.emergency_stop")
-        )
         self._refresh_tray()
 
-    def _handle_emergency_stop_event(self, data):
+    def _handle_emergency_stop_event(self, reason: str = ""):
+        """Single source of truth for the halt/restore UI state.
+
+        Driven by the QtBridge signal, which SecurityEngine emits from both
+        trigger_emergency_stop and reset_emergency_stop, so the labels, the
+        button and the audit view can never disagree with the engine.
+        """
+        stopped = self.security.is_emergency_stopped
         self._has_command = True
-        self.current_cmd_label.setText(tr("main.emergency_active"))
-        self.intent_details_label.setText(tr("main.emergency_halted"))
+        # Any pending confirmation is moot once the engine is halted, and the
+        # cleared signal will never arrive for it, so drop it explicitly.
+        self._security_prompt_active = False
+        if stopped:
+            self.current_cmd_label.setText(tr("main.emergency_active"))
+            self.intent_details_label.setText(tr("main.emergency_halted"))
+        else:
+            self.current_cmd_label.setText(tr("main.status_ready"))
+            self.intent_details_label.setText(tr("main.ready_desc"))
+        self.emergency_btn.setText(
+            tr("main.emergency_restore") if stopped else tr("main.emergency_stop")
+        )
+        self._refresh_tray()
+        self._refresh_event_log()
 
     def _show_security_prompt(self, data):
         self._has_command = True
+        self._security_prompt_active = True
         self.current_cmd_label.setText(
             tr("main.security_confirm", command=data.get("command", ""))
         )
@@ -612,6 +620,27 @@ class MainWindow(QMainWindow):
                risk=tr_risk(data.get("risk", "")),
                yes=tr("common.yes"))
         )
+
+    def _clear_security_prompt(self, reason: str = "") -> None:
+        """
+        Removes the confirmation banner once the prompt is resolved.
+
+        Without this the banner keeps demanding a yes/no for a decision that was
+        already taken (confirmed, rejected, timed out), so the user is left
+        looking at a stale instruction that no longer corresponds to anything
+        the engine is waiting for.
+        """
+        if not getattr(self, "_security_prompt_active", False):
+            return
+        self._security_prompt_active = False
+        if reason == "CONFIRMED":
+            # The command text is only known to the orchestrator; it reports the
+            # real outcome through the normal result path, so the banner goes
+            # back to standby here rather than guessing at a message.
+            self._show_idle_command()
+        else:
+            self.current_cmd_label.setText(tr("main.cmd_idle"))
+            self.intent_details_label.setText(tr("main.ready_desc"))
 
     def toggle_virtual_keyboard(self):
         if self.virtual_keyboard.isVisible():
@@ -652,16 +681,16 @@ class MainWindow(QMainWindow):
     def _take_screenshot_action(self):
         try:
             path = self.orchestrator.win_control.take_screenshot()
-            self.current_cmd_label.setText("📸 Capture d'écran enregistrée")
-            self.intent_details_label.setText(f"Enregistré: {path}")
+            self.current_cmd_label.setText(tr("shot.saved"))
+            self.intent_details_label.setText(tr("shot.saved_at", path=path))
         except Exception as e:
-            self.intent_details_label.setText(f"Erreur capture: {e}")
+            self.intent_details_label.setText(tr("shot.failed", error=e))
 
     def _on_quick_auto_calibration(self):
         self.auto_calib_btn.setEnabled(False)
-        self.auto_calib_btn.setText("⚡ Analyse en cours...")
-        self.current_cmd_label.setText("⚡ Calibrage automatique en cours...")
-        self.intent_details_label.setText("Mesure caméra, FPS, bruit ambiant et calcul des seuils optimaux...")
+        self.auto_calib_btn.setText(tr("calib.auto_running"))
+        self.current_cmd_label.setText(tr("calib.auto_start"))
+        self.intent_details_label.setText(tr("calib.auto_detail"))
 
         def _run():
             try:
@@ -676,22 +705,25 @@ class MainWindow(QMainWindow):
 
     def _on_auto_calib_finished(self, res: dict):
         self.auto_calib_btn.setEnabled(True)
-        self.auto_calib_btn.setText("⚡ Calibrage Auto")
+        self.auto_calib_btn.setText(tr("calib.auto_btn"))
         if res.get("success"):
-            fps = res.get("fps", 30)
-            pinch = res.get("pinch_threshold", 0.045)
-            smooth = res.get("smoothing_factor", 0.45)
-            speed = res.get("cursor_speed", 1.6)
-            score = res.get("quality_score", 98)
-            self.current_cmd_label.setText(f"✅ Calibrage Auto Réussi (Score {score}%)")
-            self.intent_details_label.setText(f"Caméra: {fps} FPS | Seuil Pince: {pinch} | Lissage: {smooth} | Vitesse: {speed}")
+            self.current_cmd_label.setText(
+                tr("calib.auto_done", score=res.get("quality_score", 98))
+            )
+            self.intent_details_label.setText(tr(
+                "calib.auto_values",
+                fps=res.get("fps", 30),
+                pinch=res.get("pinch_threshold", 0.045),
+                smoothing=res.get("smoothing_factor", 0.45),
+                speed=res.get("cursor_speed", 1.6),
+            ))
             try:
                 self.speech_engine.audio_effects.play_command_success()
             except Exception:
                 pass
         else:
-            self.current_cmd_label.setText("⚠️ Erreur Calibrage Auto")
-            self.intent_details_label.setText(str(res.get("error", "Échec")))
+            self.current_cmd_label.setText(tr("calib.auto_failed"))
+            self.intent_details_label.setText(str(res.get("error", "")))
 
     def _open_web_companion(self):
         import webbrowser
@@ -717,6 +749,9 @@ class MainWindow(QMainWindow):
         self.speech_engine.listener.stop()
         self.speech_engine.tts.stop()
         self.companion_server.stop()
+        # Writes are coalesced, so the pending settings change has to be forced
+        # out here or the last adjustment before exit is lost.
+        self.settings.flush()
         self.floating_hud.close()
         self.cursor_overlay.close()
         self.virtual_keyboard.close()

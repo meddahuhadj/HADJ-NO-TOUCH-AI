@@ -3,6 +3,7 @@ import threading
 from typing import Optional, Callable
 import cv2
 import numpy as np
+import pyautogui
 
 from vision.gesture_detector import GestureDetector, HandLandmarksData
 from vision.gesture_recognizer import GestureRecognizer, HandGesture
@@ -139,6 +140,9 @@ class CameraStream(threading.Thread):
             # rolling window drag the threshold back towards the old one.
             self.adaptive_tuner.reset()
 
+        # Temporal filters were tuned against the old thresholds.
+        self.recognizer.reset()
+
         self.calibration_report = report
         self.event_bus.publish(
             EventType.CALIBRATION_APPLIED, {"report": report}
@@ -211,6 +215,86 @@ class CameraStream(threading.Thread):
             status.update(self.adaptive_tuner.snapshot())
         return status
 
+    def _act_on_gesture(self, gesture: HandGesture, landmarks_data: HandLandmarksData) -> None:
+        """
+        Translates one classified gesture into cursor and keyboard actions.
+
+        Every pyautogui call is wrapped: FAILSAFE is enabled, so a pointer driven
+        into a screen corner raises FailSafeException. That exception is the
+        user's last-resort kill switch, so it halts automation instead of
+        killing the camera thread and leaving the pointer wherever it was.
+        """
+        try:
+            self._dispatch_gesture(gesture, landmarks_data)
+        except pyautogui.FailSafeException:
+            self.cursor.is_dragging = False
+            self.security.trigger_emergency_stop("PYAUTOGUI_FAILSAFE")
+        except Exception as e:
+            # A failing automation call must not take the vision loop down with
+            # it; the next frame simply tries again.
+            print(f"[CameraStream] Gesture action failed: {e}")
+
+    def _dispatch_gesture(self, gesture: HandGesture, landmarks_data: HandLandmarksData) -> None:
+        """The actual gesture-to-action mapping, free of error handling."""
+        if (
+            self.security.is_emergency_stopped
+            or not self.cursor_control_active
+            or self.calibration_session is not None
+        ):
+            return
+
+        # Move Cursor on Index Point or while dragging
+        if gesture in (HandGesture.INDEX_POINT, HandGesture.PINCH_HOLD, HandGesture.PINCH):
+            sx, sy = self.cursor.map_normalized_to_screen(
+                landmarks_data.index_tip[0],
+                landmarks_data.index_tip[1]
+            )
+            self.pointer_screen_pos = (sx, sy)
+
+            if gesture == HandGesture.INDEX_POINT:
+                self.win_control.move_mouse(sx, sy)
+                self.qt_bridge.cursor_moved.emit(sx, sy)
+
+        # Pinch -> Left Click (debounced: exactly one click per pinch)
+        if gesture == HandGesture.PINCH:
+            if not self._pinch_clicked:
+                self._pinch_clicked = True
+                self.win_control.click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
+        else:
+            self._pinch_clicked = False
+
+        # Double Pinch -> Double Click (debounced)
+        if gesture == HandGesture.DOUBLE_PINCH:
+            if not self._double_pinch_clicked:
+                self._double_pinch_clicked = True
+                self.win_control.double_click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
+        else:
+            self._double_pinch_clicked = False
+
+        # Pinch Hold -> Drag
+        if gesture == HandGesture.PINCH_HOLD:
+            if not self.cursor.is_dragging:
+                self.cursor.is_dragging = True
+                self.win_control.mouse_down()
+            self.win_control.move_mouse(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
+
+        # Two Finger Scroll Up / Down
+        elif gesture == HandGesture.TWO_FINGER_SCROLL_UP:
+            self.win_control.scroll(self.settings.get("gestures.scroll_speed", 40))
+        elif gesture == HandGesture.TWO_FINGER_SCROLL_DOWN:
+            self.win_control.scroll(-self.settings.get("gestures.scroll_speed", 40))
+
+        # Swipes
+        elif gesture == HandGesture.SWIPE_LEFT:
+            self.win_control.go_back()
+        elif gesture == HandGesture.SWIPE_RIGHT:
+            self.win_control.go_forward()
+
+        # Release drag if pinch released
+        if self.cursor.is_dragging and not self.recognizer.in_drag_mode:
+            self.cursor.is_dragging = False
+            self.win_control.mouse_up()
+
     def run(self):
         self.running = True
 
@@ -272,62 +356,7 @@ class CameraStream(threading.Thread):
                         self.security.confirm_pending(source="GESTURE")
 
                 # 3. Virtual Mouse Actions (Only if emergency stop is not active)
-                if (
-                    not self.security.is_emergency_stopped
-                    and self.cursor_control_active
-                    and self.calibration_session is None
-                ):
-                    # Move Cursor on Index Point or while dragging
-                    if gesture in (HandGesture.INDEX_POINT, HandGesture.PINCH_HOLD, HandGesture.PINCH):
-                        sx, sy = self.cursor.map_normalized_to_screen(
-                            landmarks_data.index_tip[0],
-                            landmarks_data.index_tip[1]
-                        )
-                        self.pointer_screen_pos = (sx, sy)
-
-                        if gesture == HandGesture.INDEX_POINT:
-                            self.win_control.move_mouse(sx, sy)
-                            self.qt_bridge.cursor_moved.emit(sx, sy)
-
-                    # Pinch -> Left Click (debounced: exactly one click per pinch)
-                    if gesture == HandGesture.PINCH:
-                        if not self._pinch_clicked:
-                            self._pinch_clicked = True
-                            self.win_control.click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
-                    else:
-                        self._pinch_clicked = False
-
-                    # Double Pinch -> Double Click (debounced)
-                    if gesture == HandGesture.DOUBLE_PINCH:
-                        if not self._double_pinch_clicked:
-                            self._double_pinch_clicked = True
-                            self.win_control.double_click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
-                    else:
-                        self._double_pinch_clicked = False
-
-                    # Pinch Hold -> Drag
-                    if gesture == HandGesture.PINCH_HOLD:
-                        if not self.cursor.is_dragging:
-                            self.cursor.is_dragging = True
-                            self.win_control.mouse_down()
-                        self.win_control.move_mouse(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
-
-                    # Two Finger Scroll Up / Down
-                    elif gesture == HandGesture.TWO_FINGER_SCROLL_UP:
-                        self.win_control.scroll(self.settings.get("gestures.scroll_speed", 40))
-                    elif gesture == HandGesture.TWO_FINGER_SCROLL_DOWN:
-                        self.win_control.scroll(-self.settings.get("gestures.scroll_speed", 40))
-
-                    # Swipes
-                    elif gesture == HandGesture.SWIPE_LEFT:
-                        self.win_control.press_key("browserback")
-                    elif gesture == HandGesture.SWIPE_RIGHT:
-                        self.win_control.press_key("browserforward")
-
-                # Release drag if pinch released
-                if self.cursor.is_dragging and not self.recognizer.in_drag_mode:
-                    self.cursor.is_dragging = False
-                    self.win_control.mouse_up()
+                self._act_on_gesture(gesture, landmarks_data)
 
                 self._last_hand_time = time.time()
                 # Draw skeleton HUD overlay
@@ -339,6 +368,10 @@ class CameraStream(threading.Thread):
                 if (time.time() - self._last_hand_time) >= self._hand_lost_grace_s:
                     self.latest_gesture = HandGesture.NONE
                     self.cursor.reset()
+                    # The recogniser keeps its own pinch, fist and swipe history;
+                    # a re-entry with the hand already pinching would otherwise
+                    # register as a double-pinch or re-fire a stale swipe.
+                    self.recognizer.reset()
                     self._feed_calibration(None)
 
             self.latest_frame = frame

@@ -2,6 +2,20 @@ import re
 import pyautogui
 from automation.windows_control import WindowsControlEngine
 
+# Words that mark the text before a single-word command as an instruction
+# rather than as prose. Without this, "i need to undo" would be executed as an
+# undo instead of being typed.
+_COMMAND_PREFIX_RE = re.compile(
+    r'(?:^|\s)(?:'
+    r'hey\s+hadj|hey|hadj|'
+    r'now|do|please|make|go|just|'
+    r'can\s+you|could\s+you|would\s+you|'
+    r'اكتب|أكتب|اكتبي|'
+    r'الآن|الان'
+    r')$',
+    re.IGNORECASE
+)
+
 
 class DictationEngine:
     """Manages touchless voice typing, dictation mode, and voice text editing commands."""
@@ -93,9 +107,28 @@ class DictationEngine:
 
         # Check direct match or editing phrase
         for cmd_phrase, action_fn in self.edit_commands.items():
-            if clean_text == cmd_phrase or clean_text.endswith(cmd_phrase):
+            if clean_text == cmd_phrase:
                 action_fn()
                 return True
+
+        # A command may arrive with something in front of it, e.g. a wake
+        # phrase: "hey hadj delete last word". Multi-word phrases are specific
+        # enough to match on their own. Single words are not: "i need to undo"
+        # is prose, and matching on the bare suffix destroyed the selection
+        # instead of typing the sentence the user actually said.
+        for cmd_phrase, action_fn in self.edit_commands.items():
+            marker = " " + cmd_phrase
+            if marker not in clean_text:
+                continue
+            prefix = clean_text.rsplit(marker, 1)[0]
+            if prefix and not _COMMAND_PREFIX_RE.search(prefix):
+                # Whatever precedes the command has to be a recognised
+                # instruction prefix. Otherwise this is ordinary prose that
+                # happens to contain a command word, and the text has to be
+                # typed rather than executed.
+                continue
+            action_fn()
+            return True
 
         # Check if user said "اكتب ..." / "type ..." / "écris ..."
         dictation_match = re.match(r'^(اكتب|أكتب|اكتبي|type|write|écris|ecris)\s+(.*)', clean_text, re.IGNORECASE)
