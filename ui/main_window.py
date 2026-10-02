@@ -270,7 +270,7 @@ class MainWindow(QMainWindow):
         self.header_lang_btn.setObjectName("headerLangBtn")
         self.header_lang_btn.clicked.connect(self._cycle_language)
         self.header_lang_btn.setStyleSheet(
-            f"background-color: {theme.CANVAS_DEEP}; color: {theme.TEXT_PRIMARY};"
+            f"background-color: {theme.CANVAS_DEEP}; color: {theme.TEXT};"
             f"border: 1px solid {theme.BORDER}; border-radius: 6px;"
             "padding: 6px 12px; font-size: 11px; font-weight: 700;"
         )

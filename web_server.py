@@ -9,6 +9,7 @@ if os.path.exists(py312) and sys.executable.lower() != py312.lower():
 
 import json
 import time
+import threading
 import subprocess
 import http.server
 import socketserver
