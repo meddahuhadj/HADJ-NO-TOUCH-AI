@@ -109,7 +109,7 @@ class FloatingOverlayHUD(QWidget):
             self.move(480, 24)
             return
         geo = screen.geometry()
-        self.move((geo.width() - self.width()) // 2, 24)
+        self.move(max(20, geo.width() - self.width() - 25), max(20, geo.height() - self.height() - 65))
 
     def _init_ui(self):
         self.main_layout = QHBoxLayout(self)

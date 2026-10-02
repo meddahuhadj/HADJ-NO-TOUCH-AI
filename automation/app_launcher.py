@@ -72,6 +72,31 @@ class AppLauncher:
             "github": "https://www.github.com",
             "wikipedia": "https://www.wikipedia.org",
             "ويكيبيديا": "https://ar.wikipedia.org",
+            "facebook": "https://www.facebook.com",
+            "فيسبوك": "https://www.facebook.com",
+            "فايسبوك": "https://www.facebook.com",
+            "fb": "https://www.facebook.com",
+            "twitter": "https://www.twitter.com",
+            "تويتر": "https://www.twitter.com",
+            "x": "https://www.x.com",
+            "instagram": "https://www.instagram.com",
+            "انستغرام": "https://www.instagram.com",
+            "إنستغرام": "https://www.instagram.com",
+            "linkedin": "https://www.linkedin.com",
+            "لينكد إن": "https://www.linkedin.com",
+            "whatsapp": "https://web.whatsapp.com",
+            "واتساب": "https://web.whatsapp.com",
+            "واتس": "https://web.whatsapp.com",
+            "gmail": "https://mail.google.com",
+            "جيميل": "https://mail.google.com",
+            "بريد": "https://mail.google.com",
+            "tiktok": "https://www.tiktok.com",
+            "تيك توك": "https://www.tiktok.com",
+            "reddit": "https://www.reddit.com",
+            "netflix": "https://www.netflix.com",
+            "نتفلكس": "https://www.netflix.com",
+            "amazon": "https://www.amazon.com",
+            "امازون": "https://www.amazon.com",
         }
 
         self.installed_apps_cache: Dict[str, str] = {}
@@ -135,9 +160,25 @@ class AppLauncher:
                 except Exception:
                     pass
 
+        # Try domain fallback (e.g. "facebook.com" or single word site)
+        if "." in clean_target and not clean_target.endswith(".exe"):
+            try:
+                webbrowser.open(f"https://{clean_target}")
+                return True
+            except Exception:
+                pass
+
         # Try generic shell open
         try:
-            subprocess.Popen(clean_target, shell=True)
+            res = subprocess.Popen(clean_target, shell=True)
+            if res:
+                return True
+        except Exception:
+            pass
+
+        # Final fallback: open search in default browser
+        try:
+            webbrowser.open(f"https://www.google.com/search?q={clean_target}")
             return True
         except Exception as e:
             print(f"[AppLauncher] Error launching {target}: {e}")

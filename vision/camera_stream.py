@@ -73,6 +73,9 @@ class CameraStream(threading.Thread):
         self.pointer_screen_pos: tuple = (0, 0)
         self._pinch_clicked: bool = False
         self._double_pinch_clicked: bool = False
+        self._dwell_pos: Optional[tuple] = None
+        self._dwell_start: float = 0.0
+        self._dwell_clicked: bool = False
         self._last_hand_time: float = 0.0
         self._hand_lost_grace_s: float = 0.40  # Eliminates flickering 'hand not visible'
 
@@ -378,15 +381,33 @@ class CameraStream(threading.Thread):
                 self.win_control.move_mouse(sx, sy)
                 self.qt_bridge.cursor_moved.emit(sx, sy)
 
-        # Pinch -> Left Click (or Media Play/Pause if in MEDIA profile)
-        if gesture == HandGesture.PINCH:
-            if not self._pinch_clicked and self.recognizer.is_gesture_committed(gesture):
-                self._pinch_clicked = True
-                active_profile = self.app_profile_mgr.get_active_profile()
-                if active_profile == AppProfile.MEDIA:
-                    self.win_control.media_play_pause()
+                # Dwell Click: holding cursor steadily for >= 1.2s triggers an automatic click
+                now_dwell = time.time()
+                if self._dwell_pos is None:
+                    self._dwell_pos = (sx, sy)
+                    self._dwell_start = now_dwell
+                    self._dwell_clicked = False
                 else:
-                    self.win_control.click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
+                    dist = ((sx - self._dwell_pos[0]) ** 2 + (sy - self._dwell_pos[1]) ** 2) ** 0.5
+                    if dist < 22:
+                        if (now_dwell - self._dwell_start) >= 1.2 and not self._dwell_clicked:
+                            self.win_control.click(sx, sy)
+                            self._dwell_clicked = True
+                            self.event_bus.publish(EventType.GESTURE_CLICK, {"x": sx, "y": sy, "type": "dwell"})
+                    else:
+                        self._dwell_pos = (sx, sy)
+                        self._dwell_start = now_dwell
+                        self._dwell_clicked = False
+            else:
+                self._dwell_pos = None
+                self._dwell_clicked = False
+
+        # Pinch -> Left Click
+        if gesture == HandGesture.PINCH:
+            if not self._pinch_clicked:
+                self._pinch_clicked = True
+                self.win_control.click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
+                self.event_bus.publish(EventType.GESTURE_CLICK, {"x": self.pointer_screen_pos[0], "y": self.pointer_screen_pos[1], "type": "pinch"})
         else:
             self._pinch_clicked = False
 
