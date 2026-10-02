@@ -265,6 +265,17 @@ class MainWindow(QMainWindow):
         self.view_switch_btn.clicked.connect(self.toggle_view_mode)
         lay.addWidget(self.view_switch_btn)
 
+        self.header_lang_btn = QPushButton("", card)
+        self.header_lang_btn.setCursor(Qt.PointingHandCursor)
+        self.header_lang_btn.setObjectName("headerLangBtn")
+        self.header_lang_btn.clicked.connect(self._cycle_language)
+        self.header_lang_btn.setStyleSheet(
+            f"background-color: {theme.CANVAS_DEEP}; color: {theme.TEXT_PRIMARY};"
+            f"border: 1px solid {theme.BORDER}; border-radius: 6px;"
+            "padding: 6px 12px; font-size: 11px; font-weight: 700;"
+        )
+        lay.addWidget(self.header_lang_btn)
+
         self.theme_btn = W.button(self, "", "ghost", self._toggle_theme)
         self.theme_btn.setCursor(Qt.PointingHandCursor)
         lay.addWidget(self.theme_btn)
@@ -541,6 +552,17 @@ class MainWindow(QMainWindow):
                 retranslate()
         self._refresh_event_log()
 
+    def _cycle_language(self):
+        codes = i18n.available_languages()
+        cur = i18n.current_language()
+        idx = codes.index(cur) if cur in codes else 0
+        next_code = codes[(idx + 1) % len(codes)]
+        i18n.set_language(next_code)
+        try:
+            self.speech_engine.set_language(next_code)
+        except Exception:
+            pass
+
     def _toggle_theme(self):
         theme.cycle_theme_mode()
         QApplication.instance().setStyleSheet(theme.stylesheet())
@@ -584,6 +606,11 @@ class MainWindow(QMainWindow):
                 self.view_switch_btn.setText(tr("main.view_native"))
             else:
                 self.view_switch_btn.setText(tr("main.view_dashboard"))
+
+        # Header Language Switch Button
+        if hasattr(self, "header_lang_btn"):
+            lang_names = {"ar": "🌐 العربية", "fr": "🌐 Français", "en": "🌐 English"}
+            self.header_lang_btn.setText(lang_names.get(i18n.current_language(), "🌐 Langue"))
 
         # Compact mode button
         if hasattr(self, "compact_mode_btn"):
