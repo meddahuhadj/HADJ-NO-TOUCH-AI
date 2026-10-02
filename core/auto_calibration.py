@@ -1258,27 +1258,27 @@ def perform_one_click_auto_calibration(camera_index: int = 0) -> Dict[str, Any]:
     pass
 
     # 2. Derive optimal dynamic parameters based on sensor telemetry
-    # INCREASED SMOOTHING AND DEADZONE FOR BETTER STABILITY
+    # FLUID AND RESPONSIVE POINTER WITH COMFORTABLE REACH
     if fps >= 28.0:
-        smoothing = 0.75      # was 0.38
-        speed = 1.30          # was 1.65
-        dead_zone = 0.025     # was 0.012
-        pinch_thresh = 0.055  # was 0.042
+        smoothing = 0.35      # Fluid response without heavy drag
+        speed = 2.00          # Easily reaches all screen edges and buttons
+        dead_zone = 0.008     # Responsive micro-movements
+        pinch_thresh = 0.055
     elif fps >= 20.0:
-        smoothing = 0.80
-        speed = 1.20
-        dead_zone = 0.030
-        pinch_thresh = 0.060
+        smoothing = 0.40
+        speed = 1.80
+        dead_zone = 0.010
+        pinch_thresh = 0.055
     elif fps > 0:
-        smoothing = 0.85
-        speed = 1.0
-        dead_zone = 0.035
-        pinch_thresh = 0.065
-    else:
-        smoothing = 0.80
-        speed = 1.20
-        dead_zone = 0.030
+        smoothing = 0.45
+        speed = 1.60
+        dead_zone = 0.012
         pinch_thresh = 0.060
+    else:
+        smoothing = 0.40
+        speed = 1.80
+        dead_zone = 0.010
+        pinch_thresh = 0.055
 
     # 4. Construct report and apply settings
     report = CalibrationReport(

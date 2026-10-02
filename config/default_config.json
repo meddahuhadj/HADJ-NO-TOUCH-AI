@@ -22,9 +22,9 @@
   },
   "gestures": {
     "enabled": true,
-    "cursor_speed": 1.6,
-    "smoothing_factor": 0.45,
-    "dead_zone_radius": 0.015,
+    "cursor_speed": 2.0,
+    "smoothing_factor": 0.35,
+    "dead_zone_radius": 0.008,
     "pinch_click_threshold": 0.045,
     "pinch_hold_drag_delay": 0.35,
     "double_pinch_window": 0.40,
