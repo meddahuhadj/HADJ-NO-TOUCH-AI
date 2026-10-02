@@ -118,10 +118,10 @@ class AppLauncher:
             for cmd in exec_cmds:
                 try:
                     if cmd.startswith("start "):
-                        os.system(cmd)
+                        subprocess.Popen(cmd, shell=True)
                         return True
                     else:
-                        os.system(f'start "" "{cmd}"')
+                        subprocess.Popen(f'start "" "{cmd}"', shell=True)
                         return True
                 except Exception:
                     continue

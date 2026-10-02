@@ -58,6 +58,36 @@ class AudioEffects:
 
         threading.Thread(target=_run, daemon=True).start()
 
+    def play_screenshot_chime(self):
+        """Play double shutter chime on screen capture."""
+        if not self._is_enabled():
+            return
+
+        def _run():
+            if HAS_WINSOUND:
+                try:
+                    winsound.Beep(1200, 45)
+                    time.sleep(0.03)
+                    winsound.Beep(1400, 60)
+                except Exception:
+                    pass
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def play_button_feedback(self):
+        """Play discreet micro-click tone on button touch."""
+        if not self._is_enabled():
+            return
+
+        def _run():
+            if HAS_WINSOUND:
+                try:
+                    winsound.Beep(1350, 25)
+                except Exception:
+                    pass
+
+        threading.Thread(target=_run, daemon=True).start()
+
     def play_warning_prompt(self):
         """Play warning tone for security confirmation gates."""
         if not self._is_enabled():

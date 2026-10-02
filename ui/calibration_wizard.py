@@ -309,12 +309,40 @@ class CalibrationWizardDialog(QDialog):
         self.mic_result_label = note
 
     def _fill_hand(self, page: _Page) -> None:
+        self.hand_advice_label = W.label(page.card, tr("calib.hand_waiting"), "pageTitle", wrap=True)
+        self.hand_advice_label.setStyleSheet(f"color: {theme.ACCENT}; font-size: 16px; font-weight: 700;")
+
+        self.quality_badge = W.label(page.card, tr("calib.quality_score", score=0), "badgeWarning")
+        self.quality_badge.setStyleSheet(
+            f"background: {theme.CANVAS_DEEP}; border: 1px solid {theme.BORDER}; border-radius: 6px; padding: 4px 10px; font-weight: 700;"
+        )
+
+        self.quality_bar = QProgressBar(page.card)
+        self.quality_bar.setRange(0, 100)
+        self.quality_bar.setValue(0)
+        self.quality_bar.setFixedHeight(8)
+
+        dominant_row = QHBoxLayout()
+        dominant_label = W.label(page.card, tr("calib.dominant_hand"), "faint")
+        self.dominant_combo = QComboBox(page.card)
+        self.dominant_combo.addItem(tr("calib.hand_right"), "Right")
+        self.dominant_combo.addItem(tr("calib.hand_left"), "Left")
+        dominant_row.addWidget(dominant_label)
+        dominant_row.addWidget(self.dominant_combo)
+        dominant_row.addStretch()
+
         note = W.label(page.card, "", "mono", wrap=True)
         page.texts.append(_Text(note, "calib.hand_waiting"))
         note.setText(tr("calib.hand_waiting"))
+
+        page.layout.addWidget(self.hand_advice_label)
+        page.layout.addWidget(self.quality_badge)
+        page.layout.addWidget(self.quality_bar)
+        page.layout.addLayout(dominant_row)
         page.layout.addWidget(note)
         page.layout.addStretch()
         self.hand_result_label = note
+        self._good_hand_frames = 0
 
     def _fill_pinch(self, page: _Page) -> None:
         self.pinch_bar = QProgressBar(page.card)
@@ -603,9 +631,74 @@ class CalibrationWizardDialog(QDialog):
             self._tick_adaptive()
 
     def _tick_hand(self) -> None:
-        if self.preview.has_hand:
+        snapshot = self.preview.snapshot()
+        if snapshot is None or not self.preview.has_hand:
+            self.quality_bar.setValue(0)
+            self.quality_badge.setText(tr("calib.quality_score", score=0))
+            self.quality_badge.setStyleSheet(f"color: {theme.DANGER}; font-weight: 700;")
+            self.hand_advice_label.setText(tr("calib.tip_center_hand"))
+            self.hand_result_label.setText(tr("calib.hand_waiting"))
+            self._good_hand_frames = 0
+            return
+
+        D = getattr(snapshot, "hand_span", 0.35)
+        B = getattr(snapshot, "brightness", 100.0)
+        is_out = getattr(snapshot, "is_out_of_frame", False)
+        handedness = getattr(snapshot, "handedness", "Right")
+
+        if hasattr(self, "dominant_combo") and not getattr(self, "_dominant_user_selected", False):
+            idx = 0 if handedness == "Right" else 1
+            self.dominant_combo.setCurrentIndex(idx)
+
+        # Distance score (optimal between 0.24 and 0.50)
+        if 0.24 <= D <= 0.50:
+            s_d = 100
+        else:
+            s_d = max(0, int(100 - abs(D - 0.37) * 350))
+
+        # Lighting score (optimal between 70 and 185)
+        if 70 <= B <= 185:
+            s_b = 100
+        elif B < 70:
+            s_b = max(0, int(B / 70.0 * 100))
+        else:
+            s_b = max(0, int(100 - (B - 185) / 70.0 * 100))
+
+        s_c = 30 if is_out else 100
+        quality = int(0.40 * s_d + 0.40 * s_b + 0.20 * s_c)
+        quality = max(0, min(100, quality))
+
+        self.quality_bar.setValue(quality)
+        self.quality_badge.setText(tr("calib.quality_score", score=quality))
+
+        if quality >= 75:
+            self.quality_badge.setStyleSheet(f"color: {theme.SUCCESS}; font-weight: 700;")
+            self.hand_advice_label.setText(tr("calib.tip_optimal"))
+            self.hand_advice_label.setStyleSheet(f"color: {theme.SUCCESS}; font-size: 16px; font-weight: 700;")
+            self.hand_result_label.setText(tr("calib.hand_locked"))
+            self._good_hand_frames += 1
+            if self._good_hand_frames >= 10:
+                self.measured_steps.add(STEP_HAND)
+                self.next_btn.setEnabled(True)
+        elif quality >= 45:
+            self.quality_badge.setStyleSheet(f"color: {theme.WARNING}; font-weight: 700;")
+            self.hand_advice_label.setStyleSheet(f"color: {theme.WARNING}; font-size: 16px; font-weight: 700;")
+            if s_b < s_d:
+                self.hand_advice_label.setText(tr("calib.tip_more_light") if B < 70 else tr("calib.tip_less_light"))
+            elif is_out:
+                self.hand_advice_label.setText(tr("calib.tip_center_hand"))
+            else:
+                self.hand_advice_label.setText(tr("calib.tip_closer") if D < 0.24 else tr("calib.tip_further"))
             self.hand_result_label.setText(tr("calib.hand_locked"))
         else:
+            self.quality_badge.setStyleSheet(f"color: {theme.DANGER}; font-weight: 700;")
+            self.hand_advice_label.setStyleSheet(f"color: {theme.DANGER}; font-size: 16px; font-weight: 700;")
+            if s_b < 50:
+                self.hand_advice_label.setText(tr("calib.tip_more_light"))
+            elif is_out:
+                self.hand_advice_label.setText(tr("calib.tip_center_hand"))
+            else:
+                self.hand_advice_label.setText(tr("calib.tip_closer") if D < 0.24 else tr("calib.tip_further"))
             self.hand_result_label.setText(tr("calib.hand_waiting"))
 
     def _tick_pinch(self) -> None:
@@ -878,6 +971,10 @@ class CalibrationWizardDialog(QDialog):
 
         self.settings.set("calibration.adaptive_tuning", self.adaptive_check.isChecked())
         self.settings.set("calibration.last_run", int(time.time()))
+        self.settings.set("calibration.guided_done", True)
+        dominant = self.dominant_combo.currentData() if hasattr(self, "dominant_combo") else "Right"
+        if dominant:
+            self.settings.set("gestures.dominant_hand", dominant)
 
         # Only the gesture block is written from the report; the settings
         # manager already saved each key individually above.

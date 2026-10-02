@@ -88,6 +88,13 @@ class CalibrationPreviewWorker(QObject):
                 # Mirrored so moving right moves the cursor right.
                 frame = cv2.flip(frame, 1)
                 snapshot = None
+                brightness = 100.0
+                try:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    brightness = float(cv2.mean(gray)[0])
+                except Exception:
+                    pass
+
                 try:
                     data = self._detector.process_frame(frame)
                 except Exception:
@@ -98,6 +105,10 @@ class CalibrationPreviewWorker(QObject):
                         index_tip=(float(data.index_tip[0]), float(data.index_tip[1])),
                         pinch_distance=float(data.pinch_distance),
                         landmarks=data.pixel_points,
+                        hand_span=float(data.hand_span),
+                        brightness=brightness,
+                        handedness=str(data.handedness),
+                        is_out_of_frame=bool(data.is_partially_out_of_frame),
                     )
                     frame = self._detector.draw_skeleton(frame, data, "", 0.0)
 
@@ -119,12 +130,28 @@ class CalibrationPreviewWorker(QObject):
 class HandSnapshot:
     """Immutable hand geometry handed from the worker to the GUI thread."""
 
-    __slots__ = ("index_tip", "pinch_distance", "landmarks")
+    __slots__ = (
+        "index_tip", "pinch_distance", "landmarks",
+        "hand_span", "brightness", "handedness", "is_out_of_frame"
+    )
 
-    def __init__(self, index_tip: Tuple[float, float], pinch_distance: float, landmarks):
+    def __init__(
+        self,
+        index_tip: Tuple[float, float],
+        pinch_distance: float,
+        landmarks,
+        hand_span: float = 0.35,
+        brightness: float = 100.0,
+        handedness: str = "Right",
+        is_out_of_frame: bool = False,
+    ):
         self.index_tip = index_tip
         self.pinch_distance = pinch_distance
         self.landmarks = landmarks
+        self.hand_span = hand_span
+        self.brightness = brightness
+        self.handedness = handedness
+        self.is_out_of_frame = is_out_of_frame
 
 
 class CalibrationPreview(QWidget):

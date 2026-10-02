@@ -13,30 +13,36 @@ from core.audio_effects import AudioEffects
 from intents.local_ai_adapter import LocalAIAdapter
 from intents.intent_definitions import IntentType
 from config.settings_manager import SettingsManager
+from intents.intent_recognizer import normalize_arabic
 
 
 AFFIRMATIVE_REPLIES = frozenset({
     "yes", "y", "yeah", "yep", "yup", "sure", "ok", "okay", "affirmative",
     "confirm", "confirmed", "do it", "go ahead", "proceed",
-    "oui", "ouais", "d'accord", "d accord", "confirmer",
-    "نعم", "نعم،", "أجل", "اجل", "ايوه", "أكيد", "تمام", "ماشي", "افعل",
-    "اكيد", "تأكيد", "تاكيد", "موافق", "هذا موافق",
+    "oui", "ouais", "d'accord", "d accord", "confirmer", "vas y", "vas-y",
+    # Arabic Standard & Dialects (Fusha, Darija, Egyptian, Gulf)
+    "نعم", "اجل", "ايوه", "اكيد", "تمام", "ماشي", "افعل",
+    "تاكيد", "موافق", "هذا موافق", "ايه", "واه", "ديرها", "صحا", "صافي",
+    "اوكي", "اعمل كدا", "اعملها", "اي والله", "ابشر", "تم", "صار", "حاضر",
+    "مضبوط", "بالتاكيد", "صحيح"
 })
 
 NEGATIVE_REPLIES = frozenset({
     "no", "n", "nope", "nah", "negative",
     "don't", "dont", "do not", "don't do it", "dont do it", "do not do it",
     "cancel", "abort", "stop", "halt", "never mind", "nevermind",
-    "non", "nein", "annuler", "annule", "non merci",
-    "لا", "لأ", "لا شكرا", "الغاء", "إلغاء", "تراجع", "توقف", "إيقاف",
-    "ما تعملش", "ما تبقاش",
+    "non", "nein", "annuler", "annule", "non merci", "arrete", "arrête",
+    # Arabic Standard & Dialects
+    "لا", "لا شكرا", "الغاء", "تراجع", "توقف", "ايقاف", "لا لا",
+    "حبس", "مادير والو", "ماديرش", "بلاش", "ما تعملش", "ما تبقاش",
+    "ما بدي", "ما ابغى", "لا تسوي", "وقف", "اوعى", "بلاش ده"
 })
 
 # Politeness that may wrap a decision without changing it.
 _REPLY_FILLERS = frozenset({
     "please", "thanks", "thank", "you", "now", "pls", "merci",
     "s'il", "vous", "plaît", "plait",
-    "من", "فضلك", "لو", "سمحت", "شكرا",
+    "من", "فضلك", "لو", "سمحت", "شكرا", "يعطيك", "الصحه",
 })
 
 _REPLY_FILLER_PHRASES = frozenset({
@@ -47,8 +53,9 @@ _REPLY_FILLER_PHRASES = frozenset({
 
 
 def _reply_tokens(text: str) -> list:
-    """Normalises a spoken reply into comparable word tokens."""
-    normalized = re.sub(r"[^\w؀-ۿ\s']", " ", text.strip().lower())
+    """Normalises a spoken reply into comparable word tokens with Arabic normalization."""
+    normalized = normalize_arabic(text).strip().lower()
+    normalized = re.sub(r"[^\w؀-ۿ\s']", " ", normalized)
     normalized = normalized.replace("'", " ")
     return [t for t in normalized.split() if t]
 

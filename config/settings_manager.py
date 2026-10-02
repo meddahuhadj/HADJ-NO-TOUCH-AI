@@ -23,6 +23,7 @@ class SettingsManager:
     def __init__(self):
         if getattr(self, "_initialized", False):
             return
+        self._initialized = True
         self._listeners: List[Callable[[Dict[str, Any]], None]] = []
         self._config: Dict[str, Any] = self._load_defaults()
         # Batched writes. Applying a calibration report touches a dozen keys in

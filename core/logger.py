@@ -37,6 +37,7 @@ class EventLogger:
         confidence: float = 1.0,
         risk_level: str = "LOW",
         source: str = "VOICE",
+        gesture: str = "",
         details: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Logs a command execution event."""
@@ -49,6 +50,7 @@ class EventLogger:
             "command": command,
             "intent": intent,
             "action": action,
+            "gesture": gesture or (details.get("gesture") if details else "") or "",
             "result": result,
             "confidence": round(confidence, 3),
             "risk_level": risk_level,
@@ -71,6 +73,35 @@ class EventLogger:
 
     def get_recent_events(self, limit: int = 50) -> List[Dict[str, Any]]:
         return list(reversed(self._recent_events[-limit:]))
+
+    def export_csv(self, filepath: Optional[str] = None) -> str:
+        """
+        Exports the logged events to a CSV file with UTF-8 BOM encoding for Excel compatibility.
+        Returns the absolute filepath of the saved CSV.
+        """
+        import csv
+        if not filepath:
+            filename = f"hadj_events_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            filepath = os.path.join(LOGS_DIR, filename)
+
+        headers = ["Heure / Timestamp", "Commande / Command", "Intention / Intent", "Action", "Geste / Gesture", "Resultat / Result", "Confiance / Confidence", "Risque / Risk", "Source"]
+        with open(filepath, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            for event in self._recent_events:
+                writer.writerow([
+                    event.get("timestamp", ""),
+                    event.get("command", ""),
+                    event.get("intent", ""),
+                    event.get("action", ""),
+                    event.get("gesture", ""),
+                    event.get("result", ""),
+                    event.get("confidence", 1.0),
+                    event.get("risk_level", "LOW"),
+                    event.get("source", "")
+                ])
+
+        return filepath
 
     def clear(self) -> None:
         self._recent_events.clear()

@@ -13,11 +13,15 @@ class QtBridge(QObject):
     frame_ready = Signal(object, str, float)       # (frame_bgr, gesture_name, confidence)
     cursor_moved = Signal(int, int)                 # (screen_x, screen_y)
     gesture_detected = Signal(str, float)           # (gesture_name, confidence)
+    arm_state_changed = Signal(bool)                # is_armed
+    gesture_diagnostics = Signal(str, str, float, bool, float) # (gesture_name, diagnostic_key, confidence, is_armed, progress)
     speech_state = Signal(bool)                     # is_listening
     speech_command = Signal(str, float)             # (command_text, latency_ms)
     emergency_stop = Signal(str)                    # reason
     security_prompt = Signal(dict)                  # prompt payload
     security_cleared = Signal(str)                  # reason the prompt closed
+    command_finished = Signal(dict)                 # command result from a worker thread
+    app_profile_changed = Signal(str, str)          # (profile_id, app_info)
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:

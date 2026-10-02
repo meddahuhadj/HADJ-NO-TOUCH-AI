@@ -1251,45 +1251,34 @@ def perform_one_click_auto_calibration(camera_index: int = 0) -> Dict[str, Any]:
     latency_ms = 33.0
     noise_floor = 0.0
     speech_threshold = 0.045
-
-    with _CAPTURE_LOCK:
-        try:
-            cam_stats = measure_camera_timing(camera_index=camera_index, seconds=0.5)
-            fps = cam_stats.get("fps", 30.0)
-            latency_ms = cam_stats.get("latency_ms", 33.3)
-        except Exception:
-            pass
-
-        try:
-            mic_probe = MicrophoneProbe()
-            mic_stats = mic_probe.measure(seconds=0.3)
-            noise_floor = mic_stats.get("noise_floor", 0.0)
-            speech_threshold = mic_stats.get("speech_threshold", 0.045)
-        except Exception:
-            pass
+    # Hardware probes (camera, mic) are skipped in the one-click calibration
+    # because attempting to acquire them while the main loop (CameraStream, VoiceListener)
+    # is running causes a permanent hang on Windows via MSMF.
+    # Defaults are used instead to guarantee a fast, non-blocking calibration.
+    pass
 
     # 2. Derive optimal dynamic parameters based on sensor telemetry
+    # INCREASED SMOOTHING AND DEADZONE FOR BETTER STABILITY
     if fps >= 28.0:
-        smoothing = 0.38
-        speed = 1.65
-        dead_zone = 0.012
-        pinch_thresh = 0.042
+        smoothing = 0.75      # was 0.38
+        speed = 1.30          # was 1.65
+        dead_zone = 0.025     # was 0.012
+        pinch_thresh = 0.055  # was 0.042
     elif fps >= 20.0:
-        smoothing = 0.45
-        speed = 1.50
-        dead_zone = 0.015
-        pinch_thresh = 0.045
+        smoothing = 0.80
+        speed = 1.20
+        dead_zone = 0.030
+        pinch_thresh = 0.060
     elif fps > 0:
-        smoothing = 0.58
-        speed = 1.35
-        dead_zone = 0.020
-        pinch_thresh = 0.048
+        smoothing = 0.85
+        speed = 1.0
+        dead_zone = 0.035
+        pinch_thresh = 0.065
     else:
-        smoothing = 0.45
-        speed = 1.50
-        dead_zone = 0.015
-        pinch_thresh = 0.045
-
+        smoothing = 0.80
+        speed = 1.20
+        dead_zone = 0.030
+        pinch_thresh = 0.060
 
     # 4. Construct report and apply settings
     report = CalibrationReport(

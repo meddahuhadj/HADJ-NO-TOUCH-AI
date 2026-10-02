@@ -320,8 +320,34 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(500, {"success": False, "error": str(e)})
 
 
+_httpd_server = None
+
+
+def start_background_server(port: int = PORT) -> bool:
+    global _httpd_server
+    try:
+        socketserver.TCPServer.allow_reuse_address = True
+        _httpd_server = socketserver.TCPServer(("127.0.0.1", port), CustomHandler)
+        t = threading.Thread(target=_httpd_server.serve_forever, daemon=True)
+        t.start()
+        print(f"[HADJ Web Server] Background server started at http://127.0.0.1:{port}")
+        return True
+    except Exception as e:
+        print(f"[HADJ Web Server] Port {port} already active or notice: {e}")
+        return False
+
+
+def stop_background_server():
+    global _httpd_server
+    if _httpd_server:
+        try:
+            _httpd_server.shutdown()
+        except Exception:
+            pass
+        _httpd_server = None
+
+
 def run_server():
-    os.chdir(WEB_DIR)
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("127.0.0.1", PORT), CustomHandler) as httpd:
         print(f"[HADJ Web Server] Serving web interface & remote control at http://127.0.0.1:{PORT}")

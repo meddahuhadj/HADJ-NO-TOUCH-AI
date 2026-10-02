@@ -103,6 +103,12 @@
       <p class="eyebrow"><span class="dot dot--ok"></span><span data-i18n="hero.eyebrow">Hors ligne par conception · IA 100% locale</span></p>
       <h1 class="hero__title" data-i18n="hero.title">Contrôlez votre ordinateur sans le toucher.</h1>
       <p class="hero__lead" data-i18n="hero.lead">Voix, gestes de la main et vision de l'écran fusionnés en une seule couche sensorielle. Aucune donnée ne quitte la machine, aucun appel cloud, aucune latence réseau.</p>
+      <div class="hero__pills" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+        <span style="background:rgba(45,212,191,0.12);border:1px solid rgba(45,212,191,0.35);border-radius:20px;padding:5px 12px;font-size:12px;color:#2dd4bf;font-weight:700;">🎯 Filtre One-Euro Anti-Tremblement</span>
+        <span style="background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.35);border-radius:20px;padding:5px 12px;font-size:12px;color:#c4b5fd;font-weight:700;">⚡ Profils Apps (Web, Média, Doc)</span>
+        <span style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:20px;padding:5px 12px;font-size:12px;color:#fca5a5;font-weight:700;">🛡️ Kill Switch & Sécurité 5s</span>
+        <span style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.35);border-radius:20px;padding:5px 12px;font-size:12px;color:#93c5fd;font-weight:700;">🌍 Dialectes Arabes (دارجة، مصري، خليجي)</span>
+      </div>
       <div class="hero__cta">
         <a class="btn btn--p" href="https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/archive/refs/heads/master.zip" download target="_blank" rel="noopener noreferrer">
           <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" style="margin-inline-end: 6px;"><path d="M8 1v9M4.5 6.5 8 10l3.5-3.5M2 13.5h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -114,16 +120,16 @@
         </button>
       </div>
       <ul class="hero__meta">
-        <li><b>v1.0.0</b><span data-i18n="hero.m1">Windows 10/11</span></li>
+        <li><b>v3.0.0</b><span data-i18n="hero.m1">Windows 10/11</span></li>
         <li><b>21</b><span data-i18n="hero.m2">points de la main</span></li>
-        <li><b>ar · fr · en</b><span data-i18n="hero.m3">avec RTL natif</span></li>
+        <li><b>ar · fr · en</b><span data-i18n="hero.m3">RTL natif & dialectes</span></li>
       </ul>
     </div>
 
     <div class="hud" role="img" data-i18n-attr="aria-label:hero.hudaria">
       <div class="hud__bar">
         <span class="hud__dot"></span><span class="hud__dot"></span><span class="hud__dot"></span>
-        <span class="hud__path">CAM 0 · 640×480 · 22 FPS</span>
+        <span class="hud__path">CAM 0 · 640×480 · 30 FPS</span>
         <span class="hud__badge" data-i18n="hero.hudlive">EN DIRECT</span>
       </div>
 
@@ -174,7 +180,7 @@
         <span class="rail rail--warn"><i></i><b data-i18n="hero.hlisten">ÉCOUTE</b></span>
         <span class="rail rail--ok"><i></i><b data-i18n="hero.htrack">MAIN SUIVIE</b></span>
         <span class="rail"><b>21 LANDMARKS</b></span>
-        <span class="rail"><b>EMA 0.45</b></span>
+        <span class="rail rail--ok"><b>1€ FILTER · 98%</b></span>
       </div>
 
       <div class="hud__log" aria-hidden="true">
@@ -249,6 +255,10 @@
       <button type="button" class="hub-tab" role="tab" aria-selected="false" data-hub-tab="apps">
         <span class="hub-tab__icon">🚀</span>
         <span data-i18n="hub.tab_apps">Applications</span>
+      </button>
+      <button type="button" class="hub-tab" role="tab" aria-selected="false" data-hub-tab="security">
+        <span class="hub-tab__icon">🛡️</span>
+        <span data-i18n="hub.tab_security">Sécurité & Profils</span>
       </button>
       <button type="button" class="hub-tab" role="tab" aria-selected="false" data-hub-tab="console">
         <span class="hub-tab__icon">💬</span>
@@ -443,6 +453,42 @@
             <span class="hcb__icon">⚙️</span>
             <span class="hcb__title">Paramètres Windows</span>
             <span class="hcb__sub">Configuration système</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PANEL: SECURITY & PROFILES -->
+      <div class="hub-panel" data-hub-panel="security">
+        <div class="hub-grid">
+          <button type="button" class="hub-card-btn hcb--danger" data-pc-action="toggle_privacy">
+            <span class="hcb__icon">🛡️</span>
+            <span class="hcb__title">Kill Switch Confidentialité</span>
+            <span class="hcb__sub">Coupe instantanément caméra & micro</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="profile_browser">
+            <span class="hcb__icon">🌐</span>
+            <span class="hcb__title">Profil Navigateur</span>
+            <span class="hcb__sub">Swipes : Précédent / Suivant (Historique)</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="profile_media">
+            <span class="hcb__icon">🎬</span>
+            <span class="hcb__title">Profil Lecteur Média</span>
+            <span class="hcb__sub">Pince : Pause · Swipe : Avance/Recul 10s</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="profile_document">
+            <span class="hcb__icon">📄</span>
+            <span class="hcb__title">Profil Document / PDF</span>
+            <span class="hcb__sub">Swipes : Page Suivante / Précédente</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="profile_desktop">
+            <span class="hcb__icon">🖥️</span>
+            <span class="hcb__title">Profil Bureau Windows</span>
+            <span class="hcb__sub">Contrôle global standard</span>
+          </button>
+          <button type="button" class="hub-card-btn" data-pc-action="confirm_countdown_demo">
+            <span class="hcb__icon">⏱️</span>
+            <span class="hcb__title">Confirmation 5s Auto</span>
+            <span class="hcb__sub">Annulation auto des actions à risque</span>
           </button>
         </div>
       </div>

@@ -60,6 +60,42 @@ class GestureRecognizer:
         self.swipe_history = []  # list of (timestamp, norm_x)
         self.last_swipe_trigger_time: float = 0.0
 
+        # Gesture Hysteresis (~300ms hold delay)
+        self.gesture_hold_delay: float = float(self.settings.get("gestures.gesture_hold_delay", 0.30))
+        self.current_candidate_gesture: HandGesture = HandGesture.NONE
+        self.candidate_start_time: float = 0.0
+        self.candidate_progress: float = 0.0
+
+        # Arming / Disarming via 1.0s Open Palm
+        self.arm_hold_duration: float = 1.0
+        self.palm_candidate_start: Optional[float] = None
+        self.palm_arm_cooldown_until: float = 0.0
+        self.arm_progress: float = 0.0
+        self.arm_toggled: bool = False
+
+    def get_arm_progress(self) -> float:
+        """Returns 0.0 to 1.0 representing progress towards toggling arming state."""
+        return self.arm_progress
+
+    def consume_arm_toggle(self) -> bool:
+        """Consumes and returns whether arming state has been toggled by holding palm for 1s."""
+        if self.arm_toggled:
+            self.arm_toggled = False
+            return True
+        return False
+
+    def get_gesture_hold_progress(self) -> float:
+        """Returns 0.0 to 1.0 representing progress towards committing current candidate gesture."""
+        return self.candidate_progress
+
+    def is_gesture_committed(self, gesture: HandGesture) -> bool:
+        """Returns True if the gesture has been held for the required hysteresis delay (~300ms)."""
+        if gesture in (HandGesture.INDEX_POINT, HandGesture.PINCH_HOLD):
+            return True
+        if self.current_candidate_gesture == gesture:
+            return self.candidate_progress >= 1.0
+        return False
+
     def update_calibration(
         self,
         pinch_threshold: Optional[float] = None,
@@ -96,20 +132,65 @@ class GestureRecognizer:
     def classify(self, data: HandLandmarksData) -> Tuple[HandGesture, float]:
         """
         Evaluates geometric landmarks and returns (HandGesture, confidence).
+        Tracks arming gesture (1s open palm) and gesture hold hysteresis (~300ms).
+        """
+        now = time.time()
+        gesture, conf = self._classify_raw(data, now)
+        self._update_temporal_progress(gesture, now)
+        return gesture, conf
+
+    def _update_temporal_progress(self, gesture: HandGesture, now: float) -> None:
+        """Tracks candidate hold progress for hysteresis and arming gesture."""
+        # 1. Arming tracking (OPEN_PALM held for 1.0s)
+        if gesture == HandGesture.OPEN_PALM:
+            if now > self.palm_arm_cooldown_until:
+                if self.palm_candidate_start is None:
+                    self.palm_candidate_start = now
+                hold = now - self.palm_candidate_start
+                self.arm_progress = min(1.0, hold / self.arm_hold_duration)
+                if hold >= self.arm_hold_duration:
+                    self.arm_toggled = True
+                    self.palm_arm_cooldown_until = now + 1.2
+                    self.palm_candidate_start = None
+                    self.arm_progress = 0.0
+            else:
+                self.arm_progress = 0.0
+        else:
+            self.palm_candidate_start = None
+            self.arm_progress = 0.0
+
+        # 2. Hysteresis tracking for discrete gestures
+        if gesture in (
+            HandGesture.PINCH,
+            HandGesture.DOUBLE_PINCH,
+            HandGesture.THUMB_UP,
+            HandGesture.TWO_FINGER_SCROLL_UP,
+            HandGesture.TWO_FINGER_SCROLL_DOWN,
+            HandGesture.SWIPE_LEFT,
+            HandGesture.SWIPE_RIGHT
+        ):
+            if self.current_candidate_gesture == gesture:
+                elapsed = now - self.candidate_start_time
+                self.candidate_progress = min(1.0, elapsed / max(0.05, self.gesture_hold_delay))
+            else:
+                self.current_candidate_gesture = gesture
+                self.candidate_start_time = now
+                self.candidate_progress = 0.0
+        else:
+            self.current_candidate_gesture = gesture
+            self.candidate_start_time = now
+            self.candidate_progress = 0.0
+
+    def _classify_raw(self, data: HandLandmarksData, now: float) -> Tuple[HandGesture, float]:
+        """
+        Evaluates geometric landmarks and returns (HandGesture, confidence).
 
         Order matters and is deliberate: closed and confirmation poses gate
         everything, pinch owns thumb+index contact before any open-hand pose is
         considered, and the swipe test runs before the two-finger branch so a
         two-finger sweep is not swallowed by the scroll dead band.
         """
-        now = time.time()
-
-        # The scroll reference belongs to the two-finger pose alone. It is
-        # cleared here rather than at the end of the function because most
-        # branches return early (fist, thumb-up, pinch, open palm) and would
-        # otherwise leave a stale reference behind. Re-entering the two-finger
-        # pose would then be compared against wherever the hand was several
-        # gestures ago, which shows up as one phantom scroll.
+        # The scroll reference belongs to the two-finger pose alone.
         two_fingers = (
             data.index_extended and
             data.middle_extended and
@@ -120,7 +201,6 @@ class GestureRecognizer:
             self.prev_scroll_y = None
 
         # 1. Evaluate FIST (Emergency Stop / Cancel)
-        # All 4 fingers folded, thumb folded across fingers
         all_fingers_folded = (
             not data.index_extended and
             not data.middle_extended and
@@ -129,19 +209,12 @@ class GestureRecognizer:
         )
 
         if all_fingers_folded and not data.thumb_extended:
-            # The candidate and the hold share one lifetime. Both survive short
-            # dropouts: clearing them on the first missing frame would restart
-            # the debounce every time, so on an intermittent tracker it never
-            # elapses and the emergency stop becomes unreachable.
             if self.fist_candidate_since is None:
                 self.fist_candidate_since = now
             self.fist_lost_since = None
 
             if now - self.fist_candidate_since >= self.fist_debounce:
                 if self.fist_start_time is None:
-                    # A brand new hold starts at the first frame the pose was
-                    # seen, not at the frame the debounce elapsed, so what gets
-                    # measured is the gesture the user is actually performing.
                     self.fist_start_time = self.fist_candidate_since
                 return HandGesture.FIST, 0.95
         else:
@@ -149,13 +222,11 @@ class GestureRecognizer:
                 if self.fist_lost_since is None:
                     self.fist_lost_since = now
                 elif now - self.fist_lost_since > self.fist_dropout_tolerance:
-                    # Genuinely released the pose: forget everything.
                     self.fist_start_time = None
                     self.fist_candidate_since = None
                     self.fist_lost_since = None
 
         # 2. Evaluate THUMB UP (Confirmation)
-        # Thumb extended upwards (thumb tip above thumb IP and wrist), other 4 fingers folded
         thumb_pointing_up = data.thumb_tip[1] < data.thumb_ip[1] < data.wrist[1]
         if all_fingers_folded and data.thumb_extended and thumb_pointing_up:
             return HandGesture.THUMB_UP, 0.94
@@ -167,7 +238,7 @@ class GestureRecognizer:
                 self.is_pinching = True
                 self.pinch_start_time = now
 
-                # Check if this pinch occurred shortly after the previous release -> DOUBLE PINCH
+                # Check if this pinch occurred shortly after previous release -> DOUBLE PINCH
                 if (now - self.last_pinch_release_time) < self.double_pinch_window:
                     self.last_pinch_click_time = now
                     return HandGesture.DOUBLE_PINCH, 0.96
@@ -175,7 +246,6 @@ class GestureRecognizer:
                 self.last_pinch_click_time = now
                 return HandGesture.PINCH, 0.93
             else:
-                # Still holding pinch
                 hold_duration = now - self.pinch_start_time
                 if hold_duration >= self.drag_hold_delay:
                     self.in_drag_mode = True
@@ -188,7 +258,6 @@ class GestureRecognizer:
                 self.in_drag_mode = False
 
         # 4. Evaluate OPEN PALM (Pause Cursor Movement / Standby)
-        # All 5 fingers extended
         if (
             data.thumb_extended and
             data.index_extended and
@@ -199,11 +268,6 @@ class GestureRecognizer:
             return HandGesture.OPEN_PALM, 0.95
 
         # 5. Evaluate SWIPE (Fast horizontal displacement of Index tip)
-        #
-        # Tested before the two-finger branch on purpose. The previous ordering
-        # returned from that branch unconditionally, so a two-finger sweep was
-        # always classified as a stationary point and a swipe could never fire
-        # with more than one finger raised.
         swipe = self._detect_swipe(now, data.index_tip[0])
         if swipe is not None:
             return swipe, 0.88
@@ -214,16 +278,14 @@ class GestureRecognizer:
             prev_y = self.prev_scroll_y
             self.prev_scroll_y = avg_y
             if prev_y is not None:
-                # dy > 0 means the hand moved down on screen -> scroll down
                 dy = avg_y - prev_y
                 if dy < -self.scroll_dead_band:
                     return HandGesture.TWO_FINGER_SCROLL_UP, 0.92
                 if dy > self.scroll_dead_band:
                     return HandGesture.TWO_FINGER_SCROLL_DOWN, 0.92
-            return HandGesture.INDEX_POINT, 0.70  # Still pointing if stationary
+            return HandGesture.INDEX_POINT, 0.70
 
         # 7. Evaluate INDEX POINT (Virtual Mouse Movement)
-        # Index finger extended, while avoiding open palm (all fingers extended)
         if data.index_extended and not (data.middle_extended and data.ring_extended and data.pinky_extended):
             return HandGesture.INDEX_POINT, 0.94
 
@@ -232,9 +294,6 @@ class GestureRecognizer:
     def _detect_swipe(self, now: float, norm_x: float) -> Optional[HandGesture]:
         """
         Returns SWIPE_LEFT / SWIPE_RIGHT for a fast horizontal sweep, else None.
-
-        History is trimmed to the last 0.3 s on every call, so a slow drift can
-        never accumulate into a velocity that looks like a deliberate swipe.
         """
         self.swipe_history.append((now, norm_x))
         self.swipe_history = [(t, x) for t, x in self.swipe_history if (now - t) <= 0.3]
@@ -250,23 +309,16 @@ class GestureRecognizer:
             return None
 
         velocity = dx / dt
-        if velocity < -self.swipe_velocity_threshold:  # Fast move to left
+        if velocity < -self.swipe_velocity_threshold:
             self.last_swipe_trigger_time = now
             return HandGesture.SWIPE_LEFT
-        if velocity > self.swipe_velocity_threshold:  # Fast move to right
+        if velocity > self.swipe_velocity_threshold:
             self.last_swipe_trigger_time = now
             return HandGesture.SWIPE_RIGHT
         return None
 
     def reset(self) -> None:
-        """
-        Clears every temporal filter, e.g. after the hand leaves the frame.
-
-        last_pinch_release_time has to be cleared as well: it is what decides
-        whether the next pinch counts as a double-click, so leaving it behind
-        would make the first pinch after a re-entry open a double-click menu on
-        an item the user only clicked once.
-        """
+        """Clears every temporal filter, e.g. after the hand leaves the frame."""
         self.is_pinching = False
         self.in_drag_mode = False
         self.pinch_start_time = 0.0
@@ -278,6 +330,11 @@ class GestureRecognizer:
         self.prev_scroll_y = None
         self.swipe_history = []
         self.last_swipe_trigger_time = 0.0
+        self.palm_candidate_start = None
+        self.arm_progress = 0.0
+        self.current_candidate_gesture = HandGesture.NONE
+        self.candidate_start_time = 0.0
+        self.candidate_progress = 0.0
 
     def get_fist_hold_duration(self) -> float:
         """Returns how long the fist has been continuously held."""

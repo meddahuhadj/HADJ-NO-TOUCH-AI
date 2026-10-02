@@ -26,46 +26,54 @@ class AudioListener(threading.Thread):
         self.recognizer.dynamic_energy_threshold = True
         self.recognizer.pause_threshold = 0.8
 
+        self._mic_lock = threading.Lock()
         self.microphone = None
-        self._init_microphone()
-
         self.callbacks = []
 
     def _init_microphone(self):
-        try:
-            self.microphone = sr.Microphone()
-            with self.microphone as source:
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.8)
-            print("[AudioListener] Microphone calibrated for ambient noise.")
-        except Exception as e:
-            print(f"[AudioListener] Microphone init notice: {e}")
-            self.microphone = None
+        with self._mic_lock:
+            try:
+                self.microphone = sr.Microphone()
+                with self.microphone as source:
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                print("[AudioListener] Microphone calibrated for ambient noise.")
+            except Exception as e:
+                print(f"[AudioListener] Microphone init notice: {e}")
+                self.microphone = None
 
     def add_speech_callback(self, callback: Callable[[str, float], None]):
         self.callbacks.append(callback)
 
     def set_mic_enabled(self, enabled: bool):
         self.mic_enabled = enabled
-        if enabled and self.microphone is None:
-            self._init_microphone()
+        # Do not block the calling GUI thread; background loop initializes mic if needed
 
     def run(self):
         self.running = True
         print("[AudioListener] Continuous audio listener started.")
 
         while self.running:
-            if not self.mic_enabled or self.microphone is None:
+            if not self.mic_enabled:
                 time.sleep(0.2)
                 continue
 
+            if self.microphone is None:
+                self._init_microphone()
+                if self.microphone is None:
+                    time.sleep(0.5)
+                    continue
+
             try:
-                with self.microphone as source:
-                    # Listen with timeout
-                    audio = self.recognizer.listen(
-                        source,
-                        timeout=5.0,
-                        phrase_time_limit=self.settings.get("voice.phrase_time_limit_seconds", 5.0)
-                    )
+                with self._mic_lock:
+                    if not self.microphone:
+                        continue
+                    with self.microphone as source:
+                        # Listen with timeout
+                        audio = self.recognizer.listen(
+                            source,
+                            timeout=5.0,
+                            phrase_time_limit=self.settings.get("voice.phrase_time_limit_seconds", 5.0)
+                        )
 
                 start_rec_t = time.time()
                 recognized_text = self._recognize_offline(audio)
@@ -103,11 +111,17 @@ class AudioListener(threading.Thread):
         except Exception:
             pass
 
-        # 2. Resilient fallback
+        # 2. Resilient fallback with short socket timeout to prevent network hangs
         try:
-            recognized = self.recognizer.recognize_google(audio, language=lang_code)
-            if recognized and recognized.strip():
-                return recognized.strip()
+            import socket
+            orig_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(3.0)
+            try:
+                recognized = self.recognizer.recognize_google(audio, language=lang_code)
+                if recognized and recognized.strip():
+                    return recognized.strip()
+            finally:
+                socket.setdefaulttimeout(orig_timeout)
         except Exception:
             pass
 

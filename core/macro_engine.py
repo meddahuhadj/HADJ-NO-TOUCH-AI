@@ -2,7 +2,7 @@ import os
 import json
 import time
 import threading
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from core.event_bus import EventBus, EventType
 from core.security_engine import SecurityEngine
 
@@ -104,6 +104,62 @@ class MacroEngine:
         self.recorded_steps = []
         return name
 
+    def get_macro_steps(self, macro_name: str) -> List[Dict[str, Any]]:
+        raw = self.macros.get(macro_name)
+        if isinstance(raw, list):
+            return list(raw)
+        elif isinstance(raw, dict) and "steps" in raw:
+            return list(raw.get("steps", []))
+        return []
+
+    def get_macro_triggers(self, macro_name: str) -> Tuple[Optional[str], Optional[str]]:
+        raw = self.macros.get(macro_name)
+        if isinstance(raw, dict):
+            return raw.get("voice_trigger"), raw.get("gesture_trigger")
+        return None, None
+
+    def add_or_update_macro(
+        self,
+        name: str,
+        steps: List[Dict[str, Any]],
+        voice_trigger: Optional[str] = None,
+        gesture_trigger: Optional[str] = None
+    ) -> bool:
+        clean_name = name.strip()
+        if not clean_name:
+            return False
+
+        if voice_trigger or gesture_trigger:
+            self.macros[clean_name] = {
+                "steps": steps,
+                "voice_trigger": voice_trigger.strip() if voice_trigger else None,
+                "gesture_trigger": gesture_trigger.strip() if gesture_trigger else None,
+            }
+        else:
+            self.macros[clean_name] = steps
+
+        return self.save_macros()
+
+    def find_macro_by_voice(self, spoken_text: str) -> Optional[str]:
+        clean = spoken_text.strip().lower()
+        for name, data in self.macros.items():
+            if isinstance(data, dict):
+                v_trig = data.get("voice_trigger")
+                if v_trig and v_trig.lower() in clean:
+                    return name
+            if name.lower() in clean:
+                return name
+        return None
+
+    def find_macro_by_gesture(self, gesture_name: str) -> Optional[str]:
+        clean = gesture_name.strip().upper()
+        for name, data in self.macros.items():
+            if isinstance(data, dict):
+                g_trig = data.get("gesture_trigger")
+                if g_trig and g_trig.upper() == clean:
+                    return name
+        return None
+
     def execute_macro(self, macro_name: str, step_executor: Any) -> bool:
         """Executes the macro in a background thread."""
         matched_name = None
@@ -115,7 +171,9 @@ class MacroEngine:
         if not matched_name:
             return False
 
-        steps = list(self.macros[matched_name])
+        steps = self.get_macro_steps(matched_name)
+        if not steps:
+            return False
 
         def _run():
             for step in steps:
@@ -139,7 +197,7 @@ class MacroEngine:
         threading.Thread(target=_run, daemon=True).start()
         return True
 
-    def get_all_macros(self) -> Dict[str, List[Dict[str, Any]]]:
+    def get_all_macros(self) -> Dict[str, Any]:
         return dict(self.macros)
 
     def delete_macro(self, macro_name: str) -> bool:
@@ -148,3 +206,4 @@ class MacroEngine:
             self.save_macros()
             return True
         return False
+

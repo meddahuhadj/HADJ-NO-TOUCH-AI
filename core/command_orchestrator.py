@@ -169,6 +169,20 @@ class CommandOrchestrator:
             source=source
         )
 
+        # Optional offline spoken voice confirmation (configurable in settings)
+        if result.get("success", True) and getattr(self, "tts", None) and self.settings.get("voice.spoken_feedback", False):
+            lang = self.settings.get("language", "ar")
+            if lang == "ar":
+                phrase = "تم"
+            elif lang == "fr":
+                phrase = "C'est fait"
+            else:
+                phrase = "Done"
+            try:
+                self.tts.speak(phrase, lang=lang)
+            except Exception as e:
+                print(f"[CommandOrchestrator] Spoken feedback error: {e}")
+
     def _dispatch_action(self, intent_res: IntentResult) -> Dict[str, Any]:
         t = intent_res.intent_type
         target = intent_res.target
@@ -497,5 +511,14 @@ class CommandOrchestrator:
             self.win_control.set_brightness_percent(int(target))
         elif action == "OPEN_FOLDER":
             self.file_manager.open_folder(str(target))
-        elif action == "SHORTCUT":
+        elif action == "SHORTCUT" or action == "KEY_PRESS":
             self.win_control.press_key(str(target))
+        elif action == "TYPE_TEXT":
+            self.win_control.type_text(str(target))
+        elif action == "HOTKEY":
+            keys = [k.strip().lower() for k in str(target).split("+")]
+            import pyautogui
+            pyautogui.hotkey(*keys)
+        elif action == "WAIT":
+            import time
+            time.sleep(float(target))

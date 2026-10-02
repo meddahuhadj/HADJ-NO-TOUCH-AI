@@ -1,4 +1,5 @@
 import json
+import socket
 import urllib.request
 from typing import Optional, Dict, Any
 from intents.intent_definitions import IntentType, IntentResult
@@ -19,11 +20,10 @@ class LocalAIAdapter:
 
     def _check_availability(self):
         try:
-            req = urllib.request.Request(f"{self.ollama_host}/api/tags", method="GET")
-            with urllib.request.urlopen(req, timeout=0.5) as resp:
-                if resp.status == 200:
-                    self.is_llm_available = True
-                    print("[LocalAIAdapter] Local LLM server detected (Ollama).")
+            # Fast non-blocking socket probe (0.1s max timeout) so main thread init is instant
+            with socket.create_connection(("127.0.0.1", 11434), timeout=0.1):
+                self.is_llm_available = True
+                print("[LocalAIAdapter] Local LLM server detected (Ollama).")
         except Exception:
             self.is_llm_available = False
 
@@ -65,7 +65,7 @@ class LocalAIAdapter:
                 headers={"Content-Type": "application/json"},
                 method="POST"
             )
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
+            with urllib.request.urlopen(req, timeout=0.8) as resp:
                 res_data = json.loads(resp.read().decode("utf-8"))
                 resp_json = json.loads(res_data.get("response", "{}"))
                 intent_name = resp_json.get("intent", "UNKNOWN")
@@ -79,6 +79,7 @@ class LocalAIAdapter:
                         original_text=query
                     )
         except Exception:
-            pass
+            # Disable LLM attempt if server fails or times out
+            self.is_llm_available = False
 
         return None

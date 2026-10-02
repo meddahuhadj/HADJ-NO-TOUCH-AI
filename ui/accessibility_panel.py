@@ -100,6 +100,38 @@ class AccessibilityDialog(QDialog):
         self.large_cursor_desc.setMinimumWidth(0)
         option_layout.addWidget(self.large_cursor_cb)
         option_layout.addWidget(self.large_cursor_desc)
+
+        # High Contrast Theme option
+        self.contrast_cb = QCheckBox(self.option_card)
+        self.contrast_cb.setChecked(theme.is_high_contrast())
+        self.contrast_cb.toggled.connect(self._on_contrast_toggled)
+        self.contrast_desc = W.label(self.option_card, "", "faint", wrap=True)
+        self.contrast_desc.setContentsMargins(22, 0, 0, 0)
+        self.contrast_desc.setMinimumWidth(0)
+        option_layout.addWidget(self.contrast_cb)
+        option_layout.addWidget(self.contrast_desc)
+
+        # Dominant Hand options
+        hand_box = W.hbox(spacing=14)
+        self.hand_label = W.label(self.option_card, "", "faint")
+        hand_box.addWidget(self.hand_label)
+        self.right_hand_rb = QRadioButton(self.option_card)
+        self.left_hand_rb = QRadioButton(self.option_card)
+        self.hand_group = QButtonGroup(self)
+        self.hand_group.addButton(self.right_hand_rb)
+        self.hand_group.addButton(self.left_hand_rb)
+        self.right_hand_rb.toggled.connect(lambda c: self.settings.set("gestures.dominant_hand", "right") if c else None)
+        self.left_hand_rb.toggled.connect(lambda c: self.settings.set("gestures.dominant_hand", "left") if c else None)
+        is_left = (self.settings.get("gestures.dominant_hand", "right") == "left")
+        if is_left:
+            self.left_hand_rb.setChecked(True)
+        else:
+            self.right_hand_rb.setChecked(True)
+        hand_box.addWidget(self.right_hand_rb)
+        hand_box.addWidget(self.left_hand_rb)
+        hand_box.addWidget(W.spacer())
+        option_layout.addLayout(hand_box)
+
         root.addWidget(self.option_card)
 
         root.addStretch()
@@ -111,6 +143,11 @@ class AccessibilityDialog(QDialog):
         self.done_btn.setMinimumWidth(124)
         actions.addWidget(self.done_btn)
         root.addLayout(actions)
+
+    def _on_contrast_toggled(self, checked: bool):
+        new_mode = "high_contrast" if checked else "dark"
+        theme.set_theme_mode(new_mode)
+        theme.apply_to(self)
 
     # ------------------------------------------------------------------ #
     # Localisation
@@ -138,6 +175,13 @@ class AccessibilityDialog(QDialog):
         self.dwell_desc.setText(tr("access.dwell_desc"))
         self.large_cursor_cb.setText(tr("access.large_cursor_name"))
         self.large_cursor_desc.setText(tr("access.large_cursor_desc"))
+
+        self.contrast_cb.setText(tr("main.theme_high_contrast"))
+        self.contrast_desc.setText(tr("access.contrast_desc"))
+        self.hand_label.setText("✋ " + tr("calib.dominant_hand") + ":")
+        self.right_hand_rb.setText(tr("calib.hand_right"))
+        self.left_hand_rb.setText(tr("calib.hand_left"))
+
         self.done_btn.setText(tr("common.done"))
 
     # ------------------------------------------------------------------ #

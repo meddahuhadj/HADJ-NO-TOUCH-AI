@@ -9,29 +9,68 @@ from config.i18n import tr
 from ui import theme
 
 
+from config.settings_manager import SettingsManager
+from PySide6.QtWidgets import QPushButton, QHBoxLayout
+
+
 class CameraWidget(QWidget):
-    """Renders the live webcam feed with a skeletal overlay inside a glass frame."""
+    """Renders the live webcam feed with a skeletal overlay, aspect ratio preservation, and mirror toggle."""
 
     PLACEHOLDER_SIZE = (520, 380)
 
     def __init__(self, parent=None):
         super(CameraWidget, self).__init__(parent)
+        self.settings = SettingsManager()
+        self.mirror_enabled: bool = bool(self.settings.get("performance.mirror_camera", True))
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        self.image_label = QLabel(self)
+        # Container with overlay controls
+        self.container = QWidget(self)
+        container_lay = QVBoxLayout(self.container)
+        container_lay.setContentsMargins(0, 0, 0, 0)
+
+        # Image display label
+        self.image_label = QLabel(self.container)
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setStyleSheet(
             f"QLabel {{ background-color: {theme.CANVAS_DEEP};"
             f"border: 1px solid {theme.BORDER}; border-radius: {theme.RADIUS_LG}px; }}"
         )
         self.image_label.setMinimumSize(*self.PLACEHOLDER_SIZE)
-        layout.addWidget(self.image_label)
+        container_lay.addWidget(self.image_label)
+
+        # Floating controls row on top of camera widget
+        controls_row = QHBoxLayout()
+        controls_row.setContentsMargins(12, 12, 12, 0)
+        controls_row.addStretch()
+
+        self.mirror_btn = QPushButton("🪞 " + tr("camera.mirror"), self)
+        self.mirror_btn.setObjectName("ghost")
+        self.mirror_btn.setCursor(Qt.PointingHandCursor)
+        self.mirror_btn.setStyleSheet(
+            f"QPushButton {{ background: rgba(20, 24, 32, 0.75); color: {theme.TEXT};"
+            f"border: 1px solid {theme.BORDER}; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: rgba(0, 220, 180, 0.25); border-color: {theme.ACCENT}; }}"
+        )
+        self.mirror_btn.clicked.connect(self._toggle_mirror)
+        controls_row.addWidget(self.mirror_btn)
+
+        layout.addLayout(controls_row)
+        layout.addWidget(self.container)
 
         i18n.on_language_changed(self._on_language_changed)
         self._create_placeholder()
 
     # ------------------------------------------------------------------ #
+
+    def _toggle_mirror(self):
+        self.mirror_enabled = not self.mirror_enabled
+        self.settings.set("performance.mirror_camera", self.mirror_enabled)
+        state_str = tr("common.on") if self.mirror_enabled else tr("common.off")
+        self.mirror_btn.setText(f"🪞 {tr('camera.mirror')}: {state_str}")
 
     def _create_placeholder(self):
         width, height = self.PLACEHOLDER_SIZE
@@ -67,6 +106,8 @@ class CameraWidget(QWidget):
 
     def retranslate(self):
         self._create_placeholder()
+        state_str = tr("common.on") if self.mirror_enabled else tr("common.off")
+        self.mirror_btn.setText(f"🪞 {tr('camera.mirror')}: {state_str}")
 
     # ------------------------------------------------------------------ #
 
@@ -83,12 +124,18 @@ class CameraWidget(QWidget):
         new_w = max(1, int(w * scale))
         new_h = max(1, int(h * scale))
 
-        # Fast SIMD resize with OpenCV to eliminate main-thread Qt software scaling lag
+        # Fast SIMD resize with OpenCV
         resized_bgr = cv2.resize(frame_bgr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-        rgb_frame = cv2.cvtColor(resized_bgr, cv2.COLOR_BGR2RGB)
 
-        # .copy() ensures QImage owns its memory buffer, preventing memory leaks & dangling pointers
-        q_image = QImage(rgb_frame.data, new_w, new_h, c * new_w, QImage.Format_RGB888).copy()
+        # Letterbox/pillarbox into exact canvas size to avoid stretch
+        canvas = np.zeros((target_h, target_w, 3), dtype=np.uint8)
+        canvas[:] = (18, 22, 28) # CANVAS_DEEP
+        x_off = (target_w - new_w) // 2
+        y_off = (target_h - new_h) // 2
+        canvas[y_off:y_off + new_h, x_off:x_off + new_w] = resized_bgr
+
+        rgb_frame = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+        q_image = QImage(rgb_frame.data, target_w, target_h, 3 * target_w, QImage.Format_RGB888).copy()
         pixmap = QPixmap.fromImage(q_image)
         self.image_label.setPixmap(pixmap)
 

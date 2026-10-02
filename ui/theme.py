@@ -21,30 +21,107 @@ import config.i18n as i18n
 # Design tokens
 # --------------------------------------------------------------------------- #
 
-CANVAS = "#060A12"            # Window background
-CANVAS_DEEP = "#04070D"       # Gradient floor
-SURFACE = "#0C1322"           # Card / panel fill
-SURFACE_RAISED = "#111A2C"    # Elevated surface (inputs, hovered rows)
-SURFACE_SUNK = "#080D18"      # Recessed surface (log views, viewport)
-BORDER = "#1B2740"            # Hairline border
-BORDER_STRONG = "#26344F"     # Emphasised border / hover edge
-BORDER_FAINT = "#141D30"      # Divider
+_THEME_MODE = "dark"
 
-TEXT = "#E9EFF9"              # Primary text
-TEXT_MUTED = "#93A4C0"        # Secondary text
-TEXT_FAINT = "#5F7089"        # Tertiary text / captions
+DARK_PALETTE = {
+    "CANVAS": "#060A12",
+    "CANVAS_DEEP": "#04070D",
+    "SURFACE": "#0C1322",
+    "SURFACE_RAISED": "#111A2C",
+    "SURFACE_SUNK": "#080D18",
+    "BORDER": "#1B2740",
+    "BORDER_STRONG": "#26344F",
+    "BORDER_FAINT": "#141D30",
+    "TEXT": "#E9EFF9",
+    "TEXT_MUTED": "#93A4C0",
+    "TEXT_FAINT": "#5F7089",
+    "ACCENT": "#4CC9F0",
+    "ACCENT_DEEP": "#0EA5E9",
+    "ACCENT_SOFT": "#0B2C40",
+    "VIOLET": "#A78BFA",
+    "SUCCESS": "#34D399",
+    "SUCCESS_SOFT": "#0A2E27",
+    "WARNING": "#FBBF24",
+    "WARNING_SOFT": "#33240A",
+    "DANGER": "#F87171",
+    "DANGER_DEEP": "#7F1D1D",
+    "DANGER_SOFT": "#2A1013",
+}
 
-ACCENT = "#4CC9F0"            # Primary accent (cyan)
-ACCENT_DEEP = "#0EA5E9"       # Accent pressed
-ACCENT_SOFT = "#0B2C40"       # Accent tinted fill
-VIOLET = "#A78BFA"            # Secondary accent
-SUCCESS = "#34D399"
-SUCCESS_SOFT = "#0A2E27"
-WARNING = "#FBBF24"
-WARNING_SOFT = "#33240A"
-DANGER = "#F87171"
-DANGER_DEEP = "#7F1D1D"
-DANGER_SOFT = "#2A1013"
+LIGHT_PALETTE = {
+    "CANVAS": "#F8FAFC",
+    "CANVAS_DEEP": "#F1F5F9",
+    "SURFACE": "#FFFFFF",
+    "SURFACE_RAISED": "#F8FAFC",
+    "SURFACE_SUNK": "#F1F5F9",
+    "BORDER": "#CBD5E1",
+    "BORDER_STRONG": "#94A3B8",
+    "BORDER_FAINT": "#E2E8F0",
+    "TEXT": "#0F172A",
+    "TEXT_MUTED": "#334155",
+    "TEXT_FAINT": "#64748B",
+    "ACCENT": "#0284C7",
+    "ACCENT_DEEP": "#0369A1",
+    "ACCENT_SOFT": "#E0F2FE",
+    "VIOLET": "#7C3AED",
+    "SUCCESS": "#059669",
+    "SUCCESS_SOFT": "#D1FAE5",
+    "WARNING": "#D97706",
+    "WARNING_SOFT": "#FEF3C7",
+    "DANGER": "#DC2626",
+    "DANGER_DEEP": "#991B1B",
+    "DANGER_SOFT": "#FEE2E2",
+}
+
+HIGH_CONTRAST_PALETTE = {
+    "CANVAS": "#000000",
+    "CANVAS_DEEP": "#000000",
+    "SURFACE": "#0A0A0A",
+    "SURFACE_RAISED": "#171717",
+    "SURFACE_SUNK": "#000000",
+    "BORDER": "#FFFFFF",
+    "BORDER_STRONG": "#FFFFFF",
+    "BORDER_FAINT": "#D4D4D4",
+    "TEXT": "#FFFFFF",
+    "TEXT_MUTED": "#F5F5F5",
+    "TEXT_FAINT": "#D4D4D4",
+    "ACCENT": "#00FFFF",      # Electric Cyan
+    "ACCENT_DEEP": "#00CCCC",
+    "ACCENT_SOFT": "#003333",
+    "VIOLET": "#FFFF00",      # Pure Yellow
+    "SUCCESS": "#00FF66",     # Vivid Green
+    "SUCCESS_SOFT": "#003311",
+    "WARNING": "#FFAA00",     # Vivid Amber
+    "WARNING_SOFT": "#332200",
+    "DANGER": "#FF3333",      # Pure Red
+    "DANGER_DEEP": "#990000",
+    "DANGER_SOFT": "#330000",
+}
+
+CANVAS = DARK_PALETTE["CANVAS"]
+CANVAS_DEEP = DARK_PALETTE["CANVAS_DEEP"]
+SURFACE = DARK_PALETTE["SURFACE"]
+SURFACE_RAISED = DARK_PALETTE["SURFACE_RAISED"]
+SURFACE_SUNK = DARK_PALETTE["SURFACE_SUNK"]
+BORDER = DARK_PALETTE["BORDER"]
+BORDER_STRONG = DARK_PALETTE["BORDER_STRONG"]
+BORDER_FAINT = DARK_PALETTE["BORDER_FAINT"]
+
+TEXT = DARK_PALETTE["TEXT"]
+TEXT_MUTED = DARK_PALETTE["TEXT_MUTED"]
+TEXT_FAINT = DARK_PALETTE["TEXT_FAINT"]
+
+ACCENT = DARK_PALETTE["ACCENT"]
+ACCENT_DEEP = DARK_PALETTE["ACCENT_DEEP"]
+ACCENT_SOFT = DARK_PALETTE["ACCENT_SOFT"]
+VIOLET = DARK_PALETTE["VIOLET"]
+SUCCESS = DARK_PALETTE["SUCCESS"]
+SUCCESS_SOFT = DARK_PALETTE["SUCCESS_SOFT"]
+WARNING = DARK_PALETTE["WARNING"]
+WARNING_SOFT = DARK_PALETTE["WARNING_SOFT"]
+DANGER = DARK_PALETTE["DANGER"]
+DANGER_DEEP = DARK_PALETTE["DANGER_DEEP"]
+DANGER_SOFT = DARK_PALETTE["DANGER_SOFT"]
 
 RADIUS_SM = 6
 RADIUS_MD = 10
@@ -53,6 +130,75 @@ RADIUS_LG = 14
 # Layout rhythm
 GAP = 14
 PAD = 22
+
+
+def is_light_mode() -> bool:
+    return _THEME_MODE == "light"
+
+
+def is_high_contrast() -> bool:
+    return _THEME_MODE == "high_contrast"
+
+
+def set_theme_mode(mode: str) -> None:
+    global _THEME_MODE, CANVAS, CANVAS_DEEP, SURFACE, SURFACE_RAISED, SURFACE_SUNK
+    global BORDER, BORDER_STRONG, BORDER_FAINT, TEXT, TEXT_MUTED, TEXT_FAINT
+    global ACCENT, ACCENT_DEEP, ACCENT_SOFT, VIOLET, SUCCESS, SUCCESS_SOFT
+    global WARNING, WARNING_SOFT, DANGER, DANGER_DEEP, DANGER_SOFT
+
+    if mode in ("high_contrast", "contrast"):
+        _THEME_MODE = "high_contrast"
+        pal = HIGH_CONTRAST_PALETTE
+    elif mode == "light":
+        _THEME_MODE = "light"
+        pal = LIGHT_PALETTE
+    else:
+        _THEME_MODE = "dark"
+        pal = DARK_PALETTE
+
+    CANVAS = pal["CANVAS"]
+    CANVAS_DEEP = pal["CANVAS_DEEP"]
+    SURFACE = pal["SURFACE"]
+    SURFACE_RAISED = pal["SURFACE_RAISED"]
+    SURFACE_SUNK = pal["SURFACE_SUNK"]
+    BORDER = pal["BORDER"]
+    BORDER_STRONG = pal["BORDER_STRONG"]
+    BORDER_FAINT = pal["BORDER_FAINT"]
+    TEXT = pal["TEXT"]
+    TEXT_MUTED = pal["TEXT_MUTED"]
+    TEXT_FAINT = pal["TEXT_FAINT"]
+    ACCENT = pal["ACCENT"]
+    ACCENT_DEEP = pal["ACCENT_DEEP"]
+    ACCENT_SOFT = pal["ACCENT_SOFT"]
+    VIOLET = pal["VIOLET"]
+    SUCCESS = pal["SUCCESS"]
+    SUCCESS_SOFT = pal["SUCCESS_SOFT"]
+    WARNING = pal["WARNING"]
+    WARNING_SOFT = pal["WARNING_SOFT"]
+    DANGER = pal["DANGER"]
+    DANGER_DEEP = pal["DANGER_DEEP"]
+    DANGER_SOFT = pal["DANGER_SOFT"]
+
+    try:
+        from config.settings_manager import SettingsManager
+        SettingsManager().set("theme_mode", _THEME_MODE)
+    except Exception:
+        pass
+
+
+def toggle_theme_mode() -> str:
+    return cycle_theme_mode()
+
+
+def cycle_theme_mode() -> str:
+    """Cycles themes: dark -> light -> high_contrast -> dark."""
+    if _THEME_MODE == "dark":
+        set_theme_mode("light")
+    elif _THEME_MODE == "light":
+        set_theme_mode("high_contrast")
+    else:
+        set_theme_mode("dark")
+    return _THEME_MODE
 
 
 # --------------------------------------------------------------------------- #
@@ -111,6 +257,13 @@ def stylesheet() -> str:
     mono = i18n.MONO_STACK
     align = "right" if i18n.is_rtl() else "left"
 
+    card_gradient_end = "#F8FAFC" if is_light_mode() else "#0A1120"
+    btn_hover_bg = "#E2E8F0" if is_light_mode() else "#16223A"
+    btn_press_bg = "#CBD5E1" if is_light_mode() else "#0D1626"
+    quick_btn_bg = "#E2E8F0" if is_light_mode() else "#0E1728"
+    quick_btn_text = "#0F172A" if is_light_mode() else "#E9EFF9"
+    input_focus_bg = "#FFFFFF" if is_light_mode() else "#0A1120"
+
     return f"""
 /* ============================ Base ============================ */
 QWidget {{
@@ -142,7 +295,7 @@ QToolTip {{
 /* ============================ Surfaces ============================ */
 QFrame#card, QFrame.card {{
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 {SURFACE}, stop:1 #0A1120);
+                stop:0 {SURFACE}, stop:1 {card_gradient_end});
     border: 1px solid {BORDER};
     border-radius: {RADIUS_LG}px;
 }}
@@ -268,12 +421,12 @@ QPushButton {{
     min-height: 18px;
 }}
 QPushButton:hover {{
-    background-color: #16223A;
+    background-color: {btn_hover_bg};
     border-color: {alpha(ACCENT, 110)};
-    color: #FFFFFF;
+    color: {ACCENT};
 }}
 QPushButton:pressed {{
-    background-color: #0D1626;
+    background-color: {btn_press_bg};
 }}
 QPushButton:disabled {{
     color: {TEXT_FAINT};
@@ -287,14 +440,14 @@ QPushButton:focus {{
 QPushButton#primary, QPushButton.primary {{
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                 stop:0 {ACCENT}, stop:1 {ACCENT_DEEP});
-    color: #04121C;
+    color: #FFFFFF;
     border: 1px solid {ACCENT};
     font-weight: 700;
 }}
 QPushButton#primary:hover, QPushButton.primary:hover {{
-    background: #6FD6F7;
-    color: #04121C;
-    border-color: #6FD6F7;
+    background: #0284C7;
+    color: #FFFFFF;
+    border-color: #0284C7;
 }}
 QPushButton#primary:pressed, QPushButton.primary:pressed {{
     background: {ACCENT_DEEP};
@@ -347,14 +500,14 @@ QPushButton#pillOn, QPushButton.pill-on {{
     font-weight: 700;
 }}
 QPushButton#pillOn:hover, QPushButton.pill-on:hover {{
-    background-color: #0F3E58;
-    color: #7FDCFA;
+    background-color: {ACCENT_SOFT};
+    color: {ACCENT};
 }}
 
 QPushButton#quickAction, QPushButton.quick-action {{
-    background-color: #0E1728;
-    color: #E9EFF9;
-    border: 1px solid #1E2D48;
+    background-color: {quick_btn_bg};
+    color: {quick_btn_text};
+    border: 1px solid {BORDER_STRONG};
     border-radius: 8px;
     padding: 6px 11px;
     font-size: 11px;
@@ -362,12 +515,12 @@ QPushButton#quickAction, QPushButton.quick-action {{
     min-height: 22px;
 }}
 QPushButton#quickAction:hover, QPushButton.quick-action:hover {{
-    background-color: #172642;
+    background-color: {btn_hover_bg};
     border-color: {ACCENT};
     color: {ACCENT};
 }}
 QPushButton#quickAction:pressed, QPushButton.quick-action:pressed {{
-    background-color: #0A1220;
+    background-color: {btn_press_bg};
 }}
 
 QPushButton#calibAuto, QPushButton.calib-auto {{
@@ -382,7 +535,7 @@ QPushButton#calibAuto, QPushButton.calib-auto {{
 QPushButton#calibAuto:hover, QPushButton.calib-auto:hover {{
     background: #10B981;
     border-color: #34D399;
-    color: #041A14;
+    color: #FFFFFF;
 }}
 
 QPushButton#companionBtn, QPushButton.companion-btn {{
@@ -411,7 +564,7 @@ QLineEdit, QTextEdit, QPlainTextEdit, QListWidget, QTreeWidget, QTableWidget {{
 }}
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
     border: 1px solid {alpha(ACCENT, 160)};
-    background-color: #0A1120;
+    background-color: {input_focus_bg};
 }}
 QLineEdit::placeholder {{
     color: {TEXT_FAINT};
@@ -665,3 +818,13 @@ def apply_to(widget: QWidget, extra: str = "") -> QWidget:
     widget.setStyleSheet((stylesheet() + extra).strip())
     apply_direction(widget)
     return widget
+
+
+# Load initial saved theme mode if present
+try:
+    from config.settings_manager import SettingsManager
+    _init_mode = SettingsManager().get("theme_mode", "dark")
+    if _init_mode == "light":
+        set_theme_mode("light")
+except Exception:
+    pass

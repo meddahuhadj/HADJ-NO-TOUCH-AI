@@ -31,7 +31,7 @@ class SecurityEngine:
         self.pending_command: Optional[Dict[str, Any]] = None
         self.pending_timestamp: float = 0.0
         self.timeout_seconds: float = float(
-            SettingsManager().get("security.confirmation_timeout_seconds", 10.0)
+            SettingsManager().get("security.confirmation_timeout_seconds", 5.0)
         )
         self.is_emergency_stopped: bool = False
 

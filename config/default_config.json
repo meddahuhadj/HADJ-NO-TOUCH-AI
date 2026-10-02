@@ -100,7 +100,7 @@
     "medium_risk_confirm": false,
     "high_risk_confirm": true,
     "critical_risk_confirm": true,
-    "confirmation_timeout_seconds": 10.0,
+    "confirmation_timeout_seconds": 5.0,
     "confirm_gestures": ["THUMB_UP"],
     "cancel_gestures": ["FIST"]
   },

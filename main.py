@@ -82,16 +82,19 @@ def main():
     lock = QLockFile(lock_path)
     lock.setStaleLockTime(30_000)
     if not lock.tryLock(100):
-        QMessageBox.warning(
-            None,
-            "HADJ NO-TOUCH AI",
-            "Une instance de HADJ NO-TOUCH AI est déjà en cours d'exécution.\n"
-            "Veuillez fermer l'autre instance pour libérer la caméra.\n\n"
-            "Si aucune fenêtre n'est ouverte, le fichier de verrou\n"
-            f"({lock_path}) peut être supprimé."
-        )
-        lock.unlock()
-        sys.exit(0)
+        # Auto-remove stale lock if the process that created it is dead
+        lock.removeStaleLockFile()
+        if not lock.tryLock(100):
+            QMessageBox.warning(
+                None,
+                "HADJ NO-TOUCH AI",
+                "Une instance de HADJ NO-TOUCH AI est déjà en cours d'exécution.\n"
+                "Veuillez fermer l'autre instance pour libérer la caméra.\n\n"
+                "Si aucune fenêtre n'est ouverte, le fichier de verrou\n"
+                f"({lock_path}) peut être supprimé."
+            )
+            lock.unlock()
+            sys.exit(0)
 
     window = MainWindow()
 

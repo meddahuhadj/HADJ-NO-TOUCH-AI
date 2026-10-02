@@ -11,6 +11,8 @@ logs/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+build/
+dist/
 
 .vercel
 .env*

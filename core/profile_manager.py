@@ -73,6 +73,21 @@ class ProfileManager:
     def record_voice_latency(self, latency_ms: float) -> None:
         self.voice_latency_ms = round(latency_ms, 1)
 
+    def check_cpu_throttle(self) -> bool:
+        """
+        If auto_eco is enabled (default True) and CPU exceeds 80%, throttles down to ECO.
+        Returns True if a throttling switch occurred.
+        """
+        if self.settings.get("performance.auto_eco", True):
+            try:
+                cpu = psutil.cpu_percent(interval=None)
+                if cpu > 80.0 and self.current_profile != PerformanceProfile.ECO:
+                    self.set_profile(PerformanceProfile.ECO)
+                    return True
+            except Exception:
+                pass
+        return False
+
     def get_system_stats(self) -> Dict[str, Any]:
         """Collects live CPU, RAM, FPS, and latency metrics."""
         cpu = psutil.cpu_percent(interval=None)
