@@ -1,0 +1,10 @@
+.git
+.venv
+build
+dist
+models
+user_data
+tests
+*.exe
+*.zip
+*.spec

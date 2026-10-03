@@ -3,20 +3,32 @@ import sys
 import threading
 
 import numpy as np
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QMainWindow, QMessageBox, QPushButton, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QMainWindow, QMessageBox, QPushButton, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QStackedWidget,
 )
+try:
+    from PySide6.QtWebEngineWidgets import QWebEngineView
+    from PySide6.QtWebEngineCore import QWebEngineSettings, QWebEnginePage
+    _WEBENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"[MainWindow] QtWebEngine notice: {e}")
+    _WEBENGINE_AVAILABLE = False
+
+from web_server import start_background_server, stop_background_server
 
 from ui import theme
 from ui import widgets as W
 from ui.camera_widget import CameraWidget
 from ui.privacy_dashboard import PrivacyDashboardDialog
 from ui.calibration_wizard import CalibrationWizardDialog
+from ui.first_run_wizard import FirstRunWizardDialog
+from ui.tutorial_overlay import InteractiveTutorialOverlay
 from ui.accessibility_panel import AccessibilityDialog
 from ui.macro_dialog import MacroManagerDialog
+from ui.custom_commands_dialog import CustomCommandsDialog
 from ui.demo_mode import DemoModeDialog
 from ui.system_tray import HadjSystemTray
 from ui.floating_overlay_hud import FloatingOverlayHUD
@@ -126,6 +138,7 @@ class MainWindow(QMainWindow):
         self.qt_bridge.security_cleared.connect(self._clear_security_prompt)
         self.qt_bridge.command_finished.connect(self._on_command_finished)
         self.qt_bridge.app_profile_changed.connect(self._on_app_profile_changed)
+        self.qt_bridge.camera_status_changed.connect(self._on_camera_status_changed)
 
         theme.apply_to(self)
         self._init_ui()
@@ -138,6 +151,7 @@ class MainWindow(QMainWindow):
         i18n.on_language_changed(self._on_language_changed)
 
         # Start background workers
+        start_background_server(port=8000)
         self.camera_stream.start()
         self.speech_engine.start()
         self.companion_server.start()
@@ -160,8 +174,10 @@ class MainWindow(QMainWindow):
         self.retranslate()
         self._update_telemetry()
 
-        # Guided calibration on first launch
-        if not self.settings.get("calibration.guided_done", False):
+        # First launch wizard & onboarding
+        if not self.settings.get("first_run_completed", False):
+            QTimer.singleShot(600, lambda: FirstRunWizardDialog(self).exec())
+        elif not self.settings.get("calibration.guided_done", False):
             QTimer.singleShot(800, self.show_calibration)
 
     # ------------------------------------------------------------------ #
@@ -177,10 +193,44 @@ class MainWindow(QMainWindow):
         root.setSpacing(theme.GAP)
 
         root.addWidget(self._build_header())
-        root.addLayout(self._build_sensor_bar())
-        root.addWidget(self._build_pc_control_dock())
-        root.addLayout(self._build_workspace(), 1)
-        root.addWidget(self._build_action_bar())
+
+        # Main view stack (Page 0: Modern Web Dashboard, Page 1: Native Diagnostic Workspace)
+        self.view_stack = QStackedWidget(central)
+
+        if _WEBENGINE_AVAILABLE:
+            self.web_view = QWebEngineView(self)
+            ws = self.web_view.settings()
+            ws.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+            ws.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+            ws.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
+            ws.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
+            ws.setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
+            # Auto-grant permissions for webcam/mic
+            self.web_view.page().featurePermissionRequested.connect(
+                lambda origin, feat: self.web_view.page().setFeaturePermission(
+                    origin, feat, QWebEnginePage.PermissionPolicy.PermissionGrantedByUser
+                )
+            )
+            self.web_view.load(QUrl("http://127.0.0.1:8000"))
+            self.view_stack.addWidget(self.web_view)
+        else:
+            self.web_view = None
+
+        # Native Diagnostic & Sensor Workspace
+        self.native_container = QWidget(central)
+        native_lay = QVBoxLayout(self.native_container)
+        native_lay.setContentsMargins(0, 0, 0, 0)
+        native_lay.setSpacing(theme.GAP)
+        native_lay.addLayout(self._build_sensor_bar())
+        native_lay.addWidget(self._build_pc_control_dock())
+        native_lay.addLayout(self._build_workspace(), 1)
+        native_lay.addWidget(self._build_action_bar())
+
+        self.view_stack.addWidget(self.native_container)
+        root.addWidget(self.view_stack, 1)
+
+        # Start on modern web dashboard by default
+        self.view_stack.setCurrentIndex(0 if _WEBENGINE_AVAILABLE else 1)
 
     def _build_header(self) -> QWidget:
         card = W.frame(self, "card")
@@ -190,6 +240,7 @@ class MainWindow(QMainWindow):
         identity.setSpacing(3)
         self.brand_label = W.label(card, "", "brandTitle")
         self.subtitle_label = W.label(card, "", "brandSubtitle")
+        self.brand_label.setMinimumWidth(210)
         identity.addWidget(self.brand_label)
         identity.addWidget(self.subtitle_label)
         lay.addLayout(identity)
@@ -208,6 +259,40 @@ class MainWindow(QMainWindow):
             "padding: 4px 10px; font-size: 11px; font-weight: 700;"
         )
         lay.addWidget(self.app_profile_pill)
+
+        self.view_switch_btn = QPushButton("", card)
+        self.view_switch_btn.setCursor(Qt.PointingHandCursor)
+        self.view_switch_btn.setObjectName("viewSwitchBtn")
+        self.view_switch_btn.setStyleSheet(
+            f"background-color: {theme.ACCENT_SOFT}; color: {theme.ACCENT};"
+            f"border: 1px solid {theme.ACCENT}; border-radius: 6px;"
+            "padding: 6px 12px; font-size: 11px; font-weight: 700;"
+        )
+        self.view_switch_btn.clicked.connect(self.toggle_view_mode)
+        lay.addWidget(self.view_switch_btn)
+
+        self.header_lang_combo = QComboBox(card)
+        self.header_lang_combo.setObjectName("headerLangCombo")
+        self.header_lang_combo.setCursor(Qt.PointingHandCursor)
+        self.header_lang_combo.addItem("🌐 Français", "fr")
+        self.header_lang_combo.addItem("🌐 English", "en")
+        self.header_lang_combo.addItem("🌐 العربية", "ar")
+
+        cur_lang = i18n.current_language()
+        for i in range(self.header_lang_combo.count()):
+            if self.header_lang_combo.itemData(i) == cur_lang:
+                self.header_lang_combo.setCurrentIndex(i)
+                break
+
+        self.header_lang_combo.currentIndexChanged.connect(self._on_header_lang_combo_changed)
+        self.header_lang_combo.setStyleSheet(
+            f"QComboBox {{ background-color: {theme.CANVAS_DEEP}; color: {theme.TEXT};"
+            f"border: 1px solid {theme.BORDER}; border-radius: 6px;"
+            "padding: 4px 10px; font-size: 11px; font-weight: 700; min-width: 110px; }}"
+            f"QComboBox::drop-down {{ border: none; }}"
+            f"QComboBox QAbstractItemView {{ background-color: {theme.SURFACE}; color: {theme.TEXT}; selection-background-color: {theme.ACCENT_SOFT}; }}"
+        )
+        lay.addWidget(self.header_lang_combo)
 
         self.theme_btn = W.button(self, "", "ghost", self._toggle_theme)
         self.theme_btn.setCursor(Qt.PointingHandCursor)
@@ -329,13 +414,7 @@ class MainWindow(QMainWindow):
         self.language_combo.currentIndexChanged.connect(self._on_language_selected)
         lay.addWidget(self.language_combo)
 
-        lay.addWidget(W.separator())
 
-        self.theme_btn = QPushButton(self)
-        self.theme_btn.setCursor(Qt.PointingHandCursor)
-        self.theme_btn.setFlat(True)
-        self.theme_btn.clicked.connect(self._toggle_theme)
-        lay.addWidget(self.theme_btn)
 
         lay.addWidget(W.separator())
         self.profile_label = W.label(self, "", "faint")
@@ -453,6 +532,7 @@ class MainWindow(QMainWindow):
             ("main.accessibility", self.show_accessibility),
             ("main.keyboard", self.toggle_virtual_keyboard),
             ("main.macros", self.show_macros),
+            ("main.custom_commands", self.show_custom_commands),
             ("main.demo", self.show_demo_mode),
         ):
             btn = W.button(card, "", "ghost", slot)
@@ -483,6 +563,8 @@ class MainWindow(QMainWindow):
 
     def _on_language_changed(self, code: str):
         """Rebuilds the whole interface in the newly selected language."""
+        # Apply RTL direction for Arabic or LTR for French/English
+        self.setLayoutDirection(Qt.RightToLeft if code == "ar" else Qt.LeftToRight)
         theme.apply_to(self)
         self.retranslate()
         for component in (self.floating_hud, self.virtual_keyboard, self.tray, self.camera_widget):
@@ -490,6 +572,28 @@ class MainWindow(QMainWindow):
             if callable(retranslate):
                 retranslate()
         self._refresh_event_log()
+
+    def _on_header_lang_combo_changed(self, index: int):
+        if not hasattr(self, "header_lang_combo"):
+            return
+        code = self.header_lang_combo.itemData(index)
+        if code and code != i18n.current_language():
+            i18n.set_language(code)
+            try:
+                self.speech_engine.set_language(code)
+            except Exception:
+                pass
+
+    def _cycle_language(self):
+        codes = i18n.available_languages()
+        cur = i18n.current_language()
+        idx = codes.index(cur) if cur in codes else 0
+        next_code = codes[(idx + 1) % len(codes)]
+        i18n.set_language(next_code)
+        try:
+            self.speech_engine.set_language(next_code)
+        except Exception:
+            pass
 
     def _toggle_theme(self):
         theme.cycle_theme_mode()
@@ -527,6 +631,23 @@ class MainWindow(QMainWindow):
         )
         self._refresh_switch(self.skeleton_toggle, "main.skeleton", self.skeleton_enabled)
         self._refresh_listening(self._listening)
+
+        # View Switcher Button
+        if hasattr(self, "view_switch_btn"):
+            if getattr(self, "view_stack", None) and self.view_stack.currentIndex() == 0:
+                self.view_switch_btn.setText(tr("main.view_native"))
+            else:
+                self.view_switch_btn.setText(tr("main.view_dashboard"))
+
+        # Header Language Switch Combo Sync
+        if hasattr(self, "header_lang_combo"):
+            self.header_lang_combo.blockSignals(True)
+            cur_lang = i18n.current_language()
+            for i in range(self.header_lang_combo.count()):
+                if self.header_lang_combo.itemData(i) == cur_lang:
+                    self.header_lang_combo.setCurrentIndex(i)
+                    break
+            self.header_lang_combo.blockSignals(False)
 
         # Compact mode button
         if hasattr(self, "compact_mode_btn"):
@@ -705,6 +826,25 @@ class MainWindow(QMainWindow):
 
     def _on_frame_update(self, frame_bgr: np.ndarray, gesture_name: str, confidence: float):
         self.camera_widget.update_frame(frame_bgr, gesture_name, confidence)
+
+    def _on_camera_status_changed(self, is_available: bool, reason: str):
+        """Graceful degradation: notifies user when camera degrades to Voice-Only mode or recovers."""
+        if not is_available:
+            msg = "📷 Caméra indisponible / couverte — Mode Voice-Only activé"
+            if hasattr(self, "gesture_info_label") and self.gesture_info_label:
+                self.gesture_info_label.setText(f"[DEGRADED]  ·  {msg}")
+                self.gesture_info_label.setStyleSheet(
+                    f"color: {theme.WARNING}; font-weight: 600; font-size: 13px;"
+                )
+            if hasattr(self, "floating_hud") and self.floating_hud:
+                self.floating_hud.update_gesture(msg, 0.0)
+        else:
+            msg = "📷 Caméra opérationnelle — Mode Multimodal (Voix + Gestes) réactivé"
+            if hasattr(self, "gesture_info_label") and self.gesture_info_label:
+                self.gesture_info_label.setText(f"[READY]  ·  {msg}")
+                self.gesture_info_label.setStyleSheet(
+                    f"color: {theme.SUCCESS}; font-weight: 600; font-size: 13px;"
+                )
 
     def _on_speech_command(self, cmd_text: str, latency_ms: float):
         self._run_command(cmd_text, source="VOICE", latency_ms=latency_ms)
@@ -1351,22 +1491,33 @@ class MainWindow(QMainWindow):
             self.current_cmd_label.setText(tr("calib.auto_failed"))
             self.intent_details_label.setText(str(res.get("error", "")))
 
+    def toggle_view_mode(self):
+        if not hasattr(self, "view_stack") or getattr(self, "web_view", None) is None:
+            return
+        if self.view_stack.currentIndex() == 0:
+            self.view_stack.setCurrentIndex(1)
+            self.view_switch_btn.setText(tr("main.view_dashboard"))
+            self.toast.show_message(tr("main.view_native_toast"), icon="📷", tone="info")
+        else:
+            self.view_stack.setCurrentIndex(0)
+            self.view_switch_btn.setText(tr("main.view_native"))
+            self.toast.show_message(tr("main.view_dashboard_toast"), icon="🌐", tone="info")
+
+    def show_custom_commands(self):
+        CustomCommandsDialog(self).exec()
+
+    def show_tutorial(self):
+        InteractiveTutorialOverlay(self).exec()
+
     def _open_web_companion(self):
-        import webbrowser
-        import urllib.request
-        import subprocess
-        import os
-
-        def _worker():
-            try:
-                urllib.request.urlopen("http://127.0.0.1:8000/api/status", timeout=0.4)
-            except Exception:
-                web_srv = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web_server.py")
-                if os.path.exists(web_srv):
-                    subprocess.Popen([sys.executable, web_srv], cwd=os.path.dirname(os.path.dirname(__file__)))
+        if hasattr(self, "web_view") and self.web_view:
+            self.view_stack.setCurrentIndex(0)
+            self.web_view.reload()
+            self.view_switch_btn.setText(tr("main.view_native"))
+            self.toast.show_message(tr("main.view_dashboard_toast"), icon="🔄", tone="info")
+        else:
+            import webbrowser
             webbrowser.open("http://127.0.0.1:8000")
-
-        threading.Thread(target=_worker, daemon=True).start()
 
     # ------------------------------------------------------------------ #
     # Shutdown
@@ -1380,6 +1531,7 @@ class MainWindow(QMainWindow):
         self.speech_engine.listener.stop()
         self.speech_engine.tts.stop()
         self.companion_server.stop()
+        stop_background_server()
         # Writes are coalesced, so the pending settings change has to be forced
         # out here or the last adjustment before exit is lost.
         self.settings.flush()

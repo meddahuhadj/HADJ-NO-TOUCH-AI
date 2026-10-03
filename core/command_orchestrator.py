@@ -16,6 +16,7 @@ from core.logger import EventLogger
 from core.event_bus import EventBus, EventType
 from core.audio_effects import AudioEffects
 from voice.tts_engine import TTSEngine
+from core.custom_commands import CustomCommandManager
 from config.settings_manager import SettingsManager
 
 
@@ -41,6 +42,7 @@ class CommandOrchestrator:
         self.logger = EventLogger()
         self.tts = TTSEngine()
         self.audio_effects = AudioEffects()
+        self.custom_cmd_mgr = CustomCommandManager()
 
         # Engine integrations
         self.ai_adapter = LocalAIAdapter()
@@ -72,6 +74,11 @@ class CommandOrchestrator:
 
         self.current_language = self.settings.get("language", "ar")
 
+        # Check for custom user-defined commands first
+        match_custom = self.custom_cmd_mgr.find_match(text)
+        if match_custom:
+            return self._execute_custom_command(match_custom, source)
+
         # Parse intent
         intent_res: IntentResult = self.ai_adapter.parse_with_fallback(text)
         self.event_bus.publish(EventType.INTENT_PARSED, {
@@ -85,6 +92,53 @@ class CommandOrchestrator:
             return self._execute_compound_plan(intent_res.sub_intents, source)
 
         return self._execute_single_intent(intent_res, source, latency_ms)
+
+    def _execute_custom_command(self, cmd: Dict[str, Any], source: str) -> Dict[str, Any]:
+        """Executes a matched user-defined custom command through the Security Risk Engine."""
+        risk_level_str = cmd.get("risk_level", "LOW")
+        try:
+            risk_level = RiskLevel[risk_level_str]
+        except Exception:
+            risk_level = RiskLevel.LOW
+
+        if risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
+            if not self.security.is_waiting_confirmation():
+                prompt = self.security.create_confirmation_prompt(
+                    intent_name=f"CUSTOM_{cmd['id']}",
+                    risk_level=risk_level,
+                    action_text=f"Exécuter la commande personnalisée : {cmd['name']}"
+                )
+                return {"status": "WAITING_CONFIRMATION", "prompt": prompt}
+
+        act_type = cmd.get("action_type", "open_path")
+        target = cmd.get("action_target", "")
+        success = True
+
+        try:
+            if act_type == "open_path":
+                self.file_manager.open_path(target)
+            elif act_type == "launch_app":
+                self.app_launcher.launch(target)
+            elif act_type == "shortcut":
+                self.win_control.press_hotkey(target)
+            elif act_type == "type_text":
+                self.win_control.type_text(target)
+            elif act_type == "open_url":
+                self.browser_control.open_url(target)
+        except Exception as e:
+            success = False
+            print(f"[Orchestrator] Custom command error: {e}")
+
+        # Log event in Audit Journal & trigger feedback
+        self.logger.log_event(
+            event_type="CUSTOM_COMMAND_EXECUTED",
+            details={"cmd_id": cmd["id"], "name": cmd["name"], "target": target, "success": success},
+            risk_level=risk_level_str
+        )
+        if success and self.settings.get("audio.feedback_enabled", True):
+            self.audio_effects.play_success_tone()
+
+        return {"status": "EXECUTED", "action": f"CUSTOM_{cmd['name']}", "success": success}
 
     def _execute_compound_plan(self, sub_intents, source: str) -> Dict[str, Any]:
         def _runner():

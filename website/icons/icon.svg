@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="HADJ">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#09101E"/>
+      <stop offset="1" stop-color="#04070D"/>
+    </linearGradient>
+    <radialGradient id="lift" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#0EA5E9" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#0EA5E9" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#4CC9F0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="transparent"/>
+  <rect x="8" y="8" width="496" height="496" rx="120" fill="url(#plate)"/>
+  <circle cx="256" cy="256" r="270" fill="url(#lift)"/>
+  <rect x="8" y="8" width="496" height="496" rx="120" fill="none" stroke="#1B2740" stroke-width="2"/>
+  <g stroke="url(#stroke)" stroke-width="19.4" stroke-linecap="round" fill="none">
+    <circle cx="256" cy="256" r="101.4" stroke-dasharray="438 637" stroke-dashoffset="-99"/>
+  </g>
+  <path d="M 336 199 A 122 122 0 0 1 358 224" fill="none" stroke="#9CCBFB" stroke-width="12" stroke-linecap="round" opacity="0.55"/>
+  <circle cx="288" cy="224" r="33.8" fill="#6FD3F4"/>
+  <g stroke="#4CC9F0" stroke-width="14.5" stroke-linecap="round" opacity="0.9">
+    <line x1="256" y1="120.4" x2="256" y2="256"/>
+    <line x1="256" y1="391.6" x2="256" y2="256"/>
+    <line x1="120.4" y1="256" x2="256" y2="256"/>
+    <line x1="391.6" y1="256" x2="256" y2="256"/>
+  </g>
+</svg>

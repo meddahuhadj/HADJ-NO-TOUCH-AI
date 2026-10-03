@@ -13,7 +13,7 @@ from core.auto_calibration import (
     AdaptiveTuner, CalibrationReport, CalibrationSession, HandSample,
 )
 from core.event_bus import EventBus, EventType
-from core.profile_manager import ProfileManager
+from core.profile_manager import ProfileManager, PerformanceProfile
 from core.app_profile_manager import AppProfileManager, AppProfile
 from core.security_engine import SecurityEngine
 from core.qt_bridge import QtBridge
@@ -73,6 +73,9 @@ class CameraStream(threading.Thread):
         self.pointer_screen_pos: tuple = (0, 0)
         self._pinch_clicked: bool = False
         self._double_pinch_clicked: bool = False
+        self._dwell_pos: Optional[tuple] = None
+        self._dwell_start: float = 0.0
+        self._dwell_clicked: bool = False
         self._last_hand_time: float = 0.0
         self._hand_lost_grace_s: float = 0.40  # Eliminates flickering 'hand not visible'
 
@@ -93,6 +96,11 @@ class CameraStream(threading.Thread):
         # Eco mode & frame cache
         self._eco_frame_counter: int = 0
         self._last_landmarks_data: Optional[HandLandmarksData] = None
+
+        # Camera health & Graceful degradation state
+        self.is_camera_healthy: bool = True
+        self.voice_only_degraded: bool = False
+        self._last_valid_frame_time: float = time.time()
 
         # Gesture callbacks or hooks
         self.on_frame_callbacks = []
@@ -378,15 +386,33 @@ class CameraStream(threading.Thread):
                 self.win_control.move_mouse(sx, sy)
                 self.qt_bridge.cursor_moved.emit(sx, sy)
 
-        # Pinch -> Left Click (or Media Play/Pause if in MEDIA profile)
-        if gesture == HandGesture.PINCH:
-            if not self._pinch_clicked and self.recognizer.is_gesture_committed(gesture):
-                self._pinch_clicked = True
-                active_profile = self.app_profile_mgr.get_active_profile()
-                if active_profile == AppProfile.MEDIA:
-                    self.win_control.media_play_pause()
+                # Dwell Click: holding cursor steadily for >= 1.2s triggers an automatic click
+                now_dwell = time.time()
+                if self._dwell_pos is None:
+                    self._dwell_pos = (sx, sy)
+                    self._dwell_start = now_dwell
+                    self._dwell_clicked = False
                 else:
-                    self.win_control.click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
+                    dist = ((sx - self._dwell_pos[0]) ** 2 + (sy - self._dwell_pos[1]) ** 2) ** 0.5
+                    if dist < 22:
+                        if (now_dwell - self._dwell_start) >= 1.2 and not self._dwell_clicked:
+                            self.win_control.click(sx, sy)
+                            self._dwell_clicked = True
+                            self.event_bus.publish(EventType.GESTURE_CLICK, {"x": sx, "y": sy, "type": "dwell"})
+                    else:
+                        self._dwell_pos = (sx, sy)
+                        self._dwell_start = now_dwell
+                        self._dwell_clicked = False
+            else:
+                self._dwell_pos = None
+                self._dwell_clicked = False
+
+        # Pinch -> Left Click
+        if gesture == HandGesture.PINCH:
+            if not self._pinch_clicked:
+                self._pinch_clicked = True
+                self.win_control.click(self.pointer_screen_pos[0], self.pointer_screen_pos[1])
+                self.event_bus.publish(EventType.GESTURE_CLICK, {"x": self.pointer_screen_pos[0], "y": self.pointer_screen_pos[1], "type": "pinch"})
         else:
             self._pinch_clicked = False
 
@@ -461,13 +487,28 @@ class CameraStream(threading.Thread):
 
             if not self.camera_enabled or self.cap is None or not self.cap.isOpened():
                 self._release_drag_if_needed()
+                if self.is_camera_healthy and self.camera_enabled:
+                    self.is_camera_healthy = False
+                    self.voice_only_degraded = True
+                    self.qt_bridge.camera_status_changed.emit(False, "camera_unavailable")
                 time.sleep(0.05)
                 continue
 
             ret, frame = self.cap.read()
             if not ret or frame is None:
+                if (time.time() - self._last_valid_frame_time) > 2.5 and self.is_camera_healthy:
+                    self.is_camera_healthy = False
+                    self.voice_only_degraded = True
+                    self.qt_bridge.camera_status_changed.emit(False, "camera_read_failed")
                 time.sleep(0.03)
                 continue
+
+            # Frame read succeeded: update health state
+            self._last_valid_frame_time = time.time()
+            if not self.is_camera_healthy:
+                self.is_camera_healthy = True
+                self.voice_only_degraded = False
+                self.qt_bridge.camera_status_changed.emit(True, "camera_restored")
 
             # Mirror frame horizontally so webcam preview acts naturally like a mirror
             if self.settings.get("performance.mirror_camera", True):
