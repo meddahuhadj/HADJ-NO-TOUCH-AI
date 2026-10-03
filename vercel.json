@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "outputDirectory": "web",
+  "outputDirectory": "website",
   "buildCommand": "echo 'Static site'",
   "installCommand": "echo 'No install step'",
   "framework": null,
