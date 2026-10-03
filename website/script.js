@@ -19,6 +19,22 @@
   var STORE_KEY = "hadj.lang";
   var RTL = "ar";
 
+  /* Centralized download and release configuration */
+  var DOWNLOAD_CONFIG = {
+    version: "1.0.0",
+    releaseDate: "2026-10-02",
+    fileName: "HADJ-NoTouch-portable.zip",
+    fileSize: "1 133 391 066 octets (~1,05 Go)",
+    sha256: "DFAA733D61A340EB9629C18AE020DE24EC00E36714E792033D5EDB0D28EF2900",
+    psCommand: "Get-FileHash .\\HADJ-NoTouch-portable.zip -Algorithm SHA256",
+    downloadUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v1.0.0/HADJ-NoTouch-portable.zip",
+    releasesPageUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/latest",
+    virusTotalUrl: "https://www.virustotal.com/gui/file/dfaa733d61a340eb9629c18ae020de24ec00e36714e792033d5edb0d28ef2900",
+    issuesUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/issues",
+    repoUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI",
+    licenseUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/blob/main/README.md"
+  };
+
   var S = {
     lang: DEFAULT,
     dir: "ltr",
@@ -413,6 +429,105 @@
       S.trayIdx = (S.trayIdx + 1) % TRAY.length;
       paintTray();
     }, 4200);
+  }
+
+  /* ================================================= HERO REAL DEMO SHOWCASE */
+  function initHeroDemo() {
+    var player = byId("heroDemoPlayer");
+    var video = byId("heroDemoVideo");
+    var fallback = byId("heroDemoFallback");
+    var playToggle = byId("hdpPlayToggle");
+    var simHand = byId("hdpSimHand");
+    var simCursor = byId("hdpSimCursor");
+    var simToast = byId("hdpSimToast");
+    var steps = [byId("hdpCap1"), byId("hdpCap2"), byId("hdpCap3"), byId("hdpCap4")].filter(Boolean);
+
+    if (!player) { return; }
+
+    var isPaused = false;
+    var currentStep = 0;
+    var stepTimer = null;
+
+    if (video) {
+      video.addEventListener("canplay", function () {
+        if (fallback) { fallback.style.display = "none"; }
+      });
+      video.addEventListener("error", function () {
+        if (fallback) { fallback.style.display = "block"; }
+      });
+    }
+
+    var phrases = [
+      "« حاسوب، افتح المفكرة »",
+      "“Computer, click”",
+      "« Ordinateur, nouvelle ligne »",
+      "« حاسوب، خمسة »"
+    ];
+
+    function activateStep(idx) {
+      currentStep = idx % 4;
+      steps.forEach(function (st, i) {
+        st.classList.toggle("is-active", i === currentStep);
+      });
+
+      if (simToast) {
+        simToast.textContent = phrases[currentStep];
+        simToast.style.opacity = currentStep >= 1 ? "1" : "0";
+      }
+
+      if (simCursor && simHand) {
+        if (currentStep === 0) {
+          simCursor.style.transform = "translate(50px, 35px)";
+          simHand.style.transform = "translate(35px, 45px) scale(1)";
+        } else if (currentStep === 1) {
+          simCursor.style.transform = "translate(160px, 60px) scale(0.88)";
+          simHand.style.transform = "translate(145px, 70px) scale(0.92)";
+        } else if (currentStep === 2) {
+          simCursor.style.transform = "translate(110px, 95px)";
+          simHand.style.transform = "translate(95px, 105px)";
+        } else if (currentStep === 3) {
+          simCursor.style.transform = "translate(80px, 45px)";
+          simHand.style.transform = "translate(65px, 55px)";
+        }
+      }
+    }
+
+    function runLoop() {
+      if (stepTimer) { w.clearTimeout(stepTimer); }
+      if (isPaused || S.reduced) { return; }
+      activateStep(currentStep + 1);
+      stepTimer = w.setTimeout(runLoop, 6500);
+    }
+
+    if (!S.reduced) {
+      activateStep(0);
+      stepTimer = w.setTimeout(runLoop, 6500);
+    }
+
+    if (playToggle) {
+      playToggle.addEventListener("click", function () {
+        isPaused = !isPaused;
+        playToggle.classList.toggle("is-paused", isPaused);
+        clear(playToggle);
+        playToggle.appendChild(icon(isPaused ? "i-play" : "i-pause"));
+        if (video && video.readyState >= 2) {
+          if (isPaused) { video.pause(); } else { video.play(); }
+        } else {
+          if (!isPaused) { runLoop(); } else if (stepTimer) { w.clearTimeout(stepTimer); }
+        }
+      });
+    }
+
+    steps.forEach(function (st, idx) {
+      st.addEventListener("click", function () {
+        activateStep(idx);
+        if (!isPaused) {
+          if (stepTimer) { w.clearTimeout(stepTimer); }
+          stepTimer = w.setTimeout(runLoop, 7500);
+        }
+      });
+      st.style.cursor = "pointer";
+    });
   }
 
   /* canvas waveform shared by the tray widget and the dictation demo */
@@ -1501,6 +1616,117 @@
     });
   }
 
+  /* ================================================= DOWNLOAD & VERIFY ====== */
+  function initDownloadAndTrust() {
+    /* 1. Sync all download links */
+    $$("[data-download-link]").forEach(function (a) {
+      a.setAttribute("href", DOWNLOAD_CONFIG.downloadUrl);
+    });
+
+    /* 2. Setup copy buttons with accessible feedback */
+    function copyText(txt, btn) {
+      var done = function () {
+        var prevTxt = btn.getAttribute("data-orig-txt");
+        if (!prevTxt) {
+          prevTxt = btn.textContent;
+          btn.setAttribute("data-orig-txt", prevTxt);
+        }
+        btn.classList.add("is-copied");
+        var labelNode = btn.querySelector(".copy-txt") || btn;
+        labelNode.textContent = t("dl.verify.copied");
+        announce(t("dl.verify.copied"));
+        w.setTimeout(function () {
+          btn.classList.remove("is-copied");
+          labelNode.textContent = t(btn.getAttribute("data-copy-key") || "dl.verify.copySha");
+        }, 2200);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(done).catch(function () {
+          fallbackCopy(txt, done);
+        });
+      } else {
+        fallbackCopy(txt, done);
+      }
+    }
+
+    function fallbackCopy(txt, cb) {
+      var ta = D.createElement("textarea");
+      ta.value = txt;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      ta.style.top = "-9999px";
+      D.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        D.execCommand("copy");
+        if (cb) { cb(); }
+      } catch (e) {}
+      D.body.removeChild(ta);
+    }
+
+    var btnSha = byId("btnCopySha");
+    if (btnSha) {
+      btnSha.setAttribute("data-copy-key", "dl.verify.copySha");
+      btnSha.addEventListener("click", function () {
+        copyText(DOWNLOAD_CONFIG.sha256, btnSha);
+      });
+    }
+
+    var btnPs = byId("btnCopyPs");
+    if (btnPs) {
+      btnPs.setAttribute("data-copy-key", "dl.verify.copyPs");
+      btnPs.addEventListener("click", function () {
+        copyText(DOWNLOAD_CONFIG.psCommand, btnPs);
+      });
+    }
+
+    /* 3. Changelog accessible dialog modal */
+    var modal = byId("changelogModal");
+    var openBtns = [byId("btnHeroChangelog"), byId("btnDlChangelog")].filter(Boolean);
+    var closeBtn = byId("btnCloseChangelog");
+    var lastActive = null;
+
+    function openModal() {
+      if (!modal) { return; }
+      lastActive = D.activeElement;
+      modal.removeAttribute("hidden");
+      modal.classList.add("is-open");
+      openBtns.forEach(function (b) { b.setAttribute("aria-expanded", "true"); });
+      D.body.style.overflow = "hidden";
+      if (closeBtn) { closeBtn.focus(); }
+    }
+
+    function closeModal() {
+      if (!modal) { return; }
+      modal.classList.remove("is-open");
+      modal.setAttribute("hidden", "");
+      openBtns.forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+      D.body.style.overflow = "";
+      if (lastActive && lastActive.focus) { lastActive.focus(); }
+    }
+
+    openBtns.forEach(function (b) {
+      b.addEventListener("click", openModal);
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeModal);
+    }
+
+    if (modal) {
+      modal.addEventListener("click", function (e) {
+        if (e.target === modal) { closeModal(); }
+      });
+      D.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !modal.hasAttribute("hidden")) {
+          closeModal();
+        }
+      });
+    }
+  }
+
   /* ================================================================= BOOT */
   function boot() {
     try {
@@ -1514,6 +1740,372 @@
     }
   }
 
+  /* ==========================================================================
+     ENRICHMENTS: AudioSynth, 21-Landmark Mesh, WebCam, Speech, Firewall & Specs
+     ========================================================================== */
+
+  var AudioSynth = {
+    ctx: null,
+    muted: true,
+    init: function () {
+      var saved = store("hadj.audio");
+      this.muted = saved === "false" ? false : true;
+      this.updateBtn();
+      var btn = byId("audioToggleBtn");
+      if (btn) {
+        var self = this;
+        btn.addEventListener("click", function () { self.toggle(); });
+      }
+    },
+    getCtx: function () {
+      if (!this.ctx && (w.AudioContext || w.webkitAudioContext)) {
+        var AC = w.AudioContext || w.webkitAudioContext;
+        this.ctx = new AC();
+      }
+      if (this.ctx && this.ctx.state === "suspended") {
+        this.ctx.resume();
+      }
+      return this.ctx;
+    },
+    toggle: function () {
+      this.muted = !this.muted;
+      store("hadj.audio", this.muted ? "true" : "false");
+      this.updateBtn();
+      if (!this.muted) { this.beep(988, 80); }
+    },
+    updateBtn: function () {
+      var btn = byId("audioToggleBtn");
+      if (!btn) { return; }
+      btn.classList.toggle("is-active", !this.muted);
+      var label = !this.muted ? t("audio.enabled") : t("audio.disabled");
+      btn.setAttribute("title", label);
+      btn.setAttribute("aria-label", label);
+    },
+    beep: function (freq, dur, type) {
+      if (this.muted) { return; }
+      var ctx = this.getCtx();
+      if (!ctx) { return; }
+      try {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (dur / 1000));
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + (dur / 1000));
+      } catch (e) {}
+    },
+    clickPop: function () { this.beep(1200, 40, "triangle"); },
+    armBeep: function (armed) { this.beep(armed ? 988 : 494, armed ? 80 : 100); },
+    alarm: function () {
+      this.beep(440, 150, "sawtooth");
+      var self = this;
+      w.setTimeout(function () { self.beep(880, 200, "sawtooth"); }, 160);
+    },
+    chime: function () {
+      var self = this;
+      self.beep(523, 60);
+      w.setTimeout(function () { self.beep(659, 60); }, 70);
+      w.setTimeout(function () { self.beep(784, 90); }, 140);
+    }
+  };
+
+  function initLabEnrichments() {
+    var switcher = byId("labModeSwitcher");
+    var simBtn = byId("modeBtnSim");
+    var meshBtn = byId("modeBtnMesh");
+    var camBtn = byId("modeBtnCam");
+    var desktop = byId("labDesktop");
+    var canvas = byId("meshCanvas");
+    var webcamBox = byId("webcamContainer");
+    var video = byId("webcamVideo");
+    var toggleCamBtn = byId("btnToggleCam");
+
+    if (!switcher) { return; }
+
+    var mode = "sim";
+    var stream = null;
+
+    function setMode(m) {
+      mode = m;
+      $$(".lab-mode-btn", switcher).forEach(function (b) {
+        b.classList.toggle("is-active", b.getAttribute("data-lab-mode") === m);
+      });
+      if (desktop) { desktop.hidden = (m !== "sim"); }
+      if (canvas) { canvas.hidden = (m !== "mesh"); }
+      if (webcamBox) { webcamBox.hidden = (m !== "cam"); }
+
+      if (m === "mesh") { startMeshLoop(); }
+      else { stopMeshLoop(); }
+
+      if (m !== "cam" && stream) {
+        stream.getTracks().forEach(function (tr) { tr.stop(); });
+        stream = null;
+        if (toggleCamBtn) { toggleCamBtn.textContent = t("lab.cam.start"); }
+      }
+    }
+
+    if (simBtn) { simBtn.addEventListener("click", function () { setMode("sim"); }); }
+    if (meshBtn) { meshBtn.addEventListener("click", function () { setMode("mesh"); }); }
+    if (camBtn) { camBtn.addEventListener("click", function () { setMode("cam"); }); }
+
+    /* WebCam Handler */
+    if (toggleCamBtn && video) {
+      toggleCamBtn.addEventListener("click", function () {
+        if (stream) {
+          stream.getTracks().forEach(function (tr) { tr.stop(); });
+          stream = null;
+          video.srcObject = null;
+          toggleCamBtn.textContent = t("lab.cam.start");
+          toast("WebCam désactivée");
+        } else {
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true }).then(function (s) {
+              stream = s;
+              video.srcObject = s;
+              toggleCamBtn.textContent = t("lab.cam.stop");
+              toast("WebCam activée (Flux 100% local)");
+              AudioSynth.armBeep(true);
+            }).catch(function (err) {
+              toast("Accès WebCam refusé ou indisponible: " + err.message);
+            });
+          } else {
+            toast("WebCam non supportée par votre navigateur");
+          }
+        }
+      });
+    }
+
+    /* 21 Landmark Mesh Renderer */
+    var meshRaf = 0;
+    var mx = 400, my = 250;
+    var stage = byId("labStage");
+
+    if (stage) {
+      stage.addEventListener("pointermove", function (e) {
+        if (mode === "mesh" && canvas) {
+          var r = canvas.getBoundingClientRect();
+          mx = e.clientX - r.left;
+          my = e.clientY - r.top;
+        }
+      });
+    }
+
+    function startMeshLoop() {
+      if (meshRaf) { return; }
+      function draw() {
+        if (mode !== "mesh" || !canvas) { meshRaf = 0; return; }
+        var ctx = canvas.getContext("2d");
+        var cw = canvas.width = canvas.offsetWidth || 800;
+        var ch = canvas.height = canvas.offsetHeight || 500;
+
+        ctx.clearRect(0, 0, cw, ch);
+
+        /* Draw Tech Grid Background */
+        ctx.strokeStyle = "rgba(46, 230, 197, 0.08)";
+        ctx.lineWidth = 1;
+        for (var x = 0; x < cw; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, ch); ctx.stroke(); }
+        for (var y = 0; y < ch; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke(); }
+
+        /* Compute 21 Landmarks */
+        var wx = mx, wy = my + 130;
+        var landmarks = [
+          { x: wx, y: wy },
+          { x: wx - 40, y: wy - 30 }, { x: wx - 70, y: wy - 65 }, { x: wx - 85, y: wy - 100 }, { x: wx - 90, y: wy - 135 },
+          { x: wx - 25, y: wy - 95 }, { x: wx - 20, y: wy - 135 }, { x: wx - 15, y: wy - 165 }, { x: mx, y: my },
+          { x: wx, y: wy - 100 }, { x: wx + 5, y: wy - 145 }, { x: wx + 10, y: wy - 180 }, { x: wx + 15, y: wy - 205 },
+          { x: wx + 25, y: wy - 95 }, { x: wx + 30, y: wy - 135 }, { x: wx + 35, y: wy - 165 }, { x: wx + 40, y: wy - 190 },
+          { x: wx + 50, y: wy - 85 }, { x: wx + 58, y: wy - 115 }, { x: wx + 65, y: wy - 140 }, { x: wx + 72, y: wy - 160 }
+        ];
+
+        var connections = [
+          [0,1],[1,2],[2,3],[3,4],
+          [0,5],[5,6],[6,7],[7,8],
+          [5,9],[9,10],[10,11],[11,12],
+          [9,13],[13,14],[14,15],[15,16],
+          [13,17],[17,18],[18,19],[19,20],[0,17]
+        ];
+
+        ctx.strokeStyle = "#2ee6c5";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+        for (var i = 0; i < connections.length; i++) {
+          var p1 = landmarks[connections[i][0]];
+          var p2 = landmarks[connections[i][1]];
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+
+        var pdx = landmarks[4].x - landmarks[8].x;
+        var pdy = landmarks[4].y - landmarks[8].y;
+        var pDist = Math.round(Math.sqrt(pdx * pdx + pdy * pdy));
+
+        ctx.strokeStyle = pDist < 35 ? "#4d8cff" : "rgba(255, 182, 77, 0.6)";
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(landmarks[4].x, landmarks[4].y);
+        ctx.lineTo(landmarks[8].x, landmarks[8].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        for (var j = 0; j < 21; j++) {
+          var pt = landmarks[j];
+          ctx.fillStyle = (j === 8 || j === 4) ? "#4d8cff" : "#2ee6c5";
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, (j === 8 || j === 4) ? 7 : 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = "#a9b1c7";
+        ctx.font = "13px 'JetBrains Mono', monospace";
+        ctx.fillText("MediaPipe 3D Hand Skeleton — 21 Points", 20, 30);
+        ctx.fillText("Index Tip (L8): X=" + Math.round(landmarks[8].x) + " Y=" + Math.round(landmarks[8].y), 20, 50);
+        ctx.fillText("Pinch Distance (L4-L8): " + pDist + " px" + (pDist < 35 ? " [PINCH ACTIVE]" : ""), 20, 70);
+
+        meshRaf = w.requestAnimationFrame(draw);
+      }
+      meshRaf = w.requestAnimationFrame(draw);
+    }
+
+    function stopMeshLoop() {
+      if (meshRaf) { w.cancelAnimationFrame(meshRaf); meshRaf = 0; }
+    }
+  }
+
+  function initSpeechRecognition() {
+    var btn = byId("btnSpeechRec");
+    var input = byId("cmdInput");
+    if (!btn) { return; }
+
+    var SpeechRec = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      btn.addEventListener("click", function () {
+        toast(t("commands.speechUnsupported"));
+      });
+      return;
+    }
+
+    var rec = new SpeechRec();
+    rec.continuous = false;
+    rec.interimResults = false;
+
+    var listening = false;
+
+    btn.addEventListener("click", function () {
+      if (listening) {
+        rec.stop();
+        return;
+      }
+      rec.lang = S.lang === "ar" ? "ar-SA" : S.lang === "en" ? "en-US" : "fr-FR";
+      try {
+        rec.start();
+        listening = true;
+        btn.classList.add("is-listening");
+        toast(t("commands.listening"));
+        AudioSynth.chime();
+      } catch (e) {}
+    });
+
+    rec.onresult = function (e) {
+      listening = false;
+      btn.classList.remove("is-listening");
+      var text = (e.results[0] && e.results[0][0]) ? e.results[0][0].transcript : "";
+      if (text) {
+        if (input) {
+          input.value = text;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        toast("Reconnu : « " + text + " »");
+        AudioSynth.chime();
+      }
+    };
+
+    rec.onerror = function () {
+      listening = false;
+      btn.classList.remove("is-listening");
+    };
+
+    rec.onend = function () {
+      listening = false;
+      btn.classList.remove("is-listening");
+    };
+  }
+
+  function initFirewallGuard() {
+    var btn = byId("btnTestFirewall");
+    var term = byId("fwTerminal");
+    if (!btn || !term) { return; }
+
+    btn.addEventListener("click", function () {
+      AudioSynth.alarm();
+      var now = new Date().toLocaleTimeString();
+      var line1 = el("p", "fwt-line");
+      line1.innerHTML = '<span class="fwt-tag warn">[OUTBOUND REQUEST]</span> Attempting TCP connection to tele.hadj-ai.org:443 (' + now + ')';
+      term.appendChild(line1);
+
+      w.setTimeout(function () {
+        var line2 = el("p", "fwt-line");
+        line2.innerHTML = '<span class="fwt-tag block">' + t("privacy.packetBlocked") + '</span>';
+        term.appendChild(line2);
+        term.scrollTop = term.scrollHeight;
+        toast("Gardien Réseau : Connexion interceptée et bloquée !");
+      }, 350);
+    });
+  }
+
+  function initHardwareCalculator() {
+    var ramIn = byId("calcRam");
+    var cpuIn = byId("calcCpu");
+    var camIn = byId("calcCam");
+
+    var ramVal = byId("valRam");
+    var cpuVal = byId("valCpu");
+    var camVal = byId("valCam");
+
+    var fpsOut = byId("calcFps");
+    var latOut = byId("calcLat");
+    var engineOut = byId("calcEngine");
+    var badgeOut = byId("calcBadge");
+
+    if (!ramIn || !cpuIn || !camIn) { return; }
+
+    function updateCalc() {
+      var ram = parseInt(ramIn.value, 10);
+      var cpu = parseInt(cpuIn.value, 10);
+      var cam = parseInt(camIn.value, 10);
+
+      if (ramVal) { ramVal.textContent = ram + " Go"; }
+      if (cpuVal) { cpuVal.textContent = cpu + " cœurs"; }
+      if (camVal) { camVal.textContent = cam === 1 ? "480p @ 30 FPS" : cam === 2 ? "720p @ 30 FPS" : "1080p @ 60 FPS"; }
+
+      var fps = Math.min(60, Math.round(25 + (ram * 1.2) + (cpu * 2) + (cam * 5)));
+      var lat = Math.max(18, Math.round(85 - (cpu * 3.5) - (ram * 2.2)));
+
+      if (fpsOut) { fpsOut.textContent = fps + " FPS"; }
+      if (latOut) { latOut.textContent = lat + " ms"; }
+
+      var recEngine = "Vosk Light (Ultra-léger)";
+      if (ram >= 8 && cpu >= 4) { recEngine = "Whisper Medium + MediaPipe GPU"; }
+      else if (ram >= 6) { recEngine = "Vosk Multilingue + MediaPipe CPU"; }
+      if (engineOut) { engineOut.textContent = recEngine; }
+
+      if (badgeOut) {
+        badgeOut.className = "res-badge " + (fps >= 45 ? "ok" : "warn");
+        badgeOut.textContent = fps >= 45 ? t("req.calc.optimal") : "Taux modéré (~" + fps + " FPS) — Vosk conseillé";
+      }
+    }
+
+    ramIn.addEventListener("input", updateCalc);
+    cpuIn.addEventListener("input", updateCalc);
+    camIn.addEventListener("input", updateCalc);
+    updateCalc();
+  }
+
   function bootAll() {
     S.reduced = !!(w.matchMedia && w.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -1524,17 +2116,24 @@
     S.lang = "__init__";
     setLang(startLang, { silent: true });
 
+    AudioSynth.init();
     initHeader();
     initReveal();
     initMagnetic();
     initPointerGlow();
     initTray();
+    initHeroDemo();
     initLab();
+    initLabEnrichments();
     initCommands();
+    initSpeechRecognition();
     initGrid();
     initDictation();
     initCalibration();
+    initFirewallGuard();
+    initHardwareCalculator();
     initFloatingQuickBar();
+    initDownloadAndTrust();
     watchNav();
 
     w.setTimeout(moveLangThumb, 60);

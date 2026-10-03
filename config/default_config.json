@@ -1,0 +1,118 @@
+{
+  "app_name": "HADJ NO-TOUCH OFFLINE AI",
+  "version": "1.0.0",
+  "language": "ar",
+  "supported_languages": ["ar", "fr", "en"],
+  "privacy": {
+    "offline_mode": true,
+    "block_external_network": true,
+    "log_raw_camera_frames": false,
+    "log_raw_audio": false,
+    "telemetry_enabled": false
+  },
+  "performance": {
+    "profile": "BALANCED",
+    "eco_fps": 15,
+    "balanced_fps": 22,
+    "performance_fps": 30,
+    "ai_max_fps": 30,
+    "camera_index": 0,
+    "camera_width": 640,
+    "camera_height": 480
+  },
+  "gestures": {
+    "enabled": true,
+    "cursor_speed": 1.6,
+    "smoothing_factor": 0.45,
+    "dead_zone_radius": 0.015,
+    "pinch_click_threshold": 0.045,
+    "pinch_hold_drag_delay": 0.35,
+    "double_pinch_window": 0.40,
+    "fist_debounce": 0.12,
+    "scroll_speed": 40,
+    "show_hand_skeleton": true,
+    "virtual_cursor_preview": true,
+    "swipe_velocity_threshold": 1.8,
+    "scroll_dead_band": 0.015,
+    "active_box": [0.0, 0.0, 1.0, 1.0],
+    "calibrated": false
+  },
+  "calibration": {
+    "auto_detect_devices": true,
+    "adaptive_tuning": true,
+    "adaptive_confidence": 0.6,
+    "adaptive_min_samples": 45,
+    "adaptive_write_threshold": 0.08,
+    "adaptive_sample_window": 240,
+    "schema_version": 1,
+    "last_run": null
+  },
+  "audio": {
+    "noise_floor": 0.0,
+    "speech_threshold": 0.06,
+    "input_device": "",
+    "auto_gain": true,
+    "level_meter": true
+  },
+  "voice": {
+    "enabled": true,
+    "wake_words": [
+      "hey hadj",
+      "bonjour hadj",
+      "يا حاج",
+      "ياحاج",
+      "hadj",
+      "حاج"
+    ],
+    "emergency_phrases": [
+      "stop hadj",
+      "توقف يا حاج",
+      "قف",
+      "arrête",
+      "stop"
+    ],
+    "listen_timeout_seconds": 6.0,
+    "hands_free_mode": false,
+    "phrase_time_limit_seconds": 5.0,
+    "tts_feedback_enabled": true,
+    "tts_volume": 0.9,
+    "tts_rate": 160
+  },
+  "head_tracking": {
+    "enabled": false,
+    "nod_threshold": 0.035,
+    "shake_threshold": 0.045,
+    "cursor_control": false
+  },
+  "gaze_tracking": {
+    "enabled": false,
+    "dwell_time_seconds": 1.0,
+    "blink_click": true
+  },
+  "screen_vision": {
+    "enabled": true,
+    "ocr_enabled": true,
+    "ui_element_detection": true,
+    "target_detection_confidence": 0.70
+  },
+  "security": {
+    "low_risk_auto_execute": true,
+    "medium_risk_confirm": false,
+    "high_risk_confirm": true,
+    "critical_risk_confirm": true,
+    "confirmation_timeout_seconds": 5.0,
+    "confirm_gestures": ["THUMB_UP"],
+    "cancel_gestures": ["FIST"]
+  },
+  "accessibility": {
+    "mode": "MULTIMODAL",
+    "dwell_click": false,
+    "high_contrast_hud": true,
+    "large_cursor": true
+  },
+  "system": {
+    "start_with_windows": false,
+    "minimize_to_tray": true,
+    "notification_sounds": true
+  }
+}
