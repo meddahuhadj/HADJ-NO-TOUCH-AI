@@ -19,3 +19,4 @@ dist/
 
 # Offline Vosk speech models, fetched by scripts/download_vosk_models.py.
 models/
+.venv/

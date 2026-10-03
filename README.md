@@ -173,20 +173,24 @@ while measuring so the calibration cannot move the pointer it is calibrating.
 
 ## 8. How to Launch & Run / التشغيل
 
-### Launch on Windows:
+### Install & launch on any Windows PC:
+Requirement: **Python 3.10, 3.11 or 3.12** (3.13+ is not supported by MediaPipe).
+If none is found, `launch.bat` offers to install Python 3.12 with `winget`.
+
 Double click `launch.bat` or run:
 ```cmd
 launch.bat
 ```
+The first launch creates a private environment in `.venv`, installs the pinned
+packages from `requirements.txt` and downloads the offline Vosk voice models
+(French + English). This takes several minutes and needs Internet once; later
+launches start directly.
 
-Or run directly with Python 3.12:
-```powershell
-& "C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe" main.py
-```
+To start over, delete the `.venv` folder and run `launch.bat` again.
 
 ### Run Unit Tests:
 ```powershell
-& "C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe" -m unittest discover tests
+.venv\Scripts\python.exe -m unittest discover tests
 ```
 
 ---

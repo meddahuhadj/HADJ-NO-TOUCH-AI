@@ -1,22 +1,30 @@
 # HADJ NO-TOUCH OFFLINE AI - Python Dependencies
 # High-Performance Offline Touchless Control Suite
+#
+# Requires Python 3.10, 3.11 or 3.12 (mediapipe 0.10.x has no wheels for 3.13+).
+#
+# Versions are pinned to a known-good set. mediapipe 1.x removed the
+# `mp.solutions` API the hand tracker uses, mediapipe 0.10 needs numpy 1.x,
+# and opencv-python 4.12+ requires numpy 2 — an unpinned install on a new PC
+# pulls in all three breaking releases.
 
-PySide6>=6.6.0
-opencv-python>=4.8.0
-mediapipe>=0.10.14
-pyautogui>=0.9.54
-pywin32>=306
-pywinauto>=0.6.8
-pycaw>=20240210
+PySide6==6.11.2
+opencv-python==4.11.0.86
+mediapipe==0.10.21
+protobuf==4.25.9
+numpy==1.26.4
+pyautogui==0.9.54
+pywin32==311
+pywinauto==0.6.9
+pycaw==20251023
 screen_brightness_control>=0.23.0
-sounddevice>=0.4.6
+sounddevice==0.5.6
 # Microphone capture: SpeechRecognition drives the offline dictation path, and
 # both it and the automatic calibration's level probe read PortAudio directly.
-pyaudio>=0.2.13
-SpeechRecognition>=3.10.0
-vosk>=0.3.45
-pyttsx3>=2.90
-psutil>=5.9.0
-Pillow>=10.0.0
-numpy>=1.24.0
-pytesseract>=0.3.10
+pyaudio==0.2.14
+SpeechRecognition==3.17.0
+vosk==0.3.45
+pyttsx3==2.99
+psutil==7.2.2
+Pillow==10.1.0
+pytesseract==0.3.13
