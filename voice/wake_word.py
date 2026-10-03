@@ -48,6 +48,12 @@ class WakeWordDetector:
             "hadj",
             "haj",
             "alhadj",
+            # How the offline French/English Vosk models spell "Hadj".
+            "bonjour adj",
+            "hey adj",
+            "adj",
+            "hajj",
+            "hadge",
         ], key=len, reverse=True)
         self.emergency_phrases: List[str] = self._all_emergency_phrases()
 

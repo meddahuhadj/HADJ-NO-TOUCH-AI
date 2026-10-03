@@ -1,11 +1,23 @@
+import os
+import json
 import time
 import threading
 import queue
-from typing import Optional, Callable
+from typing import Dict, Optional, Callable
+import numpy as np
 import speech_recognition as sr
 
 from core.event_bus import EventBus, EventType
 from config.settings_manager import SettingsManager
+
+# Unpacked by scripts/download_vosk_models.py, one folder per language code.
+VOSK_MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "vosk")
+VOSK_SAMPLE_RATE = 16000
+
+# Auto-gain targets a peak at ~70% of full scale. The gain is capped so a
+# silent room is not blown up into loud noise.
+AUTO_GAIN_TARGET_PEAK = 0.7 * 32767
+AUTO_GAIN_MAX = 20.0
 
 
 class AudioListener(threading.Thread):
@@ -29,6 +41,10 @@ class AudioListener(threading.Thread):
         self._mic_lock = threading.Lock()
         self.microphone = None
         self.callbacks = []
+
+        # Vosk models are loaded on first use per language; None marks a
+        # language whose model is missing so the disk is not probed each phrase.
+        self._vosk_models: Dict[str, Optional[object]] = {}
 
     def _init_microphone(self):
         with self._mic_lock:
@@ -91,6 +107,55 @@ class AudioListener(threading.Thread):
             except Exception as e:
                 time.sleep(0.1)
 
+    @staticmethod
+    def _apply_auto_gain(audio: sr.AudioData) -> sr.AudioData:
+        """
+        Raises a quiet recording to a usable level.
+
+        Built-in laptop microphone arrays often deliver speech peaking at a few
+        percent of full scale, which neither Vosk nor Google can transcribe.
+        """
+        samples = np.frombuffer(audio.get_raw_data(convert_width=2), dtype=np.int16).astype(np.float32)
+        if samples.size == 0:
+            return audio
+        samples -= samples.mean()
+        peak = float(np.abs(samples).max())
+        if peak < 1.0:
+            return audio
+        gain = min(AUTO_GAIN_MAX, AUTO_GAIN_TARGET_PEAK / peak)
+        if gain <= 1.0:
+            return audio
+        boosted = np.clip(samples * gain, -32768, 32767).astype(np.int16)
+        return sr.AudioData(boosted.tobytes(), audio.sample_rate, 2)
+
+    def _vosk_model(self, lang: str):
+        if lang not in self._vosk_models:
+            path = os.path.join(VOSK_MODELS_DIR, lang)
+            model = None
+            if os.path.isdir(path):
+                try:
+                    import vosk
+                    vosk.SetLogLevel(-1)
+                    model = vosk.Model(path)
+                    print(f"[AudioListener] Vosk model loaded: {path}")
+                except Exception as e:
+                    print(f"[AudioListener] Vosk model load failed ({path}): {e}")
+            else:
+                print(f"[AudioListener] No Vosk model for '{lang}' in {VOSK_MODELS_DIR} "
+                      f"(run scripts/download_vosk_models.py {lang})")
+            self._vosk_models[lang] = model
+        return self._vosk_models[lang]
+
+    def _recognize_vosk(self, audio: sr.AudioData, lang: str) -> Optional[str]:
+        model = self._vosk_model(lang)
+        if model is None:
+            return None
+        import vosk
+        rec = vosk.KaldiRecognizer(model, VOSK_SAMPLE_RATE)
+        rec.AcceptWaveform(audio.get_raw_data(convert_rate=VOSK_SAMPLE_RATE, convert_width=2))
+        text = json.loads(rec.FinalResult()).get("text", "").strip()
+        return text or None
+
     def _recognize_offline(self, audio) -> Optional[str]:
         """
         Transcribes audio data locally or with resilient language-aware fallback.
@@ -99,17 +164,16 @@ class AudioListener(threading.Thread):
         lang = self.settings.get("language", "ar")
         lang_code = "ar-SA" if lang == "ar" else ("fr-FR" if lang == "fr" else "en-US")
 
-        # 1. Try Vosk if local model is unpacked
+        if self.settings.get("audio.auto_gain", True):
+            audio = self._apply_auto_gain(audio)
+
+        # 1. Offline Vosk model for the current language
         try:
-            import vosk
-            res = self.recognizer.recognize_vosk(audio)
-            import json
-            data = json.loads(res)
-            text = data.get("text", "").strip()
+            text = self._recognize_vosk(audio, lang)
             if text:
                 return text
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[AudioListener] Vosk recognition error: {e}")
 
         # 2. Resilient fallback with short socket timeout to prevent network hangs
         try:
