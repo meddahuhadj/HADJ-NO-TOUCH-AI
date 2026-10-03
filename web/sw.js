@@ -2,7 +2,7 @@
    The only third-party origin is Google Fonts, cached opportunistically so a
    second offline visit keeps the typography intact. */
 
-const VERSION = "hadj-v1.3.0";
+const VERSION = "hadj-v1.4.0";
 const SHELL = `${VERSION}-shell`;
 const FONTS = `${VERSION}-fonts`;
 
