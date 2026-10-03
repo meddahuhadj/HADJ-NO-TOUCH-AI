@@ -88,20 +88,38 @@ class VirtualCursor:
             (norm_y - top) / (bottom - top),
         )
 
+    def _target_on_screen(self, norm_x: float, norm_y: float) -> Tuple[float, float]:
+        """
+        Absolute hand-to-screen mapping, stretched around the centre by speed.
+
+        With speed 1.6 the fingertip only has to travel across the middle ~62%
+        of the frame to reach every screen edge, so the side buttons are
+        reachable while the whole hand stays visible to the tracker.
+        """
+        tx = 0.5 + (norm_x - 0.5) * self.speed_factor
+        ty = 0.5 + (norm_y - 0.5) * self.speed_factor
+        tx = max(0.0, min(1.0, tx))
+        ty = max(0.0, min(1.0, ty))
+        return tx * self.screen_width, ty * self.screen_height
+
     def map_normalized_to_screen(self, norm_x: float, norm_y: float) -> Tuple[int, int]:
         """
         Maps normalized camera coordinates (0.0 to 1.0)
-        to smoothed screen pixel coordinates with deadzone filtering and acceleration.
+        to smoothed screen pixel coordinates with deadzone filtering.
+
+        The mapping is absolute: a given hand position always means the same
+        screen position. The previous version added accelerated deltas to its
+        own output and compared the next hand sample against that output, so a
+        still hand made the pointer oscillate and it could never settle on a
+        button.
         """
         # Frame is already mirrored horizontally by CameraStream
         norm_x, norm_y = self.remap_to_active_box(norm_x, norm_y)
-        target_norm_x = norm_x
 
         if self.prev_norm_x is None:
-            self.prev_norm_x = target_norm_x
+            self.prev_norm_x = norm_x
             self.prev_norm_y = norm_y
-            self.smooth_x = target_norm_x * self.screen_width
-            self.smooth_y = norm_y * self.screen_height
+            self.smooth_x, self.smooth_y = self._target_on_screen(norm_x, norm_y)
             # The calibrated reach box maps its own corners to exactly 0.0 and
             # 1.0, so the first frame has to be clamped like every other one.
             return (
@@ -109,42 +127,26 @@ class VirtualCursor:
                 max(0, min(self.screen_height - 1, int(self.smooth_y))),
             )
 
-        # Calculate displacement in normalized space
-        dx = target_norm_x - self.prev_norm_x
-        dy = norm_y - self.prev_norm_y
-        dist = math.hypot(dx, dy)
+        dist = math.hypot(norm_x - self.prev_norm_x, norm_y - self.prev_norm_y)
 
-        # Deadzone filter: if displacement is minuscule (tremor/jitter), ignore it
-        if dist < self.dead_zone:
-            target_norm_x = self.prev_norm_x
-            norm_y = self.prev_norm_y
-        else:
-            # Dynamic acceleration: small movements move slightly slower for fine accuracy,
-            # larger intentional sweeps accelerate across screen
-            accel = 1.0 + min(1.5, dist * 8.0)
-            dx = dx * self.speed_factor * accel
-            dy = dy * self.speed_factor * accel
-            target_norm_x = self.prev_norm_x + dx
-            norm_y = self.prev_norm_y + dy
+        # Deadzone filter: tremor smaller than the dead zone keeps the last
+        # accepted hand position, so the pointer holds still on its target.
+        if dist >= self.dead_zone:
+            self.prev_norm_x = norm_x
+            self.prev_norm_y = norm_y
+        target_x, target_y = self._target_on_screen(self.prev_norm_x, self.prev_norm_y)
 
-        # Clamp normalized coords
-        target_norm_x = max(0.0, min(1.0, target_norm_x))
-        norm_y = max(0.0, min(1.0, norm_y))
-
-        # Target screen position
-        target_x = target_norm_x * self.screen_width
-        target_y = norm_y * self.screen_height
-
-        # Exponential Moving Average (EMA) smoothing
-        self.smooth_x = (self.smoothing * self.smooth_x) + ((1.0 - self.smoothing) * target_x)
-        self.smooth_y = (self.smoothing * self.smooth_y) + ((1.0 - self.smoothing) * target_y)
+        # Exponential Moving Average (EMA) smoothing. Large, intentional sweeps
+        # are smoothed less so the pointer keeps up; small moves keep the full
+        # smoothing for precise aiming.
+        smoothing = self.smoothing / (1.0 + dist * 20.0)
+        self.smooth_x = (smoothing * self.smooth_x) + ((1.0 - smoothing) * target_x)
+        self.smooth_y = (smoothing * self.smooth_y) + ((1.0 - smoothing) * target_y)
 
         # Screen boundary clamping
         screen_x = max(0, min(self.screen_width - 1, int(self.smooth_x)))
         screen_y = max(0, min(self.screen_height - 1, int(self.smooth_y)))
 
-        self.prev_norm_x = target_norm_x
-        self.prev_norm_y = norm_y
         self.last_update_time = time.time()
 
         return screen_x, screen_y
