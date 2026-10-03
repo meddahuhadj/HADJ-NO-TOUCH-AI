@@ -891,10 +891,15 @@
   const THEME_KEY = "hadj.theme";
 
   function setTheme(theme) {
-    if (theme === "light") {
+    if (theme === "high-contrast") {
+      document.documentElement.setAttribute("data-theme", "high-contrast");
+      document.documentElement.classList.add("high-contrast");
+    } else if (theme === "light") {
       document.documentElement.setAttribute("data-theme", "light");
+      document.documentElement.classList.remove("high-contrast");
     } else {
       document.documentElement.removeAttribute("data-theme");
+      document.documentElement.classList.remove("high-contrast");
     }
     try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
   }
@@ -913,6 +918,15 @@
         SoundFx.play("click");
         const isLight = document.documentElement.getAttribute("data-theme") === "light";
         setTheme(isLight ? "dark" : "light");
+      });
+    });
+
+    $$("[data-contrast-toggle]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        SoundFx.play("click");
+        const isHc = document.documentElement.getAttribute("data-theme") === "high-contrast";
+        setTheme(isHc ? "dark" : "high-contrast");
       });
     });
   }

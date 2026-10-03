@@ -1,11 +1,14 @@
 import sys
 import os
 
-# Auto-detect and re-exec with Python 3.12 if current Python is not Python 3.12
-py312 = r"C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe"
-if os.path.exists(py312) and sys.executable.lower() != py312.lower():
-    import subprocess
-    sys.exit(subprocess.call([py312] + sys.argv))
+from core.utils_path import get_project_root, get_resource_path
+
+# Auto-detect and re-exec with Python 3.12 if running from source and not Python 3.12
+if not getattr(sys, "frozen", False):
+    py312 = r"C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe"
+    if os.path.exists(py312) and sys.executable.lower() != py312.lower():
+        import subprocess
+        sys.exit(subprocess.call([py312] + sys.argv))
 
 import json
 import time
@@ -17,16 +20,16 @@ import psutil
 from typing import Dict, Any
 
 PORT = 8000
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-WEB_DIR = os.path.join(PROJECT_ROOT, "web")
-TOKEN_FILE = os.path.join(PROJECT_ROOT, "config", "auth_token.secret")
+PROJECT_ROOT = get_project_root()
+WEB_DIR = get_resource_path("web")
+TOKEN_FILE = get_resource_path(os.path.join("config", "auth_token.secret"))
 
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-PY_EXE = r"C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe"
-if not os.path.exists(PY_EXE):
-    PY_EXE = sys.executable
+PY_EXE = sys.executable if getattr(sys, "frozen", False) else (
+    r"C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe" if os.path.exists(r"C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe") else sys.executable
+)
 
 # Lazy instances
 _win_control = None

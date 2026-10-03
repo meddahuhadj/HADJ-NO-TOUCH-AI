@@ -1,8 +1,8 @@
 import math
 import time
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt, QPoint, QTimer
-from PySide6.QtGui import QPainter, QColor, QPen, QBrush
+from PySide6.QtCore import Qt, QPoint, QTimer, QRectF
+from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QFont
 
 from config.settings_manager import SettingsManager
 
@@ -10,14 +10,11 @@ from config.settings_manager import SettingsManager
 class VirtualCursorOverlay(QWidget):
     """
     Lightweight 80x80 transparent overlay that follows the virtual cursor.
-
-    Key performance design:
-    - Small window (80x80) so DWM only composites a tiny region, not the full screen.
-    - Move is throttled to max ~30 Hz via a coalescing timer to avoid Win32
-      SetWindowPos message flooding that causes 'reageert niet'.
-    - The pulse animation timer only repaints, never moves the window.
-    - Position updates are stored immediately but the actual window move
-      is deferred to the next timer tick.
+    Features:
+    - Circular progress ring for Dwell mode.
+    - State-based color indicator: REST (Blue) -> HOVER (Green) -> CLICK (Red).
+    - Accessible non-color visual markers (Shape + Symbol: Dot, Ring, Crosshair).
+    - Throttled to ~30 Hz via coalescing timer to prevent DWM overhead.
     """
 
     SIZE = 80
@@ -40,19 +37,21 @@ class VirtualCursorOverlay(QWidget):
 
         self.setFixedSize(self.SIZE, self.SIZE)
 
-        # Logical cursor position (updated immediately from signal)
+        # Logical cursor position
         self._target_x = 960
         self._target_y = 540
-        # Actual window position (updated by timer)
         self._current_x = 960
         self._current_y = 540
         self._move_pending = False
 
-        self.is_pinching = False
-        self.is_emergency = False
-        self.pulse_phase = 0.0
+        # Dwell & Gesture State
+        self.dwell_progress: float = 0.0  # 0.0 to 1.0
+        self.cursor_state: str = "REST"   # "REST", "HOVER", "CLICK"
+        self.is_pinching: bool = False
+        self.is_emergency: bool = False
+        self.pulse_phase: float = 0.0
 
-        # Single timer drives both animation and coalesced move at ~30 FPS
+        # Coalescing timer (~30 FPS)
         self._timer = QTimer(self)
         self._timer.setInterval(33)
         self._timer.timeout.connect(self._on_tick)
@@ -87,10 +86,6 @@ class VirtualCursorOverlay(QWidget):
         except Exception:
             pass
 
-    # ------------------------------------------------------------------ #
-    # Signal handlers — store state only, never call self.move()
-    # ------------------------------------------------------------------ #
-
     def _on_cursor_signal(self, screen_x: int, screen_y: int):
         self._target_x = screen_x
         self._target_y = screen_y
@@ -98,19 +93,28 @@ class VirtualCursorOverlay(QWidget):
 
     def _on_gesture_signal(self, gesture_name: str, _conf: float):
         self.is_pinching = gesture_name in ("PINCH", "PINCH_HOLD", "DOUBLE_PINCH")
+        if self.is_pinching:
+            self.cursor_state = "CLICK"
+            self.dwell_progress = 1.0
+        elif gesture_name in ("POINT", "INDEX_STABLE"):
+            self.cursor_state = "HOVER"
+        else:
+            self.cursor_state = "REST"
+            self.dwell_progress = 0.0
+
         if gesture_name != "FIST":
             self.is_emergency = False
 
     def _on_emergency_signal(self, reason: str):
         self.is_emergency = (reason != "RESTORED")
 
-    # For backward compat with MainWindow line 77 connecting cursor_moved
     def update_position(self, screen_x: int, screen_y: int):
         self._on_cursor_signal(screen_x, screen_y)
 
-    # ------------------------------------------------------------------ #
-    # Timer tick — the ONLY place self.move() is ever called
-    # ------------------------------------------------------------------ #
+    def set_dwell_progress(self, progress: float, state: str = "HOVER"):
+        """Sets Dwell progress (0.0 to 1.0) and updates cursor state."""
+        self.dwell_progress = max(0.0, min(1.0, progress))
+        self.cursor_state = state
 
     def _on_tick(self):
         self.pulse_phase = (self.pulse_phase + 0.1) % 6.2832
@@ -126,10 +130,6 @@ class VirtualCursorOverlay(QWidget):
 
         self.update()
 
-    # ------------------------------------------------------------------ #
-    # Paint
-    # ------------------------------------------------------------------ #
-
     def paintEvent(self, event):
         if not self.settings.get("gestures.virtual_cursor_preview", True):
             return
@@ -138,31 +138,59 @@ class VirtualCursorOverlay(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         center = QPoint(self.HALF, self.HALF)
+        radius = 24.0
 
         if self.is_emergency:
-            painter.setPen(QPen(QColor(239, 68, 68, 220), 2.5))
-            painter.setBrush(QBrush(QColor(239, 68, 68, 50)))
+            # Emergency Stop State (Red Warning Cross)
+            painter.setPen(QPen(QColor(239, 68, 68, 240), 3))
+            painter.setBrush(QBrush(QColor(239, 68, 68, 60)))
+            painter.drawEllipse(center, 22, 22)
+            painter.setPen(QPen(QColor(255, 255, 255, 255), 3))
+            painter.drawLine(self.HALF - 8, self.HALF - 8, self.HALF + 8, self.HALF + 8)
+            painter.drawLine(self.HALF + 8, self.HALF - 8, self.HALF - 8, self.HALF + 8)
+
+        elif self.cursor_state == "CLICK" or self.is_pinching:
+            # State 3: CLICK / READY TO CLICK (Red + Crosshair Target)
+            painter.setPen(QPen(QColor(239, 68, 68, 240), 3))
+            painter.setBrush(QBrush(QColor(239, 68, 68, 90)))
             painter.drawEllipse(center, 18, 18)
-            painter.setPen(QPen(QColor(254, 202, 202, 255), 2))
+
+            # Non-color crosshair symbol (⊕)
+            painter.setPen(QPen(QColor(255, 255, 255, 240), 2))
+            painter.drawLine(self.HALF - 12, self.HALF, self.HALF + 12, self.HALF)
+            painter.drawLine(self.HALF, self.HALF - 12, self.HALF, self.HALF + 12)
             painter.drawPoint(center)
 
-        elif self.is_pinching:
-            painter.setPen(QPen(QColor(14, 165, 233, 240), 2))
-            painter.setBrush(QBrush(QColor(56, 189, 248, 120)))
-            painter.drawEllipse(center, 12, 12)
-            painter.setPen(QPen(QColor(255, 255, 255, 255), 3))
-            painter.drawPoint(center)
+        elif self.cursor_state == "HOVER" or self.dwell_progress > 0.0:
+            # State 2: HOVER (Green + Dwell Progress Ring + Open Ring Symbol)
+            # Track ring background
+            track_rect = QRectF(self.HALF - radius, self.HALF - radius, radius * 2, radius * 2)
+            painter.setPen(QPen(QColor(34, 197, 94, 60), 4))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(track_rect)
+
+            # Dwell progress arc (0 to 360 degrees)
+            span_angle = int(-self.dwell_progress * 360 * 16)
+            painter.setPen(QPen(QColor(34, 197, 94, 240), 4, Qt.SolidLine, Qt.RoundCap))
+            painter.drawArc(track_rect, 90 * 16, span_angle)
+
+            # Center Green Hover Circle with Open Ring Marker
+            painter.setPen(QPen(QColor(34, 197, 94, 220), 2))
+            painter.setBrush(QBrush(QColor(34, 197, 94, 140)))
+            painter.drawEllipse(center, 8, 8)
 
         else:
+            # State 1: REST (Blue + Solid Center Dot + Subtle Pulsing Halo)
             pulse = math.sin(self.pulse_phase) * 2.0
             radius_outer = 16 + pulse
 
-            painter.setPen(QPen(QColor(56, 189, 248, 140), 1.5))
+            painter.setPen(QPen(QColor(59, 130, 246, 120), 1.5))
             painter.setBrush(Qt.NoBrush)
             painter.drawEllipse(center, int(radius_outer), int(radius_outer))
 
-            painter.setPen(QPen(QColor(52, 211, 153, 240), 2))
-            painter.setBrush(QBrush(QColor(52, 211, 153, 180)))
-            painter.drawEllipse(center, 4, 4)
+            # Solid Center Blue Dot (●)
+            painter.setPen(QPen(QColor(59, 130, 246, 240), 2))
+            painter.setBrush(QBrush(QColor(59, 130, 246, 220)))
+            painter.drawEllipse(center, 6, 6)
 
         painter.end()

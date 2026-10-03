@@ -55,6 +55,27 @@ html[data-theme="light"] {
   --bad: #DC2626;
 }
 
+html[data-theme="high-contrast"], html.high-contrast {
+  --canvas: #000000;
+  --canvas-deep: #000000;
+  --surface: #000000;
+  --raised: #000000;
+  --sunk: #000000;
+  --border: #FFFFFF;
+  --border-strong: #FFFF00;
+  --faint: #111111;
+  --text: #FFFFFF;
+  --muted: #FFFF00;
+  --dim: #00FFFF;
+  --accent: #00FFFF;
+  --accent-deep: #00FFFF;
+  --accent-soft: #001122;
+  --violet: #FF00FF;
+  --ok: #00FF00;
+  --warn: #FFFF00;
+  --bad: #FF0000;
+}
+
 * { box-sizing: border-box; }
 
 [hidden] { display: none !important; }
