@@ -97,6 +97,11 @@ class CameraStream(threading.Thread):
         self._eco_frame_counter: int = 0
         self._last_landmarks_data: Optional[HandLandmarksData] = None
 
+        # Camera health & Graceful degradation state
+        self.is_camera_healthy: bool = True
+        self.voice_only_degraded: bool = False
+        self._last_valid_frame_time: float = time.time()
+
         # Gesture callbacks or hooks
         self.on_frame_callbacks = []
 
@@ -482,13 +487,28 @@ class CameraStream(threading.Thread):
 
             if not self.camera_enabled or self.cap is None or not self.cap.isOpened():
                 self._release_drag_if_needed()
+                if self.is_camera_healthy and self.camera_enabled:
+                    self.is_camera_healthy = False
+                    self.voice_only_degraded = True
+                    self.qt_bridge.camera_status_changed.emit(False, "camera_unavailable")
                 time.sleep(0.05)
                 continue
 
             ret, frame = self.cap.read()
             if not ret or frame is None:
+                if (time.time() - self._last_valid_frame_time) > 2.5 and self.is_camera_healthy:
+                    self.is_camera_healthy = False
+                    self.voice_only_degraded = True
+                    self.qt_bridge.camera_status_changed.emit(False, "camera_read_failed")
                 time.sleep(0.03)
                 continue
+
+            # Frame read succeeded: update health state
+            self._last_valid_frame_time = time.time()
+            if not self.is_camera_healthy:
+                self.is_camera_healthy = True
+                self.voice_only_degraded = False
+                self.qt_bridge.camera_status_changed.emit(True, "camera_restored")
 
             # Mirror frame horizontally so webcam preview acts naturally like a mirror
             if self.settings.get("performance.mirror_camera", True):

@@ -22,6 +22,7 @@ class QtBridge(QObject):
     security_cleared = Signal(str)                  # reason the prompt closed
     command_finished = Signal(dict)                 # command result from a worker thread
     app_profile_changed = Signal(str, str)          # (profile_id, app_info)
+    camera_status_changed = Signal(bool, str)       # (is_available, reason)
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:

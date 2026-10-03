@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QDialog, QRadioButton, QVBoxLayout,
+    QButtonGroup, QCheckBox, QDialog, QHBoxLayout, QPushButton, QRadioButton, QVBoxLayout,
 )
 
 import config.i18n as i18n
@@ -132,6 +132,46 @@ class AccessibilityDialog(QDialog):
         hand_box.addWidget(W.spacer())
         option_layout.addLayout(hand_box)
 
+        # Preset Usage Profiles Card
+        self.preset_card = W.frame(self, "card")
+        preset_lay = QVBoxLayout(self.preset_card)
+        preset_lay.setContentsMargins(theme.PAD - 4, theme.PAD - 4, theme.PAD - 4, theme.PAD - 4)
+        preset_lay.setSpacing(8)
+
+        p_title = W.section_title(self.preset_card, "🎯 Profils de configuration prédéfinis")
+        preset_lay.addWidget(p_title)
+
+        p_box = QHBoxLayout()
+        p_box.setSpacing(8)
+
+        btn_motor = QPushButton("🧑‍🦽 Handicap Moteur", self.preset_card)
+        btn_motor.setCursor(Qt.PointingHandCursor)
+        btn_motor.setStyleSheet(f"background: {theme.CANVAS_DEEP}; color: {theme.TEXT}; border: 1px solid {theme.BORDER}; border-radius: 6px; padding: 6px 10px; font-weight: 600;")
+        btn_motor.clicked.connect(self._apply_preset_motor)
+        p_box.addWidget(btn_motor)
+
+        btn_kitchen = QPushButton("👨‍🍳 Cuisine / Atelier", self.preset_card)
+        btn_kitchen.setCursor(Qt.PointingHandCursor)
+        btn_kitchen.setStyleSheet(f"background: {theme.CANVAS_DEEP}; color: {theme.TEXT}; border: 1px solid {theme.BORDER}; border-radius: 6px; padding: 6px 10px; font-weight: 600;")
+        btn_kitchen.clicked.connect(self._apply_preset_kitchen)
+        p_box.addWidget(btn_kitchen)
+
+        btn_medical = QPushButton("🏥 Milieu Médical / Stérile", self.preset_card)
+        btn_medical.setCursor(Qt.PointingHandCursor)
+        btn_medical.setStyleSheet(f"background: {theme.CANVAS_DEEP}; color: {theme.TEXT}; border: 1px solid {theme.BORDER}; border-radius: 6px; padding: 6px 10px; font-weight: 600;")
+        btn_medical.clicked.connect(self._apply_preset_medical)
+        p_box.addWidget(btn_medical)
+
+        preset_lay.addLayout(p_box)
+        root.addWidget(self.preset_card)
+
+        # Audio Feedback option
+        self.audio_feedback_cb = QCheckBox(self.option_card)
+        self.audio_feedback_cb.setText("🔔 Retours sonores de confirmation et d'erreur (Audio Tones)")
+        self.audio_feedback_cb.setChecked(self.settings.get("audio.feedback_enabled", True))
+        self.audio_feedback_cb.toggled.connect(lambda v: self.settings.set("audio.feedback_enabled", v))
+        option_layout.addWidget(self.audio_feedback_cb)
+
         root.addWidget(self.option_card)
 
         root.addStretch()
@@ -148,6 +188,29 @@ class AccessibilityDialog(QDialog):
         new_mode = "high_contrast" if checked else "dark"
         theme.set_theme_mode(new_mode)
         theme.apply_to(self)
+
+    def _apply_preset_motor(self):
+        self.settings.set("accessibility.mode", "MULTIMODAL")
+        self.settings.set("accessibility.dwell_click", True)
+        self.settings.set("accessibility.large_cursor", True)
+        self.settings.set("gestures.smoothing_factor", 0.55)
+        self.dwell_cb.setChecked(True)
+        self.large_cursor_cb.setChecked(True)
+
+    def _apply_preset_kitchen(self):
+        self.settings.set("accessibility.mode", "MULTIMODAL")
+        self.settings.set("accessibility.dwell_click", False)
+        self.settings.set("gestures.pinch_click_threshold", 0.055)
+        self.settings.set("audio.feedback_enabled", True)
+        self.dwell_cb.setChecked(False)
+        self.audio_feedback_cb.setChecked(True)
+
+    def _apply_preset_medical(self):
+        self.settings.set("accessibility.mode", "VOICE_ONLY")
+        self.settings.set("accessibility.dwell_click", False)
+        self.settings.set("audio.feedback_enabled", True)
+        self.dwell_cb.setChecked(False)
+        self.audio_feedback_cb.setChecked(True)
 
     # ------------------------------------------------------------------ #
     # Localisation

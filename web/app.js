@@ -191,6 +191,8 @@
       "f.q4": "Que se passe-t-il si une commande est dangereuse ?", "f.a4": "Elle est classée par niveau de risque. Les niveaux HIGH et CRITICAL exigent une confirmation, donnée à la voix ou par le pouce levé. Le poing fermé annule à tout moment.",
       "f.q5": "Sur quelles machines ?", "f.a5": "Windows 10 et 11 avec Python 3.12, une webcam et un microphone. Le profil ECO permet de rester léger sur du matériel ancien.",
       "f.q6": "Peut-on l'utiliser pour l'accessibilité ?", "f.a6": "Oui. Le HUD à contraste élevé, le grand curseur, le clic à dwell et le mode multimodal sont prévus pour les situations où la précision pose problème.",
+      "f.q7": "Dépannage : Que faire si le micro ou la caméra n'est pas détecté ?", "f.a7": "Vérifiez les autorisations de confidentialité Windows (Paramètres > Confidentialité > Caméra/Microphone). Si la caméra est sombre ou absente, l'application bascule automatiquement en mode 'Voix uniquement' sans interruption, et restaure les gestes dès son retour.",
+      "f.q8": "Dépannage : Que faire si le curseur tremble ou le moteur ne démarre pas ?", "f.a8": "Si le curseur tremble, lancez le 'Calibrage Automatique' (1 clic) ou ajustez le lissage dans les paramètres. Si le moteur ne démarre pas, exécutez launch.bat ou lancez main.py avec Python 3.12.",
       "c.eyebrow": "Calibration automatique", "c.title": "Aucun seuil n'est codé en dur",
       "c.lead": "Les valeurs de reconnaissance ne sont pas des constantes de développeur : elles sont mesurées sur votre main, puis maintenues à jour en continu. Un assistant en huit étapes suffit.",
       "c.s1n": "Périphériques", "c.s1d": "Énumération des caméras et microphones ; ceux qui ne délivrent aucune image sont grisés.",
@@ -338,6 +340,8 @@
       "f.q4": "What happens if a command is dangerous?", "f.a4": "It is graded by risk tier. HIGH and CRITICAL require confirmation, given by voice or by a thumbs up. A closed fist cancels at any time.",
       "f.q5": "Which machines?", "f.a5": "Windows 10 and 11 with Python 3.12, a webcam and a microphone. The ECO profile stays light on older hardware.",
       "f.q6": "Can I use it for accessibility?", "f.a6": "Yes. The high-contrast HUD, large cursor, dwell click and multimodal mode exist precisely for situations where precision is a problem.",
+      "f.q7": "Troubleshooting: What if microphone or camera is not detected?", "f.a7": "Check Windows privacy settings (Settings > Privacy > Camera/Microphone). If the camera is missing or dark, the app automatically degrades to 'Voice-Only' mode without interrupting your work, and restores gestures once available.",
+      "f.q8": "Troubleshooting: What if the cursor jitters or the engine fails to start?", "f.a8": "If the cursor jitters, run 'Auto-Calibration' (1 click) or adjust smoothing in settings. If the engine fails to start, execute launch.bat or run main.py with Python 3.12.",
       "c.eyebrow": "Automatic calibration", "c.title": "No hard-coded thresholds",
       "c.lead": "Recognition values are not developer constants: they are measured on your hand, then kept up to date continuously. An eight-step assistant is all it takes.",
       "c.s1n": "Devices", "c.s1d": "Cameras and microphones are enumerated; those delivering no image are greyed out.",
@@ -485,6 +489,8 @@
       "f.q4": "ماذا يحدث إذا كان الأمر خطيرًا؟", "f.a4": "يُصنَّف حسب مستوى الخطر. يحتاج المستوى HIGH وCRITICAL إلى تأكيد يُقال صوتيًا أو بالإبهام لأعلى. والقبضة تلغي في أي لحظة.",
       "f.q5": "ما الأجهزة المدعومة؟", "f.a5": "ويندوز 10 و11 مع بايثون 3.12 وكاميرا وميكروفون. ووضع ECO يخفّض الاستهلاك على الأجهزة القديمة.",
       "f.q6": "هل يصلح لإتاحة الوصول؟", "f.a6": "نعم. اللوحة العلوية عالية التباين، والمؤشر الكبير، والنقر بالثبات، والوضع متعدّد الوسائط موجودة أصلًا للمواقف التي يصعب فيها الدقة.",
+      "f.q7": "حل المشاكل: ماذا أفعل إذا لم يتم اكتشاف الميكروفون أو الكاميرا؟", "f.a7": "تأكد من إعدادات الخصوصية في ويندوز (الإعدادات > الخصوصية > الكاميرا/الميكروفون). إذا كانت الكاميرا مفقودة أو مظلمة، ينتقل التطبيق تلقائيًا إلى وضع 'الصوت فقط' بدون انقطاع، ويستعيد الإيماءات فور توفر الكاميرا.",
+      "f.q8": "حل المشاكل: ماذا أفعل إذا كان المؤشر يرتجف أو المحرك لا يعمل؟", "f.a8": "إذا كان المؤشر يرتجف، شغّل 'المعايرة التلقائية' (بنقرة واحدة) أو اضبط التنعيم في الإعدادات. إذا لم يبدأ المحرك، نفّذ launch.bat أو شغّل main.py باستعمال Python 3.12.",
       "c.eyebrow": "المعايرة التلقائية", "c.title": "لا عتبات مكتوبة يدويًا",
       "c.lead": "قيم التعرّف ليست ثوابت من عند المطوّر: بل تُقاس على يدك، ثم تُحدَّث باستمرار. ثماني خطوات في معالج تكفي.",
       "c.s1n": "الأجهزة", "c.s1d": "حصر الكاميرات والميكروفونات، مع تدرّج الأجهزة التي لا تُنتج صورة.",
@@ -1783,23 +1789,35 @@
       });
     }
 
-    // Telemetry polling loop
+    // Exponential Backoff Reconnection Manager
+    let reconnectAttempts = 0;
+    let isPollingBusy = false;
+    let pollTimeoutId = null;
+
     async function pollStatus() {
+      if (isPollingBusy) return;
+      isPollingBusy = true;
       const startTime = performance.now();
+
       try {
         let stats = null;
-        const res = await fetch("/api/status").catch(() => null);
+        const res = await fetch("/api/status", { cache: "no-store" }).catch(() => null);
         if (res && res.ok) {
           stats = await res.json();
         } else {
-          const res8766 = await fetch("http://127.0.0.1:8766/status").catch(() => null);
+          const res8766 = await fetch("http://127.0.0.1:8766/status", { cache: "no-store" }).catch(() => null);
           if (res8766 && res8766.ok) stats = await res8766.json();
         }
 
         const pingTime = Math.round(performance.now() - startTime);
-        if (stats) {
-          if (statusBadge) statusBadge.classList.add("is-online");
-          if (statusTxt) statusTxt.textContent = "PC CONNECTÉ · CONTRÔLE TEMPS RÉEL";
+
+        if (stats && (stats.running || stats.status === "RUNNING" || stats.app)) {
+          reconnectAttempts = 0;
+          if (statusBadge) {
+            statusBadge.classList.remove("is-reconnecting", "is-offline");
+            statusBadge.classList.add("is-online");
+          }
+          if (statusTxt) statusTxt.textContent = "🟢 CONNECTÉ · MOTEUR LOCAL ACTIF";
           if (telemPing) telemPing.textContent = `${pingTime} ms`;
 
           const telem = stats.telemetry || {};
@@ -1807,21 +1825,48 @@
           if (telemRam && telem.memory_percent != null) telemRam.textContent = `${Math.round(telem.memory_percent)}%`;
           if (telemFps && telem.camera_fps != null) telemFps.textContent = `${Math.round(telem.camera_fps)}`;
         } else {
-          if (statusBadge) statusBadge.classList.remove("is-online");
-          if (statusTxt) statusTxt.textContent = "EN ATTENTE DU MOTEUR LOCAL (MODE INTERACTIF)";
-          if (telemPing) telemPing.textContent = "2 ms";
-          if (telemCpu) telemCpu.textContent = `${14 + Math.floor(Math.random() * 7)}%`;
-          if (telemRam) telemRam.textContent = `${32 + Math.floor(Math.random() * 3)}%`;
-          if (telemFps) telemFps.textContent = "30";
+          handleDisconnectedState();
         }
       } catch (_) {
-        if (statusBadge) statusBadge.classList.remove("is-online");
-        if (statusTxt) statusTxt.textContent = "EN ATTENTE DU MOTEUR LOCAL (MODE INTERACTIF)";
-        if (telemPing) telemPing.textContent = "2 ms";
-        if (telemCpu) telemCpu.textContent = `${14 + Math.floor(Math.random() * 7)}%`;
-        if (telemRam) telemRam.textContent = `${32 + Math.floor(Math.random() * 3)}%`;
-        if (telemFps) telemFps.textContent = "30";
+        handleDisconnectedState();
+      } finally {
+        isPollingBusy = false;
+        scheduleNextPoll();
       }
+    }
+
+    function handleDisconnectedState() {
+      reconnectAttempts++;
+      if (statusBadge) statusBadge.classList.remove("is-online");
+
+      if (reconnectAttempts <= 3) {
+        if (statusBadge) {
+          statusBadge.classList.remove("is-offline");
+          statusBadge.classList.add("is-reconnecting");
+        }
+        if (statusTxt) statusTxt.textContent = `🟡 RECONNEXION AU MOTEUR... (tentative ${reconnectAttempts})`;
+      } else {
+        if (statusBadge) {
+          statusBadge.classList.remove("is-reconnecting");
+          statusBadge.classList.add("is-offline");
+        }
+        if (statusTxt) statusTxt.textContent = "🔌 MOTEUR DÉCONNECTÉ — Démarrez main.py ou cliquez sur Relancer";
+      }
+
+      if (telemPing) telemPing.textContent = "-- ms";
+      if (telemCpu) telemCpu.textContent = "--%";
+      if (telemRam) telemRam.textContent = "--%";
+      if (telemFps) telemFps.textContent = "0";
+    }
+
+    function scheduleNextPoll() {
+      if (pollTimeoutId) clearTimeout(pollTimeoutId);
+      // Exponential backoff: 2.5s -> 4s -> 8s -> max 16s
+      let delay = 2500;
+      if (reconnectAttempts > 0) {
+        delay = Math.min(2500 * Math.pow(1.5, Math.min(reconnectAttempts, 5)), 16000);
+      }
+      pollTimeoutId = setTimeout(pollStatus, delay);
     }
 
     fetch("/api/token")
@@ -1830,7 +1875,6 @@
       .catch(() => {});
 
     pollStatus();
-    setInterval(pollStatus, 2500);
   }
 
   /* --------------------------------- boot -------------------------------- */

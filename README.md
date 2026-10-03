@@ -195,3 +195,33 @@ Or run directly with Python 3.12:
 - **100% Offline-First**: No data leaves your machine.
 - **Zero Cloud Recording**: Audio streams and camera frames are processed in volatile memory and immediately discarded.
 - **Local JSONL Audit Log**: Only text metadata (command, timestamp, intent, risk level, success) is kept locally for user audit.
+
+---
+
+## 10. Packaging & Executable Build / Empaquetage & Installateur
+
+### Générer l'exécutable autonome & la version portable (Zip) :
+Double-cliquez sur `package_windows.bat` ou lancez :
+```cmd
+package_windows.bat
+```
+L'exécutable autonome est généré dans `dist/HADJ_NoTouch/HADJ_NoTouch.exe` et l'archive portable `.zip` dans `dist/HADJ_NoTouch_v3_Windows_Portable.zip`.
+
+### Générer l'installateur Windows (.exe) avec Inno Setup :
+Ouvrez et compilez le fichier [`installer_setup.iss`](file:///d:/Travail/opencode/HADJ%20NO-TOUCH%20AI%20%20Opencode%203/installer_setup.iss) avec Inno Setup Compiler. Le fichier d'installation autonome `HADJ_NoTouch_Setup.exe` sera généré dans le dossier `dist/`.
+
+---
+
+## 11. Dépannage Antivirus, SmartScreen & Windows Smart App Control
+
+### Avertissement Windows SmartScreen (« Éditeur inconnu ») :
+Lors du premier lancement d'un exécutable généré localement sans certificat payant Microsoft, Windows 11 SmartScreen ou Smart App Control peut afficher un écran bleu *"Windows a protégé votre ordinateur"*.
+
+**Procédure pour autoriser l'application :**
+1. Cliquez sur **« Informations complémentaires »** (*More info*).
+2. Cliquez sur le bouton **« Exécuter quand même »** (*Run anyway*).
+
+### Confidentialité et Sécurité Garanties :
+- **0 requête réseau sortante** : HADJ NO-TOUCH est strictement 100% hors ligne.
+- **Transparence du code source** : Aucun binaire obscur, le code est auditable localement.
+- **Audit de sécurité** : L'ensemble des accès système (souris, clavier, fichiers) est consigné dans le journal d'audit local.

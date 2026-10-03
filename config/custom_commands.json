@@ -1,0 +1,12 @@
+[
+  {
+    "id": "ffaf4eaa",
+    "name": "Ouvrir Mes Documents",
+    "trigger_type": "voice",
+    "trigger_value": "ouvre mes documents",
+    "action_type": "open_path",
+    "action_target": "C:\\Users\\User/Documents",
+    "risk_level": "LOW",
+    "enabled": true
+  }
+]
