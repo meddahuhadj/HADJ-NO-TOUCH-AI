@@ -11,7 +11,7 @@ import socket
 import time
 import traceback
 
-from core import offline_guard, paths
+from core import edition, offline_guard, paths
 
 
 def _check(name: str, fn, report: list[str]) -> bool:
@@ -28,7 +28,7 @@ def _check(name: str, fn, report: list[str]) -> bool:
 
 def run() -> int:
     report: list[str] = [f"HADJ No-Touch self-test  {time.strftime('%Y-%m-%d %H:%M:%S')}",
-                         f"app: {paths.app_root()}", ""]
+                         f"app: {paths.app_root()}", f"edition: {edition.name()}", ""]
     models = paths.models_dir()
     ok = True
 
@@ -74,10 +74,23 @@ def run() -> int:
         from os_layer.factory import create_backend
         return f"{len(create_backend().list_apps())} start-menu apps"
 
-    for name, fn in [("offline guard", guard), ("vosk ar", vosk("ar")), ("vosk en", vosk("en")),
-                     ("mediapipe hand landmarker", hands), ("whisper", whisper),
-                     ("microphones (WinMM)", mics), ("app index", apps)]:
+    # تُفحص المكوّنات المثبّتة فقط: النسخة الخفيفة بلا العربية ولا Whisper ليست عطلاً
+    langs = edition.available_languages(models)
+    checks = [("offline guard", guard)] + [(f"vosk {lang}", vosk(lang)) for lang in langs]
+    checks += [("mediapipe hand landmarker", hands)]
+    if edition.whisper_available(models):
+        checks.append(("whisper", whisper))
+    checks += [("microphones (WinMM)", mics), ("app index", apps)]
+    if not langs:
+        report.append("✗ no speech model in models/vosk")
+        ok = False
+    for name, fn in checks:
         ok &= _check(name, fn, report)
+    missing = [lang for lang in edition.LANGUAGES if lang not in langs]
+    if missing:
+        report.append(f"· not installed: vosk {', '.join(missing)} (language pack)")
+    if not edition.whisper_available(models):
+        report.append("· not installed: whisper (dictation uses Vosk)")
     report += ["", "RESULT: " + ("OK" if ok else "FAILED")]
     out = paths.user_dir() / "logs" / "selftest.txt"
     out.parent.mkdir(parents=True, exist_ok=True)

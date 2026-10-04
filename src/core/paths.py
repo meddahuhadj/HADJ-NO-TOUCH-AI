@@ -18,6 +18,14 @@ def resource_dir() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def help_dir() -> Path:
+    """صفحة المساعدة المحلية (help/index.html): داخل الكود، أو بجانب الملف التنفيذي في النسخة المجمّدة."""
+    for d in (resource_dir() / "help", app_root() / "help"):
+        if (d / "index.html").exists():
+            return d
+    return resource_dir() / "help"
+
+
 def models_dir() -> Path:
     return app_root() / "models"
 

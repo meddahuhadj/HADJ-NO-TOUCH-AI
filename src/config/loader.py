@@ -13,6 +13,7 @@ from core import paths
 log = logging.getLogger(__name__)
 
 USER_CONFIG = "config.yaml"
+EDITION_FILE = "edition.yaml"   # بجانب التطبيق: يكتبه build.ps1 للنسخة الخفيفة (لغة افتراضية…)
 USER_COMMANDS = "custom_commands.yaml"
 
 
@@ -43,8 +44,18 @@ def read_yaml(path: Path) -> Any:
         return yaml.safe_load(f)
 
 
+def edition_overrides() -> dict:
+    """القيم الافتراضية الخاصة بالنسخة (بين الافتراضي العام وإعدادات المستخدم)."""
+    try:
+        data = read_yaml(paths.app_root() / EDITION_FILE) or {}
+    except yaml.YAMLError as e:
+        log.error("ملف النسخة غير صالح: %s", e)
+        return {}
+    return data.get("config") or {} if isinstance(data, dict) else {}
+
+
 def load_config(user_dir: Path | None = None) -> AppConfig:
-    data = read_yaml(default_config_path()) or {}
+    data = deep_merge(read_yaml(default_config_path()) or {}, edition_overrides())
     user_path = (user_dir or paths.user_dir()) / USER_CONFIG
     try:
         user = read_yaml(user_path) or {}

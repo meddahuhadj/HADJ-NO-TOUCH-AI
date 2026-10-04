@@ -10,10 +10,23 @@ from pathlib import Path
 from typing import Callable
 
 from audio.vad import FRAME_BYTES, SAMPLE_RATE, Segmenter
-from core.events import DictationEvent, PartialSpeechEvent, SpeechEvent, StatusEvent
+from core.events import (DictationEvent, PartialSpeechEvent, SpeechEvent, StatusEvent,
+                         VoiceActivityEvent)
 
 log = logging.getLogger(__name__)
 PARTIAL_INTERVAL_S = 0.25
+LEVEL_INTERVAL_S = 0.1     # تحديث مستوى الصوت لمؤشر الحالة (10 مرات/ث أثناء الكلام فقط)
+LEVEL_FULL_RMS = 4000.0    # RMS يقابل المستوى 1.0 (كلام عالٍ قرب الميكروفون)
+
+
+def frame_level(frame: bytes) -> float:
+    """مستوى إطار int16 بين 0 و1 (جذر RMS لكي يظهر الكلام الهادئ أيضاً)."""
+    import numpy as np
+    samples = np.frombuffer(frame, dtype=np.int16).astype(np.float32)
+    if samples.size == 0:
+        return 0.0
+    rms = float(np.sqrt(np.mean(samples * samples)))
+    return min(1.0, (rms / LEVEL_FULL_RMS) ** 0.5)
 
 
 class AudioPipeline:
@@ -32,22 +45,32 @@ class AudioPipeline:
         # الإملاء: dictation(seg_id, pcm, free_text) يُستدعى بعد SpeechEvent لكل عبارة
         self.dictation: Callable[[int, bytes, str], None] | None = None
         self._audio: list[bytes] = []
+        self._last_level_t = 0.0
 
     def process(self, frame: bytes) -> None:
         for kind, data in self.seg.push(frame, self.is_speech(frame)):
             if kind == "start":
                 self._audio = []
+                self._last_level_t = time.monotonic()
+                self.emit(VoiceActivityEvent(True, frame_level(frame)))
             elif kind == "audio":
                 self.rec.accept(data)
                 if self.dictation is not None:
                     self._audio.append(data)
                 self._maybe_partial()
             elif kind == "end":
+                self.emit(VoiceActivityEvent(False))
                 self._finish()
+        if self.seg.in_speech:
+            now = time.monotonic()
+            if now - self._last_level_t >= LEVEL_INTERVAL_S:
+                self._last_level_t = now
+                self.emit(VoiceActivityEvent(True, frame_level(frame)))
 
     def flush(self) -> None:
         if self.seg.in_speech:
             self.seg.reset()
+            self.emit(VoiceActivityEvent(False))
             self._finish()
 
     def _maybe_partial(self) -> None:
@@ -189,6 +212,10 @@ def run(cfg: dict, address, authkey: bytes) -> None:
                     except Exception as e:  # noqa: BLE001
                         log.exception("فشل إعادة تحميل النموذج")
                         emit(StatusEvent("audio", "error", str(e)))
+                elif msg.kind == "set_grammar":   # تبديل الملف الشخصي: دون إعادة تحميل النموذج
+                    cfg["grammar"] = msg.payload.get("grammar", {})
+                    if pipeline.rec.grammar_enabled:
+                        pipeline.rec.set_grammar(cfg["grammar"].get(pipeline.lang, []))
                 elif msg.kind == "dictation":
                     dictation.configure(pipeline, msg.payload)
                 elif msg.kind == "mute":

@@ -23,7 +23,7 @@ class AppControl(Protocol):
     def resume(self) -> None: ...
     def sleep(self) -> None: ...
     def toggle_language(self) -> None: ...
-    def set_language(self, lang: str) -> None: ...
+    def set_language(self, lang: str) -> bool: ...
     def set_continuous(self, value: bool) -> None: ...
     def refresh_apps(self) -> None: ...
     def start_dictation(self) -> None: ...
@@ -31,6 +31,9 @@ class AppControl(Protocol):
     def show_grid(self) -> None: ...
     def start_calibration(self) -> None: ...
     def open_settings(self) -> None: ...
+    def open_help(self) -> None: ...
+    def set_profile(self, profile: str) -> bool: ...
+    def wake_camera(self) -> bool: ...
 
 
 @dataclass
@@ -423,7 +426,8 @@ def _lang(ctx, a):
 
 @action("app.set_language")
 def _set_lang(ctx, a):
-    ctx.app.set_language(a["lang"])
+    if ctx.app.set_language(a["lang"]) is False:
+        raise ActionError("lang_pack_missing", lang=a["lang"])
 
 
 @action("app.set_continuous")
@@ -459,6 +463,22 @@ def _calibrate(ctx, a):
 @action("app.open_settings")
 def _settings(ctx, a):
     ctx.app.open_settings()
+
+
+@action("app.help")
+def _help(ctx, a):
+    ctx.app.open_help()
+
+
+@action("app.wake_camera")
+def _wake_camera(ctx, a):
+    ctx.app.wake_camera()
+
+
+@action("app.set_profile")
+def _set_profile(ctx, a):
+    if not ctx.app.set_profile(a["profile"]):
+        raise ActionError("profile_unknown", name=a["profile"])
 
 
 # ============================ التحكم الكامل بالمتصفح ============================
@@ -561,10 +581,7 @@ def _open_folder(ctx, a):
             path = cand
         else:
             path = _FOLDER_MAP["downloads"]
-    try:
-        os.startfile(path)
-    except Exception:
-        subprocess.Popen(["explorer.exe", path])
+    ctx.os.open_path(path)
 
 
 @action("open_recent_download")
@@ -576,19 +593,13 @@ def _open_recent_download(ctx, a):
     if not files:
         raise ActionError("action_failed")
     latest = max(files, key=os.path.getmtime)
-    try:
-        os.startfile(latest)
-    except Exception:
-        subprocess.Popen(["explorer.exe", latest])
+    ctx.os.open_path(latest)
 
 
 @action("empty_recycle_bin")
 def _empty_recycle_bin(ctx, a):
-    try:
-        subprocess.run(["powershell", "-NoProfile", "-Command", "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"],
-                       timeout=5, capture_output=True)
-    except Exception:
-        pass
+    if not ctx.os.empty_recycle_bin():
+        raise ActionError("action_failed")
 
 
 # ============================ أدوات النظام الأساسية ============================
@@ -614,3 +625,28 @@ def _osk(ctx, a):
 def _action_center(ctx, a):
     ctx.os.hotkey("win", "a")
 
+
+
+# ============================ الإمكانات حسب النظام ============================
+def action_needs(name: str) -> set[str]:
+    """طرق OSBackend الاختيارية التي يستدعيها الإجراء (من أسماء الخصائص في الكود المترجم)."""
+    from os_layer.base import OPTIONAL
+    fn = REGISTRY.get(name)
+    return set(fn.__code__.co_names) & set(OPTIONAL) if fn else set()
+
+
+# اختصارات خاصة بـ Windows (Win+V، Win+R، osk.exe…): لا معنى لها على نظام آخر، والكشف الآلي
+# لا يراها لأنها تمر عبر hotkey العام. عند نقلها إلى طرق في OSBackend تُحذف من هنا.
+WINDOWS_ONLY = {"open_action_center", "open_run_dialog", "open_windows_settings", "show_clipboard_history",
+                "show_emoji_picker", "task_view", "toggle_virtual_keyboard", "open_explorer",
+                "open_task_manager"}
+
+
+def unsupported_actions(backend, platform: str | None = None) -> set[str]:
+    """الإجراءات التي لا يستطيع هذا النظام تنفيذها (فارغة على Windows)."""
+    import sys
+    caps = backend.capabilities()
+    out = {name for name in REGISTRY if not action_needs(name) <= caps}
+    if (platform or sys.platform) != "win32":
+        out |= WINDOWS_ONLY & set(REGISTRY)
+    return out

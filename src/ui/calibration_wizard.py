@@ -1,4 +1,7 @@
-"""معالج المعايرة: أربع خطوات قصيرة (أقل من 20 ثانية) تتقدم تلقائياً دون لمس.
+"""معالج المعايرة: تحضير قصير ثم أربع خطوات (نحو 20 ثانية) تتقدم تلقائياً دون لمس.
+
+التحضير يفحص الإضاءة وعكس الضوء والمسافة مباشرة، وينتقل وحده عندما تصبح الظروف جيدة.
+لكل خطوة رسم متحرك يُري الحركة، وتلميح مباشر إن ساءت الظروف، ونغمة عند كل انتقال.
 
 في النهاية: ملخص، ثم حفظ تلقائي بعد 5 ثوانٍ إن كانت النتيجة صالحة
 (زر "إلغاء" متاح لمن يستطيع النقر).
@@ -6,25 +9,32 @@
 from __future__ import annotations
 
 import time
+from collections import deque
+from typing import Callable
 
 from PySide6.QtCore import QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QGuiApplication, QPainter
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QProgressBar, QPushButton, QSizePolicy,
                                QVBoxLayout, QWidget)
 
+from ui.calibration_art import CalibrationArt
 from ui.i18n import Tr
 from ui.theme import Theme, theme
 from ui.widgets import StepDots, chip_qss, make_transparent, paint_card
-from vision.calibration import STEPS, Calibrator
+from vision.calibration import STEPS, Calibrator, dominant_hints
 
 AUTO_SAVE_S = 5
 AUTO_CLOSE_S = 12
+PREPARE_MAX_S = 6.0    # التحضير لا يطول أكثر من هذا مهما كانت الظروف
+GOOD_HOLD_S = 1.2      # ظروف جيدة لهذه المدة ← البدء فوراً
+HINT_WINDOW = 15       # آخر 15 عينة (~0.5 ث) لحساب التلميح المباشر
 
 
 class CalibrationWizard(QWidget):
     finished = Signal(object)   # dict (تغييرات الإعدادات) أو None عند الإلغاء
 
-    def __init__(self, tr: Tr, font_scale: float = 1.0, high_contrast: bool = False):
+    def __init__(self, tr: Tr, font_scale: float = 1.0, high_contrast: bool = False,
+                 cue: Callable[[str], None] | None = None):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
                          | Qt.WindowDoesNotAcceptFocus)
         make_transparent(self)
@@ -52,11 +62,16 @@ class CalibrationWizard(QWidget):
         self.step_label.setFont(QFont("Segoe UI", t.pt(20), QFont.DemiBold))
         self.step_label.setWordWrap(True)
         self.step_label.setAlignment(Qt.AlignCenter)
-        self.step_label.setStyleSheet("background: transparent;")
+        self.step_label.setStyleSheet(self._step_qss())
         head_layout.addWidget(self.title)
         head_layout.addWidget(self.step_label)
 
-        self.dots = StepDots(t, len(STEPS), body)
+        self.dots = StepDots(t, len(STEPS) + 1, body)   # +1 للتحضير
+        self.art = CalibrationArt(t, body, tr.rtl, tr("calib_distance"))
+        self.cue = cue or (lambda _kind: None)
+        self._recent: deque = deque(maxlen=HINT_WINDOW)
+        self._good_since: float | None = None
+        self._hint_key = None
 
         self.hand = QLabel(body)
         self.hand.setAlignment(Qt.AlignCenter)
@@ -93,6 +108,7 @@ class CalibrationWizard(QWidget):
         lay.setSpacing(t.px(12))
         lay.addWidget(head)
         lay.addWidget(self.dots)
+        lay.addWidget(self.art)
         lay.addWidget(self.hand)
         lay.addWidget(self.progress)
         lay.addWidget(self.details)
@@ -111,7 +127,7 @@ class CalibrationWizard(QWidget):
         self._timer.timeout.connect(self._tick)
         self.cal: Calibrator | None = None
         self.result = None
-        self._phase = "idle"          # steps | summary | idle
+        self._phase = "idle"          # prepare | steps | summary | idle
         self._step = 0
         self._t0 = 0.0
         self._last_hand = 0.0
@@ -136,6 +152,11 @@ class CalibrationWizard(QWidget):
                    accent_side="right" if self.t.rtl else "left")
         p.end()
 
+    def _step_qss(self, color: str | None = None) -> str:
+        """التعليمة الحالية: أكبر نص في النافذة لأنها ما يجب أن يُقرأ من بعيد."""
+        return (f"color: {color or self.th.c('text')}; background: transparent;"
+                f" font-size: {self.th.pt(17)}pt; font-weight: 600;")
+
     def _set_accent(self, name: str) -> None:
         self._accent = self.th.state(name)
         self.update()
@@ -153,13 +174,28 @@ class CalibrationWizard(QWidget):
     def start(self) -> None:
         self.cal = Calibrator()
         self.result = None
-        self._phase = "steps"
+        self._recent.clear()
+        self._good_since = None
+        self._hint_key = None
+        self._last_hand = 0.0
+        self._phase = "prepare"
         self._step = -1
-        self._next_step()
+        self._t0 = time.monotonic()
+        self.title.setText(f"{self.t('calib_title')} · {self.t('calib_prepare')}")
+        self.step_label.setText(self.t("calib_step_prepare"))
+        self.step_label.setStyleSheet(self._step_qss())
+        self.dots.set_ok(True)
+        self.dots.set_current(0)
+        self.art.show()
+        self.art.set_scene("prepare")
+        self.progress.setRange(0, int(PREPARE_MAX_S * 10))
+        self.progress.setValue(0)
         self.btn_save.hide()
         self.btn_cancel.show()
         self.details.setText("")
+        self._show_hint([])
         self._set_accent("grid")
+        self.cue("step")
         self.adjustSize()
         screen = QGuiApplication.primaryScreen().availableGeometry()
         self.move(screen.center() - self.rect().center())
@@ -168,12 +204,33 @@ class CalibrationWizard(QWidget):
         self._timer.start()
 
     def add_sample(self, sample) -> None:
-        if self._phase != "steps" or self.cal is None:
+        if self._phase not in ("prepare", "steps") or self.cal is None:
             return
-        name, _ = STEPS[self._step]
-        self.cal.add(name, sample, time.monotonic() - self._t0)
+        self._recent.append(sample)
         if sample.has_hand:
             self._last_hand = time.monotonic()
+        if self._phase == "steps":
+            name, _ = STEPS[self._step]
+            self.cal.add(name, sample, time.monotonic() - self._t0)
+
+    def live_hints(self) -> list[str]:
+        return dominant_hints(list(self._recent))
+
+    def _show_hint(self, hints: list[str]) -> None:
+        """أهم مشكلة حالية، أو نصيحة الإضاءة الثابتة في التحضير."""
+        key = hints[0] if hints else None
+        if key == self._hint_key and self.details.text():
+            return
+        self._hint_key = key
+        if key:
+            self.details.setText(self.t(f"calib_hint_{key}"))
+            self.details.setStyleSheet(f"color: {self.th.c('warn')}; background: transparent;"
+                                       f" font-size: {self.th.pt(12)}pt; font-weight: 600;")
+        else:
+            text = self.t("calib_tip_light") if self._phase == "prepare" else ""
+            self.details.setText(text)
+            self.details.setStyleSheet(f"color: {self.th.c('text_dim')}; background: transparent;"
+                                       f" font-size: {self.th.pt(10.5)}pt;")
 
     def _next_step(self) -> None:
         self._step += 1
@@ -181,22 +238,40 @@ class CalibrationWizard(QWidget):
             self._show_summary()
             return
         name, dur = STEPS[self._step]
+        self._phase = "steps"
         self._t0 = time.monotonic()
         self.title.setText(f"{self.t('calib_title')} · {self._step + 1}/{len(STEPS)}")
         self.step_label.setText(self.t(f"calib_step_{name}"))
-        self.step_label.setStyleSheet("background: transparent;")
-        self.dots.set_current(self._step)
+        self.step_label.setStyleSheet(self._step_qss())
+        self.dots.set_current(self._step + 1)
+        self.art.set_scene(name)
         self.progress.setRange(0, int(dur * 10))
         self.progress.setValue(0)
+        self._hint_key = "-"
+        self._show_hint(self.live_hints())
+        self.cue("step")
 
     def _tick(self) -> None:
         now = time.monotonic()
         elapsed = now - self._t0
-        if self._phase == "steps":
+        seen, hints = False, []
+        if self._phase in ("prepare", "steps"):
             seen = now - self._last_hand < 0.5
             if seen != self._hand_ok:
                 self._set_hand(seen)
                 self._set_accent("grid" if seen else "error")
+            hints = self.live_hints()
+            self._show_hint(hints)
+        if self._phase == "prepare":
+            self.progress.setValue(int(min(elapsed, PREPARE_MAX_S) * 10))
+            if not (seen and not hints):
+                self._good_since = None
+            elif self._good_since is None:
+                self._good_since = now
+            ready = self._good_since is not None and now - self._good_since >= GOOD_HOLD_S
+            if ready or elapsed >= PREPARE_MAX_S:
+                self._next_step()
+        elif self._phase == "steps":
             _, dur = STEPS[self._step]
             self.progress.setValue(int(min(elapsed, dur) * 10))
             if elapsed >= dur:
@@ -226,12 +301,16 @@ class CalibrationWizard(QWidget):
         lines += [self.t(f"calib_warn_{w}") for w in r.warnings]
         self.title.setText(self.t("calib_title"))
         self.step_label.setText(self.t("calib_done_ok" if r.ok else "calib_done_fail"))
-        self.step_label.setStyleSheet(
-            f"color: {self.th.c('ok') if r.ok else self.th.c('err')}; background: transparent;")
+        self.step_label.setStyleSheet(self._step_qss(self.th.c('ok') if r.ok else self.th.c('err')))
         self.details.setText("\n".join(lines))
         self.progress.setRange(0, (AUTO_SAVE_S if r.ok else AUTO_CLOSE_S) * 10)
-        self.dots.set_current(len(STEPS))
+        self.dots.set_current(len(STEPS) + 1)
         self.dots.set_ok(r.ok)
+        self.art.set_scene("none")
+        self.art.hide()
+        self.details.setStyleSheet(f"color: {self.th.c('text_dim')}; background: transparent;"
+                                   f" font-size: {self.th.pt(10.5)}pt;")
+        self.cue("ok" if r.ok else "error")
         self._set_accent("ready" if r.ok else "error")
         self.btn_save.setVisible(r.ok)
         self.adjustSize()
@@ -248,5 +327,6 @@ class CalibrationWizard(QWidget):
             return
         self._phase = "idle"
         self._timer.stop()
+        self.art.set_scene("none")
         self.hide()
         self.finished.emit(changes)

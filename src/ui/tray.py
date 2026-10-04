@@ -15,6 +15,7 @@ from ui.grid_overlay import GridOverlay
 from ui.i18n import Tr
 from ui.icons import state_icon
 from ui.overlay import ConfirmWindow, Overlay
+from ui.status_orb import StatusOrb
 
 
 class Bridge(QObject):
@@ -38,7 +39,13 @@ class TrayApp(QObject):
         self.confirm = ConfirmWindow(self.t, cfg.ui.font_scale, cfg.ui.high_contrast)
         self.confirm.answered.connect(self._on_confirm_answer)
         self.grid = GridOverlay(cfg.ui.font_scale, cfg.ui.high_contrast)
-        self.wizard = CalibrationWizard(self.t, cfg.ui.font_scale, cfg.ui.high_contrast)
+        self.orb: StatusOrb | None = None
+        if cfg.ui.status_orb:
+            self.orb = StatusOrb(cfg.ui.font_scale, cfg.ui.high_contrast, cfg.ui.orb_corner, self.t.rtl)
+            self.orb.place()
+            self.orb.show()
+        self.wizard = CalibrationWizard(self.t, cfg.ui.font_scale, cfg.ui.high_contrast,
+                                        cue=controller.play_cue)
         self.wizard.finished.connect(self._on_calibration_done)
         self._muted = False
         self._last_visual = None
@@ -87,12 +94,15 @@ class TrayApp(QObject):
         m.addAction(self.act_camera)
         m.addAction(self.act_cont)
         m.addAction(self.act_lang)
+        self.menu_profiles = m.addMenu("")
+        self._fill_profiles_menu()
         m.addAction(QAction(tr("menu_calibrate"), m, triggered=self.c.start_calibration))
         m.addAction(QAction(tr("menu_settings"), m, triggered=self.open_settings))
+        m.addAction(QAction(tr("menu_help"), m, triggered=self.open_help))
         m.addSeparator()
         m.addAction(QAction(tr("menu_refresh_apps"), m, triggered=self.c.refresh_apps))
         m.addAction(QAction(tr("menu_open_folder"), m,
-                            triggered=lambda: os.startfile(paths.user_dir())))
+                            triggered=lambda: self.c.os.open_path(paths.user_dir())))
         m.addSeparator()
         hk = self.c.config.safety.emergency_hotkey
         if hk:
@@ -103,6 +113,22 @@ class TrayApp(QObject):
         if self.t.rtl:
             m.setLayoutDirection(self.app.layoutDirection())
         return m
+
+    def _fill_profiles_menu(self) -> None:
+        """قائمة فرعية: الملف النشط مع علامة، ونقرة واحدة للتبديل."""
+        lang = self.c.config.ui.ui_language
+        menu = self.menu_profiles
+        menu.clear()
+        menu.setTitle(self.t("menu_profile", name=self.c.profile.label(lang)))
+        for p in self.c.profiles.values():
+            act = QAction(p.label(lang), menu, checkable=True)
+            act.setChecked(p.id == self.c.profile.id)
+            act.triggered.connect(lambda _=False, pid=p.id: self.c.set_profile(pid))
+            menu.addAction(act)
+        menu.addSeparator()
+        menu.addAction(QAction(self.t("menu_manage_profiles"), menu, triggered=self.open_settings))
+        if self.t.rtl:
+            menu.setLayoutDirection(self.app.layoutDirection())
 
     def _toggle_mute(self, value: bool):
         self._muted = value
@@ -127,6 +153,8 @@ class TrayApp(QObject):
         self._poll.stop()
         self.tray.hide()
         self.overlay.hide()
+        if self.orb is not None:
+            self.orb.hide()
         self.panel.hide()
         self.c.shutdown()
         self.app.quit()
@@ -166,6 +194,8 @@ class TrayApp(QObject):
             "error": self.t("cam_error", detail=s["vision_detail"]),
             "no_image": self.t("cam_no_image"),
             "slow": self.t("cam_slow", fps=s["vision_detail"]),
+            "dozing": self.t("cam_dozing"),
+            "asleep": self.t("cam_asleep"),
         }.get(s["vision_state"], self.t("cam_loading"))
 
     @Slot()
@@ -180,6 +210,8 @@ class TrayApp(QObject):
         self.act_pause.setText(self.t("menu_resume" if s["paused"] else "menu_pause"))
         self.act_cont.setChecked(s["continuous"])
         self.act_lang.setText(self.t("menu_cmd_lang", lang=self.t(f"lang_{s['language']}")))
+        if self.orb is not None:
+            self.orb.set_state(visual, s["vision_state"] if s["vision_enabled"] else "off")
         if self.panel.isVisible():
             self.panel.set_state(visual, text, self._camera_text(s), s["paused"], s["mode"])
         if visual != self._last_visual:
@@ -196,6 +228,14 @@ class TrayApp(QObject):
     # ---------------- الإشعارات ----------------
     @Slot(str, dict)
     def _on_event(self, kind: str, d: dict):
+        if kind == "voice":
+            if self.orb is not None:
+                self.orb.set_voice(d["active"], d.get("level", 0.0))
+            return
+        if kind == "hand":
+            if self.orb is not None:
+                self.orb.set_hand(d["points"], d.get("pose", "none"))
+            return
         if kind == "heard" and d.get("text"):
             self.panel.set_heard(d["text"])
         elif kind == "result" and d.get("heard"):
@@ -232,6 +272,9 @@ class TrayApp(QObject):
             self.overlay.show_message(self.t("cam_error", detail=d.get("detail", "")), state="error", color="err")
         elif kind == "status" and d.get("source") == "vision" and d.get("state") == "no_image":
             self.overlay.show_message(self.t("cam_no_image"), state=visual, color="err")
+        elif kind == "status" and d.get("source") == "vision" and d.get("state") == "asleep":
+            self.overlay.show_message(self.t("cam_asleep"), self.t("cam_asleep_hint", wake=s["wake"]),
+                                      state=visual)
         elif kind == "status" and d.get("source") == "vision" and d.get("state") == "slow":
             self.overlay.show_message(self.t("cam_slow", fps=d.get("detail", "?")), state=visual, color="err")
         # ---- الإملاء ----
@@ -272,6 +315,29 @@ class TrayApp(QObject):
             self.wizard.add_sample(d["sample"])
         elif kind == "open_settings":
             self.open_settings()
+        elif kind == "open_help":
+            self.open_help()
+        elif kind == "profile":
+            self._fill_profiles_menu()
+            self.overlay.show_message(self.t("profile_switched", name=d["name"]), state=visual, color="ok")
+            if getattr(self, "settings", None) is not None and self.settings.profiles_tab is not None:
+                self.settings.profiles_tab.refresh()
+        elif kind == "lang_fallback":
+            self.overlay.show_message(self.t("lang_fallback", wanted=self.t(f"lang_{d['wanted']}"),
+                                             used=self.t(f"lang_{d['used']}")),
+                                      self.t("lang_pack_hint"), state=visual)
+        elif kind == "profiles_changed":
+            self._fill_profiles_menu()
+
+    def open_help(self):
+        """يفتح الدليل المحلي في المتصفح بلغة الواجهة (ملف ثابت، بلا إنترنت)."""
+        page = paths.help_dir() / f"{self.c.config.ui.ui_language}.html"
+        if not page.exists():
+            page = paths.help_dir() / "index.html"
+        try:
+            self.c.os.open_path(page)
+        except OSError:
+            self.overlay.show_message(self.t("help_missing"), str(page), state="error", color="err")
 
     def open_settings(self):
         from audio.capture import list_input_devices
@@ -283,7 +349,8 @@ class TrayApp(QObject):
         self.settings = SettingsWindow(self.t, self.c.config, paths.models_dir(), mics,
                                        on_save=self._on_settings_saved,
                                        on_calibrate=self.c.start_calibration,
-                                       on_open_folder=lambda: os.startfile(paths.user_dir()))
+                                       on_open_folder=lambda: self.c.os.open_path(paths.user_dir()),
+                                       profiles_api=self.c)
         self.settings.show()
         self.settings.raise_()
         self.settings.activateWindow()

@@ -25,7 +25,8 @@ GESTURE_ACTIONS = ["none", "click", "double_click", "right_click", "middle_click
                    "minimize_window", "maximize_window", "snap_left", "snap_right", "task_view",
                    "open_explorer", "open_task_manager", "media_play_pause",
                    "app.pause", "app.show_grid", "app.start_dictation", "screenshot",
-                   "volume_up", "volume_down", "mute"]
+                   "volume_up", "volume_down", "mute", "browser_back", "browser_forward",
+                   "browser_refresh"]
 
 
 def _combo(items: list[tuple[str, str]], current: str) -> QComboBox:
@@ -60,11 +61,12 @@ def _spin(value: int, lo: int, hi: int) -> QSpinBox:
 class SettingsWindow(QWidget):
     def __init__(self, tr: Tr, config: AppConfig, models_dir: Path, mic_names: list[str],
                  on_save: Callable[[dict], None], on_calibrate: Callable[[], None] | None = None,
-                 on_open_folder: Callable[[], None] | None = None):
+                 on_open_folder: Callable[[], None] | None = None, profiles_api=None):
         super().__init__(None, Qt.Window | Qt.WindowStaysOnTopHint)
         self.t = tr
         self.cfg = config
         self.on_save = on_save
+        self.models_dir = models_dir
         self.setObjectName("windowRoot")
         self.setWindowTitle(tr("set_title"))
         self.setWindowIcon(app_icon(64, config.ui.high_contrast))
@@ -88,6 +90,14 @@ class SettingsWindow(QWidget):
         tabs.addTab(self._camera(on_calibrate), f"📷 {tr('tab_camera')}")
         tabs.addTab(self._gestures(), f"✋ {tr('tab_gestures')}")
         tabs.addTab(self._safety(), f"🛡️ {tr('tab_safety')}")
+        self.profiles_tab = None
+        if profiles_api is not None:
+            from ui.profiles_tab import ProfilesTab
+            self.profiles_tab = ProfilesTab(tr, t, profiles_api, GESTURE_ACTIONS, _combo)
+            tabs.addTab(self.profiles_tab, f"🗂️ {tr('tab_profiles')}")
+            from ui.macros_tab import MacrosTab
+            self.macros_tab = MacrosTab(tr, t, profiles_api, _combo)
+            tabs.addTab(self.macros_tab, f"⚡ {tr('tab_macros')}")
         tabs.setDocumentMode(True)
 
         save = QPushButton(tr("set_save"))
@@ -157,7 +167,10 @@ class SettingsWindow(QWidget):
         w, f = self._form()
         langs = [("ar", "العربية"), ("en", "English"), ("fr", "Français")]
         self.ui_lang = _combo(langs, c.ui.ui_language)
-        self.cmd_lang = _combo(langs, c.speech.language)
+        from core.edition import available_languages, fallback_language
+        installed = available_languages(self.models_dir) or [code for code, _ in langs]
+        self.cmd_lang = _combo([x for x in langs if x[0] in installed],
+                               fallback_language(c.speech.language, installed))
         self.wake_ar = QLineEdit(", ".join(c.speech.wake_words.get("ar", [])))
         self.wake_en = QLineEdit(", ".join(c.speech.wake_words.get("en", [])))
         self.wake_fr = QLineEdit(", ".join(c.speech.wake_words.get("fr", [])))
@@ -165,6 +178,14 @@ class SettingsWindow(QWidget):
         self.continuous.setChecked(c.speech.continuous_listening)
         self.sounds = QCheckBox()
         self.sounds.setChecked(c.feedback.sounds)
+        self.sound_volume = _spin(c.feedback.sound_volume, 10, 100)
+        self.hand_sounds = QCheckBox()
+        self.hand_sounds.setChecked(c.feedback.hand_sounds)
+        self.status_orb = QCheckBox()
+        self.status_orb.setChecked(c.ui.status_orb)
+        self.orb_corner = _combo([(k, t(f"orb_{k}")) for k in
+                                  ("auto", "top-left", "top-right", "bottom-left", "bottom-right")],
+                                 c.ui.orb_corner)
         self.overlay = QCheckBox()
         self.overlay.setChecked(c.ui.overlay)
         self.overlay_s = _dspin(c.ui.overlay_seconds, 1, 30, 0.5, 1)
@@ -175,6 +196,8 @@ class SettingsWindow(QWidget):
                             ("set_wake_ar", self.wake_ar), ("set_wake_en", self.wake_en),
                             ("set_wake_fr", self.wake_fr),
                             ("set_continuous", self.continuous), ("set_sounds", self.sounds),
+                            ("set_sound_volume", self.sound_volume), ("set_hand_sounds", self.hand_sounds),
+                            ("set_status_orb", self.status_orb), ("set_orb_corner", self.orb_corner),
                             ("set_overlay", self.overlay), ("set_overlay_seconds", self.overlay_s),
                             ("set_font_scale", self.font_scale), ("set_high_contrast", self.high_contrast)]:
             f.addRow(t(key), widget)
@@ -189,8 +212,10 @@ class SettingsWindow(QWidget):
         self.vad = _spin(c.speech.vad_aggressiveness, 0, 3)
         self.threshold = _spin(c.speech.match_threshold, 50, 100)
         self.followup = _dspin(c.speech.followup_s, 0, 60, 1, 0)
-        self.engine = _combo([("whisper", t("engine_whisper")), ("vosk", t("engine_vosk"))],
-                             c.dictation.engine)
+        from core.edition import whisper_available
+        engines = ([("whisper", t("engine_whisper"))] if whisper_available(models_dir) else []) + \
+            [("vosk", t("engine_vosk"))]
+        self.engine = _combo(engines, c.dictation.engine if len(engines) > 1 else "vosk")
         wdir = models_dir / "whisper"
         models = sorted(p.name for p in wdir.iterdir() if (p / "model.bin").exists()) if wdir.exists() else []
         self.whisper_model = _combo([(m, m) for m in models], c.dictation.whisper_model)
@@ -223,6 +248,10 @@ class SettingsWindow(QWidget):
         pinch_row.addWidget(self.pinch_exit)
         self.scroll_invert = QCheckBox()
         self.scroll_invert.setChecked(v.tuning.scroll_invert)
+        self.idle_light = _dspin(v.idle_light_s / 60, 0, 60, 0.5, 1)
+        self.idle_deep = _dspin(v.idle_deep_s / 60, 0, 120, 1, 0)
+        self.wake_on_input = QCheckBox()
+        self.wake_on_input.setChecked(v.wake_on_input)
         for key, widget in [("set_cam_enabled", self.cam_enabled), ("set_cam_index", self.cam_index),
                             ("set_preview", self.preview), ("set_hand", self.hand),
                             ("set_smooth", self.min_cutoff), ("set_speed", self.beta)]:
@@ -230,6 +259,9 @@ class SettingsWindow(QWidget):
         f.addRow(t("set_zone"), zone_row)
         f.addRow(t("set_pinch"), pinch_row)
         f.addRow(t("set_scroll_invert"), self.scroll_invert)
+        f.addRow(t("set_idle_light"), self.idle_light)
+        f.addRow(t("set_idle_deep"), self.idle_deep)
+        f.addRow(t("set_wake_on_input"), self.wake_on_input)
         if on_calibrate:
             btn = QPushButton(t("set_calibrate"))
             btn.setObjectName("ghostButton")
@@ -281,18 +313,23 @@ class SettingsWindow(QWidget):
         return {
             "ui": {"ui_language": self.ui_lang.currentData(), "font_scale": self.font_scale.value(),
                    "high_contrast": self.high_contrast.isChecked(), "overlay": self.overlay.isChecked(),
-                   "overlay_seconds": self.overlay_s.value()},
+                   "overlay_seconds": self.overlay_s.value(),
+                   "status_orb": self.status_orb.isChecked(), "orb_corner": self.orb_corner.currentData()},
             "speech": {"language": self.cmd_lang.currentData(), "wake_words": wake,
                        "continuous_listening": self.continuous.isChecked(),
                        "input_device": self.mic.currentData(), "vad_aggressiveness": self.vad.value(),
                        "match_threshold": self.threshold.value(), "followup_s": self.followup.value()},
-            "feedback": {"sounds": self.sounds.isChecked()},
+            "feedback": {"sounds": self.sounds.isChecked(), "sound_volume": self.sound_volume.value(),
+                         "hand_sounds": self.hand_sounds.isChecked()},
             "dictation": {"engine": self.engine.currentData(),
                           "whisper_model": self.whisper_model.currentData() or self.cfg.dictation.whisper_model},
             "vision": {"enabled": self.cam_enabled.isChecked(), "camera_index": self.cam_index.value(),
                        "preview": self.preview.isChecked(), "hand": self.hand.currentData(),
                        "min_cutoff": self.min_cutoff.value(), "beta": self.beta.value(),
                        "control_zone": zone,
+                       "idle_light_s": int(round(self.idle_light.value() * 60)),
+                       "idle_deep_s": int(round(self.idle_deep.value() * 60)),
+                       "wake_on_input": self.wake_on_input.isChecked(),
                        "tuning": {"pinch_enter": enter, "pinch_exit": exit_,
                                   "scroll_invert": self.scroll_invert.isChecked()},
                        "bindings": {g: c.currentData() for g, c in self.bindings.items()}},

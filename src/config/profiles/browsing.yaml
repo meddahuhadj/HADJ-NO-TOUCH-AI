@@ -1,0 +1,15 @@
+# تصفح الويب: السحب يتنقل بين الصفحات بدل النوافذ (كما في لوحات اللمس).
+id: browsing
+name: {ar: "التصفح", fr: "Navigation web", en: "Web browsing"}
+description:
+  ar: "اسحب يميناً للرجوع ويساراً للتقدم بين صفحات المتصفح. كف مفتوح ثانيتين = تحديث الصفحة."
+  fr: "Balayez à droite pour revenir, à gauche pour avancer entre les pages du navigateur. Paume ouverte 2 s = actualiser."
+  en: "Swipe right to go back, left to go forward between browser pages. Open palm for 2 s = reload."
+phrases:
+  ar: ["وضع الانترنت"]
+  fr: ["mode navigation", "profil internet"]
+  en: ["browsing mode", "profile internet"]
+bindings:
+  swipe_right: browser_back
+  swipe_left: browser_forward
+  palm_hold_long: browser_refresh
