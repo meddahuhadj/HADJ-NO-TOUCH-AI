@@ -103,8 +103,20 @@ complets, 15 réussissent ; l'échec restant est un événement en trop ou manqu
 
 Limites constatées :
 - **Sous XWayland** (session Wayland, WSLg), le remappage temporaire d'une touche peut couper la connexion
-  X. Le texte contenant des caractères absents du clavier (arabe, €…) est donc **refusé avec une erreur**
-  au lieu d'être tapé à moitié. Solution prévue en phase 3 : passer par le presse-papiers.
+  X. Le texte contenant des caractères absents du clavier (arabe, €…) passe donc par le
+  **presse-papiers**, ce qui est réalisé :
+  - le texte est placé dans le presse-papiers, puis Ctrl+V est envoyé ;
+  - l'application attend la demande de **l'application qui a le focus**. Le pont de presse-papiers de
+    WSLg et les gestionnaires d'historique réclament le texte eux aussi, et sans cette précaution
+    l'application aurait pu coller l'ancien contenu ;
+  - le presse-papiers est ensuite restauré, ou vidé, pour que le texte dicté n'y reste pas ;
+  - le texte est marqué « secret » (`x-kde-passwordManagerHint`), et les historiques qui respectent cette
+    convention ne le gardent pas.
+
+  Si l'application ne colle pas, une erreur claire est renvoyée. Limites :
+  - une **image** copiée avant serait perdue, car seul du texte est restauré ;
+  - dans un terminal, il faut Ctrl+Shift+V ;
+  - sous WSLg, le presse-papiers X est synchronisé avec celui de Windows.
 - Si plus aucune fenêtre n'a le focus clavier, X ignore toutes les frappes, y compris le raccourci global.
   Le poing et « stop » restent alors l'arrêt d'urgence.
 

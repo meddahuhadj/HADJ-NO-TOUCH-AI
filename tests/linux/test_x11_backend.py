@@ -127,11 +127,7 @@ def test_type_unicode_through_spare_key(backend, win, monkeypatch, ch):
     if d.keysym_to_keycode(char_keysym(ch)):
         pytest.skip("المحرف موجود أصلاً في التخطيط")
     if backend.xwayland:
-        # تحت Wayland: رفض صريح دون كتابة أي شيء (لا نص مبتور)
-        with pytest.raises(OSError, match="Wayland"):
-            backend.type_text("ok " + ch)
-        assert _events(d, X.KeyPress, timeout=0.8) == []
-        return
+        pytest.skip("تحت XWayland تمر هذه المحارف باللصق: انظر test_paste_under_xwayland")
     monkeypatch.setattr(backend, "_restore_spare", lambda: None)
     try:
         backend.type_text(ch)
@@ -142,6 +138,94 @@ def test_type_unicode_through_spare_key(backend, win, monkeypatch, ch):
         assert _chars(d, evs) == ch
     finally:
         LinuxX11Backend._restore_spare(backend)   # التخطيط يعود كما كان دائماً
+
+
+def _paste_target(d, w, timeout=4.0):
+    """تتصرف نافذة الاختبار كتطبيق: عند Ctrl+V تطلب CLIPBOARD وتقرأ النص الملصوق."""
+    from Xlib import X, XK
+    clip, utf8, prop = (d.intern_atom(n) for n in ("CLIPBOARD", "UTF8_STRING", "HADJ_TEST_PASTE"))
+    v = d.keysym_to_keycode(XK.string_to_keysym("v"))
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if not d.pending_events():
+            time.sleep(0.01)
+            continue
+        ev = d.next_event()
+        if ev.type == X.KeyPress and ev.detail == v and ev.state & X.ControlMask:
+            w.convert_selection(clip, utf8, prop, X.CurrentTime)
+            d.flush()
+        elif ev.type == X.SelectionNotify and ev.property != X.NONE:
+            data = w.get_full_property(prop, X.AnyPropertyType)
+            return data.value.decode("utf-8") if data else None
+    return None
+
+
+def _clipboard_text(d, w):
+    """ما في الحافظة الآن (كما يراه أي تطبيق)، أو None إن كانت فارغة."""
+    from Xlib import X
+    clip, utf8, prop = (d.intern_atom(n) for n in ("CLIPBOARD", "UTF8_STRING", "HADJ_TEST_READ"))
+    if d.get_selection_owner(clip) == X.NONE:
+        return None
+    w.convert_selection(clip, utf8, prop, X.CurrentTime)
+    d.flush()
+    ev = _wait(d, lambda e: e.type == X.SelectionNotify, 2)
+    if ev is None or ev.property == X.NONE:
+        return None
+    data = w.get_full_property(prop, X.AnyPropertyType)
+    return data.value.decode("utf-8") if data else None
+
+
+def _digest(text):
+    """بصمة بدل النص: حافظة WSLg هي حافظة Windows الحقيقية للمستخدم، فلا تُطبع أبداً."""
+    import hashlib
+    return None if text is None else hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+@pytest.mark.parametrize("previous", ["avant / قبل", None])
+def test_paste_under_xwayland(backend, win, previous):
+    """XWayland: النص (العربية، €…) يُلصق عبر الحافظة، ثم تعود الحافظة كما كانت."""
+    import threading
+
+    from os_layer.linux.clipboard import ClipboardOwner
+    if not backend.xwayland:
+        pytest.skip("خادم X.org: المحارف تُكتب مفتاحاً مفتاحاً (انظر test_type_unicode_through_spare_key)")
+    d, w = win
+    other = None
+    if previous is not None:          # تطبيق آخر يملك نصاً في الحافظة قبل الإملاء
+        other = ClipboardOwner()
+        assert other.set_text(previous)
+    before = _digest(_clipboard_text(d, w))   # None = حافظة فارغة (أو حافظة النظام كما هي)
+    errors = []
+
+    def typing():
+        try:
+            backend.type_text("مرحبا 50 € ok")
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+    t = threading.Thread(target=typing)
+    t.start()
+    pasted = _paste_target(d, w)
+    t.join(5)
+    try:
+        assert errors == [] and pasted == "مرحبا 50 € ok"
+        time.sleep(0.2)
+        assert _digest(_clipboard_text(d, w)) == before   # النص المُملى لا يبقى في الحافظة
+    finally:
+        if other is not None:
+            other.close()
+        backend._clip.clear()
+
+
+def test_paste_fails_loudly_when_nothing_accepts(backend, win, monkeypatch):
+    """لا تطبيق يلصق: خطأ صريح، والحافظة لا تحتفظ بالنص."""
+    if not backend.xwayland:
+        pytest.skip("مسار XWayland فقط")
+    d, w = win
+    monkeypatch.setattr(type(backend), "PASTE_WAIT_S", 0.5)
+    before = _digest(_clipboard_text(d, w))
+    with pytest.raises(OSError):
+        backend.type_text("سلام")     # نافذة الاختبار (صاحبة التركيز) لا تطلب الحافظة هنا
+    assert _digest(_clipboard_text(d, w)) == before
 
 
 def test_mouse_click_and_scroll_reach_the_window(backend, win):

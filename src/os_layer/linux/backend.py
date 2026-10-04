@@ -55,6 +55,7 @@ class LinuxX11Backend(OSBackend):
         self._held_buttons: set[str] = set()
         self._hotkeys: list[tuple[threading.Thread, object]] = []
         self._spare_keycode: int | None = None
+        self._clip = None    # ClipboardOwner عند الحاجة (اللصق تحت XWayland)
         # XWayland (جلسة Wayland): إعادة ربط المفاتيح قد تقطع اتصال X (لوحظ على WSLg): لا نستعملها
         self.xwayland = bool(os.environ.get("WAYLAND_DISPLAY")) or "XWAYLAND" in self.d.list_extensions()
 
@@ -117,13 +118,12 @@ class LinuxX11Backend(OSBackend):
     def type_text(self, text: str) -> None:
         """أي محرف (العربية، الرموز…): إن لم يوجد في التخطيط يُربط مؤقتاً بمفتاح غير مستخدم ثم يُعاد.
 
-        تحت XWayland لا إعادة ربط: إن احتوى النص محارف خارج التخطيط لا يُكتب شيء ويُرفع OSError
-        (نص مبتور بصمت أسوأ من رسالة خطأ، خاصة في الإملاء)."""
+        تحت XWayland لا إعادة ربط (قد يقطع اتصال X): النص كله يُلصق عبر الحافظة، ثم تُعاد الحافظة
+        كما كانت. إن تعذّر ذلك يُرفع OSError ولا يُكتب شيء (نص مبتور بصمت أسوأ، خاصة في الإملاء)."""
         from Xlib import X
-        if self.xwayland:
-            missing = sorted({ch for ch in text if not self._keycode(char_keysym(ch))})
-            if missing:
-                raise OSError(f"محارف خارج تخطيط لوحة المفاتيح لا تُكتب تحت Wayland: {''.join(missing)!r}")
+        if self.xwayland and any(not self._keycode(char_keysym(ch)) for ch in text):
+            self._paste_text(text)
+            return
         with self._lock:
             for ch in text:
                 sym = char_keysym(ch)
@@ -146,6 +146,37 @@ class LinuxX11Backend(OSBackend):
                     self._fake(X.KeyRelease, shift_code)
                 self.d.sync()
             self._restore_spare()
+
+    PASTE_WAIT_S = 1.5   # مهلة طلب التطبيق للنص بعد Ctrl+V
+
+    def _paste_text(self, text: str) -> None:
+        """لصق عبر CLIPBOARD مع حفظ الحافظة السابقة (نصاً) وإعادتها، أو تفريغها إن كانت فارغة."""
+        from os_layer.linux.clipboard import ClipboardOwner
+        if self._clip is None:
+            self._clip = ClipboardOwner(self._display_name)
+        clip = self._clip
+        previous = clip.get_text()
+        # التطبيق الذي سيلصق = صاحب التركيز. طلبات غيره (جسر الحافظة، السجلات) لا تعني لصقاً
+        with self._lock:
+            focus = self.d.get_input_focus().focus
+        fid = getattr(focus, "id", 0)
+        client = clip.client_base(fid) if fid > 1 else None   # 0 = لا شيء، 1 = PointerRoot
+        if not clip.set_text(text):
+            raise OSError("تعذّر امتلاك الحافظة لكتابة النص")
+        self.hotkey("ctrl", "v")
+        if client is None:
+            # لا نعرف من سيلصق: ننتظر المهلة كاملة قبل الإعادة (وإلا قد يُلصق المحتوى القديم)
+            time.sleep(self.PASTE_WAIT_S)
+            pasted = True
+        else:
+            pasted = clip.wait_served(self.PASTE_WAIT_S, client)
+            time.sleep(0.1)   # بعض التطبيقات تطلب الصيغة مرة ثانية
+        if previous is not None:
+            clip.set_text(previous)
+        else:
+            clip.clear()
+        if not pasted:
+            raise OSError("النافذة النشطة لم تطلب النص الملصوق (لا تقبل اللصق؟)")
 
     def _remap_spare(self, keysym: int) -> int:
         """مفتاح بلا ربط (keysym=0) يُعطى المحرف المطلوب مؤقتاً (طريقة xdotool)."""
@@ -606,6 +637,9 @@ class LinuxX11Backend(OSBackend):
         for _t, stop in self._hotkeys:
             stop.set()
         self._hotkeys.clear()
+        if self._clip is not None:
+            self._clip.close()
+            self._clip = None
 
     def hard_exit(self, code: int) -> None:
         os._exit(code)
