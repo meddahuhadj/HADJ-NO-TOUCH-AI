@@ -83,7 +83,36 @@ Le point `capabilities()` est le plus important. Sur Wayland, « aimante la fen�
 fonctionner : la commande doit disparaître de la grammaire et de l'aide, au lieu d'être reconnue puis de
 ne rien faire.
 
-## 4. Phase 1 : Linux X11 (environ 11 jours)
+## 4. Phase 1 : Linux X11 — **backend réalisé le 4 octobre 2026, paquet AppImage à faire**
+
+Fait : `src/os_layer/linux/` (`LinuxX11Backend`), avec python-xlib (100 % Python, LGPL) comme seule
+dépendance.
+- **Clavier, souris, texte Unicode** via XTEST.
+- **Fenêtres** via EWMH : fermer, réduire, agrandir, aimanter, déplacer, toujours au premier plan, focus par titre.
+- **Écrans** via RandR ; **bureaux virtuels** via `_NET_CURRENT_DESKTOP`.
+- **Raccourci d'urgence** via `XGrabKey`, qui renvoie `False` si un autre programme possède déjà la
+  combinaison.
+- **Applications** via les fichiers `.desktop`, avec le nom dans la langue de l'utilisateur.
+- **Son, luminosité, mode sombre, corbeille, verrouillage, extinction** via `wpctl`/`pactl`,
+  `brightnessctl`, `gsettings`, `gio`, `loginctl`, `systemctl`. Si un outil est absent du PC, la commande
+  correspondante disparaît.
+
+Vérifié dans l'Ubuntu 24.04 de WSL, sur un vrai serveur X : 31 tests de logique, plus 8 tests où une
+fenêtre réelle reçoit le texte tapé, les clics, le défilement et le raccourci global. Sur 16 passages
+complets, 15 réussissent ; l'échec restant est un événement en trop ou manquant propre à WSLg.
+
+Limites constatées :
+- **Sous XWayland** (session Wayland, WSLg), le remappage temporaire d'une touche peut couper la connexion
+  X. Le texte contenant des caractères absents du clavier (arabe, €…) est donc **refusé avec une erreur**
+  au lieu d'être tapé à moitié. Solution prévue en phase 3 : passer par le presse-papiers.
+- Si plus aucune fenêtre n'a le focus clavier, X ignore toutes les frappes, y compris le raccourci global.
+  Le poing et « stop » restent alors l'arrêt d'urgence.
+
+Reste à faire :
+- paquet **AppImage** (environnement de build Linux nécessaire) ;
+- validation sur un vrai bureau GNOME/KDE en session Xorg (gestion des fenêtres, caméra, micro).
+
+Estimation initiale de la phase :
 
 | Tâche | Effort |
 |---|---|

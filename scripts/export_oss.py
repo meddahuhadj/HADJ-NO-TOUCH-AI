@@ -25,7 +25,7 @@ SRC = ROOT / "src" / "os_layer"
 TEMPLATES = ROOT / "oss" / "hadj-input"
 PACKAGE = "hadj_input"
 # ما يُفتح: كل ما يلمس النظام. apps_index (بحث تقريبي عن التطبيقات) منطق تطبيق لا طبقة نظام.
-FILES = ["base.py", "windows/__init__.py", "windows/backend.py", "windows/input.py",
+FILES = ["base.py", "geometry.py", "windows/__init__.py", "windows/backend.py", "windows/input.py",
          "windows/winapi.py", "windows/display.py", "windows/apps.py"]
 APP_MODULES = {"core", "commands", "config", "ui", "vision", "audio", "help", "os_layer"}
 NETWORK_MODULES = {"socket", "urllib", "http", "requests", "ftplib", "smtplib", "ssl", "asyncio",
