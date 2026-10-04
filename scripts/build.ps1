@@ -156,6 +156,74 @@ if ($Edition -eq "lite") {
     Copy-Tree (Join-Path $root "models") (Join-Path $app "models")
 }
 Copy-Item (Join-Path $root "README.md") $app -Force
+# ---- التثبيت على أجهزة أخرى: لا Python ولا تثبيت، فقط فك الضغط ----
+# الأيقونة + اختصار سطح المكتب/قائمة ابدأ بنقرة (يشير مباشرة إلى pythonw: بلا نافذة سوداء) + طريقة الإزالة
+& $py (Join-Path $root "scripts\make_icon.py") | Out-Null
+if ($LASTEXITCODE -eq 0) { Copy-Item (Join-Path $root "build\app.ico") (Join-Path $app "app.ico") -Force }
+if ($Mode -eq "python") {
+    # HADJ_SHORTCUT_DIR: لاختبار الإنشاء في مجلد مؤقت بدل سطح المكتب
+    $dirsExpr = '$dirs=if($env:HADJ_SHORTCUT_DIR){@($env:HADJ_SHORTCUT_DIR)}else{@([Environment]::GetFolderPath(''Desktop''),[Environment]::GetFolderPath(''Programs''))}; '
+    $ps = '$d=''%~dp0''; $w=New-Object -ComObject WScript.Shell; ' + $dirsExpr +
+          'foreach($f in $dirs){ $s=$w.CreateShortcut((Join-Path $f ''HADJ No-Touch.lnk'')); ' +
+          '$s.TargetPath=(Join-Path $d ''runtime\pythonw.exe''); ' +
+          '$s.Arguments=(''-s -E '' + [char]34 + (Join-Path $d ''app\main.py'') + [char]34); ' +
+          '$s.WorkingDirectory=$d; $s.IconLocation=(Join-Path $d ''app.ico''); $s.Description=''HADJ No-Touch''; ' +
+          '$s.Save(); Write-Host (''OK: '' + $f) }'
+    Set-Content (Join-Path $app "Creer-raccourci.bat") -Encoding ASCII -Value @(
+        '@echo off',
+        'rem Cree un raccourci "HADJ No-Touch" sur le Bureau et dans le menu Demarrer (rien n''est installe).',
+        'rem Creates a "HADJ No-Touch" shortcut on the Desktop and in the Start menu (nothing is installed).',
+        ('powershell -NoProfile -ExecutionPolicy Bypass -Command "' + $ps + '"'),
+        'if not defined HADJ_SHORTCUT_DIR pause')
+    $rm = $dirsExpr +
+          'foreach($f in $dirs){ $l=Join-Path $f ''HADJ No-Touch.lnk''; if(Test-Path $l){ Remove-Item $l; Write-Host (''Removed: '' + $l) } }'
+    Set-Content (Join-Path $app "Supprimer-raccourci.bat") -Encoding ASCII -Value @(
+        '@echo off',
+        'rem Supprime les raccourcis crees par Creer-raccourci.bat / Removes the shortcuts.',
+        ('powershell -NoProfile -ExecutionPolicy Bypass -Command "' + $rm + '"'),
+        'if not defined HADJ_SHORTCUT_DIR pause')
+}
+$editionLine = if ($Edition -eq "lite") { "Lite : francais + anglais. Pack arabe : decompressez HADJ-NoTouch-pack-ar.zip dans ce dossier." } else { "Complete : arabe + francais + anglais, dictee Whisper." }
+Set-Content (Join-Path $app "LISEZ-MOI_README.txt") -Encoding UTF8 -Value @(
+    "HADJ No-Touch - $editionLine",
+    "",
+    "=== FRANCAIS ===",
+    "Aucune installation, Python n'est PAS necessaire : tout est dans ce dossier.",
+    "Configuration : Windows 10 ou 11 (64 bits), une webcam et un micro.",
+    "1. AVANT d'extraire : clic droit sur le fichier ZIP > Proprietes > cocher 'Debloquer' > OK.",
+    "   (evite les avertissements de Windows sur les fichiers venus d'Internet)",
+    "2. Clic droit sur le ZIP > 'Extraire tout' vers un dossier (ex. C:\HADJ-NoTouch ou une cle USB).",
+    "   Ne lancez pas l'application depuis l'apercu du ZIP sans l'extraire.",
+    "3. Double-cliquez sur HADJ-NoTouch.bat. Le premier demarrage peut prendre 20 a 40 secondes.",
+    "   Facultatif : Creer-raccourci.bat ajoute une icone sur le Bureau et dans le menu Demarrer.",
+    "4. Si la camera ou le micro ne repondent pas : Parametres Windows > Confidentialite et securite >",
+    "   Camera (puis Microphone) > activer 'Autoriser les applications de bureau a acceder...'.",
+    "Aide complete, sans Internet : ouvrez 'AIDE - HELP.html'.",
+    "Desinstaller : Supprimer-raccourci.bat, puis supprimez le dossier. Aucune autre trace sur le PC",
+    "(reglages et journaux sont dans le sous-dossier user_data).",
+    "",
+    "=== ENGLISH ===",
+    "No installation, Python is NOT required: everything is in this folder.",
+    "Requirements: Windows 10 or 11 (64-bit), a webcam and a microphone.",
+    "1. BEFORE extracting: right-click the ZIP > Properties > tick 'Unblock' > OK.",
+    "2. Right-click the ZIP > 'Extract All' to a folder (e.g. C:\HADJ-NoTouch or a USB stick).",
+    "3. Double-click HADJ-NoTouch.bat. The first start can take 20 to 40 seconds.",
+    "   Optional: Creer-raccourci.bat adds a Desktop and Start-menu shortcut.",
+    "4. If the camera or microphone does not respond: Windows Settings > Privacy & security >",
+    "   Camera (then Microphone) > turn on 'Let desktop apps access...'.",
+    "Full offline help: open 'AIDE - HELP.html'. Uninstall: Supprimer-raccourci.bat, then delete the folder.",
+    "",
+    "=== العربية ===",
+    "لا تثبيت ولا حاجة إلى Python: كل شيء داخل هذا المجلد.",
+    "المتطلبات: Windows 10 أو 11 (64 بت)، كاميرا وميكروفون.",
+    "1. قبل فك الضغط: انقر بالزر الأيمن على ملف ZIP > خصائص > فعّل «إلغاء الحظر» > موافق.",
+    "2. انقر بالزر الأيمن على ملف ZIP > «استخراج الكل» إلى مجلد (مثل C:\HADJ-NoTouch أو مفتاح USB).",
+    "3. انقر نقراً مزدوجاً على HADJ-NoTouch.bat. قد يستغرق التشغيل الأول من 20 إلى 40 ثانية.",
+    "   اختياري: Creer-raccourci.bat يضيف اختصاراً على سطح المكتب وفي قائمة ابدأ.",
+    "4. إن لم تستجب الكاميرا أو الميكروفون: إعدادات Windows > الخصوصية والأمان > الكاميرا (ثم الميكروفون)",
+    "   > فعّل «السماح لتطبيقات سطح المكتب بالوصول».",
+    "المساعدة الكاملة دون إنترنت: افتح «AIDE - HELP.html». الإزالة: Supprimer-raccourci.bat ثم احذف المجلد.")
+
 # الدليل المحلي: نسخة python تحمله داخل app\app\help؛ نسخة pyinstaller تحتاجه بجانب الملف التنفيذي
 $helpRel = if ($Mode -eq "python") { "app/help" } else { "help" }
 if ($Mode -ne "python") { Copy-Tree (Join-Path $root "src\help") (Join-Path $app "help") -excludeDirs @("__pycache__") }
