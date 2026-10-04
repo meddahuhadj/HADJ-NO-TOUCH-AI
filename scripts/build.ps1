@@ -53,7 +53,8 @@ function Update-Checksums {
     $lines = Get-ChildItem $dist -Filter *.zip | Sort-Object Name | ForEach-Object {
         "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
     }
-    Set-Content (Join-Path $dist "SHA256SUMS.txt") -Encoding ASCII -Value $lines
+    # نهايات أسطر LF: أداة sha256sum -c (Linux/macOS/Git Bash) ترفض CR في أسماء الملفات
+    [IO.File]::WriteAllText((Join-Path $dist "SHA256SUMS.txt"), (($lines -join "`n") + "`n"), [Text.Encoding]::ASCII)
     "SHA256SUMS.txt: {0} fichier(s)" -f @($lines).Count
 }
 
