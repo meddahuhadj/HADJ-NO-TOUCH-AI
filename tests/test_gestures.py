@@ -394,3 +394,22 @@ def test_pointer_executes_scroll_zoom_and_forwards_swipe(ptr):
         s.t += DT
     assert ("zoom", 1) in fake.calls
     assert not any(c[0] == "mouse" for c in fake.calls)   # لا نقرات أثناء التكبير
+
+
+def test_dwell_click_triggers_tap(ptr):
+    p, fake, fwd = ptr
+    p.cfg.dwell_click_enabled = True
+    p.cfg.dwell_click_ms = 300
+    p.cfg.dwell_click_radius = 50.0
+
+    s = Seq()
+    # Stay steady in point pose for 15 frames (~500ms > 300ms threshold)
+    for _ in range(15):
+        out = s.eng.update([make_hand("point")], s.t)
+        p.apply(out, s.t)
+        s.t += DT
+
+    progress_events = [val for ev, val in fwd if ev == "dwell_progress"]
+    assert len(progress_events) > 0
+    assert "pinch_tap:click" in p.performed or ("mouse", "left", "click", 1) in fake.calls
+

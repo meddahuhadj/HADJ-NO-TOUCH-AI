@@ -627,6 +627,35 @@ def _action_center(ctx, a):
 
 
 
+# ============================ الوسائط والتحكم السياقي ============================
+@action("media_play_pause")
+def _media_play_pause(ctx, a):
+    title = (ctx.os.active_window_title() or "").lower()
+    if any(w in title for w in ["youtube", "vimeo", "twitch"]):
+        ctx.os.key("k")
+    else:
+        ctx.os.hotkey("space")
+
+
+@action("media_next")
+def _media_next(ctx, a):
+    title = (ctx.os.active_window_title() or "").lower()
+    if any(w in title for w in ["youtube", "vimeo"]):
+        ctx.os.hotkey("shift", "n")
+    else:
+        ctx.os.hotkey("ctrl", "right")
+
+
+@action("media_prev")
+def _media_prev(ctx, a):
+    title = (ctx.os.active_window_title() or "").lower()
+    if any(w in title for w in ["youtube", "vimeo"]):
+        ctx.os.hotkey("shift", "p")
+    else:
+        ctx.os.hotkey("ctrl", "left")
+
+
+
 # ============================ الإمكانات حسب النظام ============================
 def action_needs(name: str) -> set[str]:
     """طرق OSBackend الاختيارية التي يستدعيها الإجراء (من أسماء الخصائص في الكود المترجم)."""

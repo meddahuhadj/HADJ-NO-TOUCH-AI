@@ -90,6 +90,9 @@ class VisionConfig(BaseModel):
     wake_on_input: bool = True   # لمس الفأرة/لوحة المفاتيح يوقظ الكاميرا النائمة
     min_cutoff: float = Field(1.0, gt=0, le=20)
     beta: float = Field(0.01, ge=0, le=1)
+    dwell_click_enabled: bool = False
+    dwell_click_ms: int = Field(1000, ge=300, le=5000)
+    dwell_click_radius: float = Field(18.0, ge=5.0, le=100.0)
     min_detection_confidence: float = Field(0.45, ge=0.1, le=1)
     min_tracking_confidence: float = Field(0.40, ge=0.1, le=1)
     tuning: GestureTuning = Field(default_factory=GestureTuning)
