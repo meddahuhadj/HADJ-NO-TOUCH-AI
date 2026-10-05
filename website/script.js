@@ -21,15 +21,15 @@
 
   /* Centralized download and release configuration */
   var DOWNLOAD_CONFIG = {
-    version: "1.0.0",
-    releaseDate: "2026-10-02",
+    version: "4.1-beta",
+    releaseDate: "2026-10-05",
     fileName: "HADJ-NoTouch-portable.zip",
-    fileSize: "1 133 391 066 octets (~1,05 Go)",
-    sha256: "DFAA733D61A340EB9629C18AE020DE24EC00E36714E792033D5EDB0D28EF2900",
+    fileSize: "1 133 565 519 octets (~1,06 Go)",
+    sha256: "55F24FFA4A75652F4F265FA4ACDB6CEB29C2BB58BE97E1C5A28C6D6C2B98BD18",
     psCommand: "Get-FileHash .\\HADJ-NoTouch-portable.zip -Algorithm SHA256",
-    downloadUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v1.0.0/HADJ-NoTouch-portable.zip",
+    downloadUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/download/v4.1-beta/HADJ-NoTouch-portable.zip",
     releasesPageUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/releases/latest",
-    virusTotalUrl: "https://www.virustotal.com/gui/file/dfaa733d61a340eb9629c18ae020de24ec00e36714e792033d5edb0d28ef2900",
+    virusTotalUrl: "https://www.virustotal.com/gui/file/55f24ffa4a75652f4f265fa4acdb6ceb29c2bb58be97e1c5a28c6d6c2b98bd18",
     issuesUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/issues",
     repoUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI",
     licenseUrl: "https://github.com/meddahuhadj/HADJ-NO-TOUCH-AI/blob/main/README.md"
