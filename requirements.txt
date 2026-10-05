@@ -8,6 +8,7 @@ PyYAML>=6.0
 pydantic>=2.6
 rapidfuzz>=3.6
 pywin32>=306; sys_platform == "win32"
+python-xlib>=0.33; sys_platform == "linux"   # طبقة النظام على Linux (X11)، Python خالص
 # المراحل القادمة
 mediapipe>=0.10.14
 opencv-python>=4.9

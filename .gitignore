@@ -33,3 +33,7 @@ user_data/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Vercel (lien local du projet et jeton) : ne jamais commiter
+.vercel/
+.env.local

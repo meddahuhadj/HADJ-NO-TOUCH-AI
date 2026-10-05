@@ -41,6 +41,9 @@ class PointerController:
         self.last_move: tuple[int, int] | None = None
         self.performed: list[str] = []   # للاختبارات والتشخيص
         self._stable_pos: tuple[float, float] | None = None
+        self.dwell_start_t: float | None = None
+        self.dwell_pos: tuple[float, float] | None = None
+        self.dwell_triggered = False
 
     # ------------------------------------------------------------------
     def _to_px(self, u: float, v: float) -> tuple[float, float]:
@@ -71,6 +74,23 @@ class PointerController:
             self.dragging = False
         self.locked_at = None
         self._stable_pos = None
+        self.reset_dwell()
+
+    DWELL_STEP = 0.1   # يُرسل التقدّم بخطوات 10% فقط (لا 30 رسالة/ث)
+
+    def reset_dwell(self) -> None:
+        if self.dwell_pos is not None or self.dwell_start_t is not None:
+            self.dwell_pos = None
+            self.dwell_start_t = None
+            self.dwell_triggered = False
+            self._dwell_report(0.0)
+
+    def _dwell_report(self, progress: float) -> None:
+        """تقدّم النقر بالتحويم للواجهة (حدث dwell_progress: إشعار فقط، لا ينفّذ أي إجراء)."""
+        step = round(progress / self.DWELL_STEP) * self.DWELL_STEP
+        if step != getattr(self, "_dwell_last", None):
+            self._dwell_last = step
+            self.forward("dwell_progress", f"{step:.1f}")
 
     def _run_binding(self, gesture: str, amount: int = 1) -> None:
         action = self.cfg.bindings.get(gesture, "none")
@@ -181,6 +201,8 @@ class PointerController:
             self._run_binding("zoom_in" if out.zoom > 0 else "zoom_out", out.zoom)
 
         if out.locked or self.locked_at is not None:
+            if getattr(self.cfg, "dwell_click_enabled", False):
+                self.reset_dwell()
             return
         if fx is not None:
             if not self.dragging and self.offset != (0.0, 0.0):
@@ -188,3 +210,31 @@ class PointerController:
                 ox, oy = self.offset
                 self.offset = (ox * 0.8, oy * 0.8) if abs(ox) + abs(oy) > 1 else (0.0, 0.0)
             self._move(fx + self.offset[0], fy + self.offset[1])
+
+            # حساب النقر بالsurvol / Dwell click
+            if getattr(self.cfg, "dwell_click_enabled", False) and not self.dragging:
+                dwell_radius = getattr(self.cfg, "dwell_click_radius", 18.0)
+                dwell_ms = getattr(self.cfg, "dwell_click_ms", 1000)
+                if self.dwell_pos is None or self.dwell_start_t is None:
+                    self.dwell_pos = (fx, fy)
+                    self.dwell_start_t = t
+                    self.dwell_triggered = False
+                else:
+                    dist = math.hypot(fx - self.dwell_pos[0], fy - self.dwell_pos[1])
+                    if dist > dwell_radius:
+                        # خروج من الدائرة: عدّ جديد (وهو وحده ما يعيد تسليح النقر بعد نقرة)
+                        self.dwell_pos = (fx, fy)
+                        self.dwell_start_t = t
+                        self.dwell_triggered = False
+                        self._dwell_report(0.0)
+                    elif not self.dwell_triggered:
+                        elapsed_ms = (t - self.dwell_start_t) * 1000.0
+                        progress = min(1.0, elapsed_ms / dwell_ms)
+                        self._dwell_report(progress)
+                        if progress >= 1.0:
+                            # نقرة واحدة: اليد الساكنة فوق زر (مثل «حذف») لا تنقر مراراً
+                            self.dwell_triggered = True
+                            self._run_binding("pinch_tap")
+                            self._dwell_report(0.0)
+        elif getattr(self.cfg, "dwell_click_enabled", False):
+            self.reset_dwell()

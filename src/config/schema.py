@@ -32,6 +32,8 @@ class SafetyConfig(BaseModel):
 
 class FeedbackConfig(BaseModel):
     sounds: bool = True
+    sound_volume: int = Field(70, ge=10, le=100)
+    hand_sounds: bool = False   # نغمة خفيفة عند ظهور اليد واختفائها (مفيدة لضعاف البصر)
 
 
 class UIConfig(BaseModel):
@@ -40,6 +42,9 @@ class UIConfig(BaseModel):
     high_contrast: bool = False
     overlay: bool = True
     overlay_seconds: float = Field(4.0, ge=1, le=30)
+    # مؤشر حالة دائم صغير (دائرة): يستمع/صوت مسموع/يد مرئية/متوقف/خطأ
+    status_orb: bool = True
+    orb_corner: Literal["auto", "top-left", "top-right", "bottom-left", "bottom-right"] = "auto"
     show_panel: bool = True   # لوحة التحكم عند التشغيل
 
 
@@ -78,8 +83,16 @@ class VisionConfig(BaseModel):
     hand: Literal["any", "right", "left"] = "any"
     # منطقة التحكم داخل صورة الكاميرا (x0, y0, x1, y1) بنسب 0..1 ← تُطابق كامل الشاشة
     control_zone: tuple[float, float, float, float] = (0.2, 0.15, 0.8, 0.75)
+    # السكون عند غياب اليد (0 = تعطيل): خفيف = معالجة بطيئة، عميق = تحرير الكاميرا
+    idle_light_s: int = Field(120, ge=0, le=3600)
+    idle_deep_s: int = Field(600, ge=0, le=7200)
+    light_fps: float = Field(3.0, ge=1, le=15)
+    wake_on_input: bool = True   # لمس الفأرة/لوحة المفاتيح يوقظ الكاميرا النائمة
     min_cutoff: float = Field(1.0, gt=0, le=20)
     beta: float = Field(0.01, ge=0, le=1)
+    dwell_click_enabled: bool = False
+    dwell_click_ms: int = Field(1000, ge=300, le=5000)
+    dwell_click_radius: float = Field(18.0, ge=5.0, le=100.0)
     min_detection_confidence: float = Field(0.45, ge=0.1, le=1)
     min_tracking_confidence: float = Field(0.40, ge=0.1, le=1)
     tuning: GestureTuning = Field(default_factory=GestureTuning)
@@ -108,6 +121,10 @@ class GridConfig(BaseModel):
     timeout_s: float = Field(30.0, ge=5, le=600)
 
 
+class ProfilesConfig(BaseModel):
+    active: str = "standard"   # معرّف الملف الشخصي النشط (config/profiles.py)
+
+
 class AppConfig(BaseModel):
     speech: SpeechConfig = Field(default_factory=SpeechConfig)
     dictation: DictationConfig = Field(default_factory=DictationConfig)
@@ -117,4 +134,5 @@ class AppConfig(BaseModel):
     feedback: FeedbackConfig = Field(default_factory=FeedbackConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
     actions: ActionsConfig = Field(default_factory=ActionsConfig)
+    profiles: ProfilesConfig = Field(default_factory=ProfilesConfig)
     app_aliases: dict[str, str] = Field(default_factory=dict)

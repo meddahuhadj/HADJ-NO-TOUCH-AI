@@ -3,6 +3,13 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\build.ps1                    # الوضع الافتراضي: python
 #   powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -Mode pyinstaller  # ملف تنفيذي واحد
 #   ... -NoZip                                                                     # دون ضغط
+#   ... -Edition lite      # النسخة الخفيفة: فرنسي + إنجليزي، إملاء Vosk، بلا Whisper ولا العربية
+#   ... -Edition pack-ar   # حزمة العربية للنسخة الخفيفة (تُفك داخل مجلد التطبيق)
+#
+# النسخ (قاعدة كود واحدة: التطبيق يكتشف ما هو مثبّت، انظر src/core/edition.py):
+#   full    : dist\HADJ-NoTouch\        العربية + الفرنسية + الإنجليزية + Whisper
+#   lite    : dist\HADJ-NoTouch-Lite\   الفرنسية + الإنجليزية، إملاء Vosk، بلا مكتبات Whisper
+#   pack-ar : dist\HADJ-NoTouch-pack-ar\ models\vosk\ar فقط
 #
 # الوضعان:
 #   python      : مفسّر Python الرسمي (موقَّع من Python Software Foundation) + الكود + المكتبات.
@@ -11,12 +18,16 @@
 #                 إلا إذا وُقِّع بشهادة توقيع برمجيات.
 #
 # المتطلبات: .venv جاهزة (requirements.txt) والنماذج منزّلة (scripts\download_models.py).
-param([ValidateSet("python", "pyinstaller")][string]$Mode = "python", [switch]$NoZip)
+param([ValidateSet("python", "pyinstaller")][string]$Mode = "python",
+      [ValidateSet("full", "lite", "pack-ar")][string]$Edition = "full",
+      [switch]$NoZip)
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 $py = Join-Path $root ".venv\Scripts\python.exe"
 $dist = Join-Path $root "dist"
-$app = Join-Path $dist "HADJ-NoTouch"
+$name = @{ "full" = "HADJ-NoTouch"; "lite" = "HADJ-NoTouch-Lite"; "pack-ar" = "HADJ-NoTouch-pack-ar" }[$Edition]
+$app = Join-Path $dist $name
+if ($Edition -eq "lite" -and $Mode -ne "python") { throw "النسخة الخفيفة تُبنى بالوضع python فقط" }
 
 function Copy-Tree($from, $to, [string[]]$excludeDirs = @(), [string[]]$excludeFiles = @()) {
     $args_ = @($from, $to, "/E", "/NFL", "/NDL", "/NJH", "/NJS", "/NP")
@@ -26,12 +37,52 @@ function Copy-Tree($from, $to, [string[]]$excludeDirs = @(), [string[]]$excludeF
     if ($LASTEXITCODE -ge 8) { throw "فشل النسخ: $from" }
 }
 
+function Compress-Dist($folder, $zipName) {
+    $zip = Join-Path $dist $zipName
+    if (Test-Path $zip) { Remove-Item $zip -Force }
+    Push-Location $dist
+    # tar الخاص بـ Windows صراحةً: نسخة GNU (من Git) تتجاهل -a وتنتج tar غير مضغوط باسم .zip
+    try { & "$env:SystemRoot\System32\tar.exe" -a -c -f $zip -C $folder "." } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw "فشل الضغط" }
+    "{0}  ({1:N0} MB)" -f $zip, ((Get-Item $zip).Length / 1MB)
+}
+
+function Update-Checksums {
+    # بصمات SHA-256 لكل ملفات zip في dist: تُنشر بجانب التنزيلات ليتحقق كل مستخدم من ملفه
+    # (مجانية، وتكمّل التوقيع الرقمي أو تعوّضه: انظر docs/signature)
+    $lines = Get-ChildItem $dist -Filter *.zip | Sort-Object Name | ForEach-Object {
+        "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+    }
+    # نهايات أسطر LF: أداة sha256sum -c (Linux/macOS/Git Bash) ترفض CR في أسماء الملفات
+    [IO.File]::WriteAllText((Join-Path $dist "SHA256SUMS.txt"), (($lines -join "`n") + "`n"), [Text.Encoding]::ASCII)
+    "SHA256SUMS.txt: {0} fichier(s)" -f @($lines).Count
+}
+
 if (-not (Test-Path $py)) { throw "لم يُعثر على .venv. أنشئها أولاً (انظر README)." }
-foreach ($m in @("models\vosk\ar", "models\vosk\en", "models\mediapipe\hand_landmarker.task", "models\whisper\small\model.bin")) {
+$needed = @{
+    "full"    = @("models\vosk\ar", "models\vosk\en", "models\vosk\fr", "models\mediapipe\hand_landmarker.task", "models\whisper\small\model.bin")
+    "lite"    = @("models\vosk\en", "models\vosk\fr", "models\mediapipe\hand_landmarker.task")
+    "pack-ar" = @("models\vosk\ar")
+}[$Edition]
+foreach ($m in $needed) {
     if (-not (Test-Path (Join-Path $root $m))) { throw "نموذج ناقص: $m. شغّل scripts\download_models.py" }
 }
 if (Test-Path $app) { Remove-Item $app -Recurse -Force }
 New-Item -ItemType Directory -Force $app | Out-Null
+
+if ($Edition -eq "pack-ar") {
+    # الحزمة تحمل المسار نفسه داخل التطبيق: فكّها في مجلد التطبيق فتندمج models\vosk\ar
+    Copy-Tree (Join-Path $root "models\vosk\ar") (Join-Path $app "models\vosk\ar")
+    # اسم ASCII: tar.exe في Windows ينهار (access violation) مع أسماء ملفات عربية داخل zip
+    Set-Content (Join-Path $app "LISEZ-MOI_README.txt") -Encoding UTF8 -Value @(
+        "FR : Decompressez ce fichier dans le dossier de HADJ No-Touch Lite (a cote de HADJ-NoTouch.bat), puis relancez l'application.",
+        "EN : Unzip this file into the HADJ No-Touch Lite folder (next to HADJ-NoTouch.bat), then restart the app.",
+        "AR : فك ضغط هذا الملف داخل مجلد HADJ No-Touch Lite (بجانب HADJ-NoTouch.bat) ثم أعد تشغيل التطبيق.")
+    if (-not $NoZip) { Compress-Dist $name "$name.zip"; Update-Checksums }
+    $size = (Get-ChildItem $app -Recurse | Measure-Object Length -Sum).Sum / 1MB
+    "الحزمة: {0}  ({1:N0} MB)" -f $app, $size
+    return
+}
 
 if ($Mode -eq "pyinstaller") {
     & $py -m PyInstaller --version *> $null
@@ -56,9 +107,14 @@ if ($Mode -eq "pyinstaller") {
 
     Write-Host "[2/5] المكتبات (مع حذف ما لا يحتاجه التطبيق)"
     $sp = Join-Path $rt "Lib\site-packages"
-    Copy-Tree (Join-Path $root ".venv\Lib\site-packages") $sp `
-        -excludeDirs @("__pycache__", "pip", "pyinstaller*", "PyInstaller", "_pyinstaller_hooks_contrib", "pytest", "_pytest",
-                       "pip-*.dist-info", "pytest-*.dist-info", "pyinstaller-*.dist-info", "sounddevice*", "_sounddevice_data")
+    $spExclude = @("__pycache__", "pip", "pyinstaller*", "PyInstaller", "_pyinstaller_hooks_contrib", "pytest", "_pytest",
+                   "pip-*.dist-info", "pytest-*.dist-info", "pyinstaller-*.dist-info", "sounddevice*", "_sounddevice_data")
+    if ($Edition -eq "lite") {
+        # مكتبات Whisper (الإملاء الدقيق) فقط؛ mediapipe يحتاج protobuf وflatbuffers فتبقى
+        $spExclude += @("faster_whisper*", "ctranslate2*", "av", "av.libs", "av-*.dist-info", "onnxruntime*",
+                        "tokenizers*", "huggingface_hub*", "hf_xet*")
+    }
+    Copy-Tree (Join-Path $root ".venv\Lib\site-packages") $sp -excludeDirs $spExclude
     # وحدات Qt كبيرة غير مستخدمة (الواجهة تحتاج QtCore وQtGui وQtWidgets فقط)
     $qt = Join-Path $sp "PySide6"
     $unused = "WebEngine|WebView|WebChannel|WebSockets|Quick|Qml|3D|Multimedia|Pdf|Designer|Charts|DataVisualization|Graphs|" +
@@ -86,20 +142,106 @@ if ($Mode -eq "pyinstaller") {
 }
 
 Write-Host "[4/5] النماذج والوثائق"
-Copy-Tree (Join-Path $root "models") (Join-Path $app "models")
+if ($Edition -eq "lite") {
+    foreach ($m in "vosk\en", "vosk\fr", "mediapipe") {
+        Copy-Tree (Join-Path $root "models\$m") (Join-Path $app "models\$m")
+    }
+    # قيم افتراضية للنسخة (تُدمج بين الافتراضي العام وإعدادات المستخدم: انظر config/loader.py)
+    Set-Content (Join-Path $app "edition.yaml") -Encoding UTF8 -Value @(
+        "edition: lite",
+        "config:",
+        "  speech: {language: fr}",
+        "  ui: {ui_language: fr}",
+        "  dictation: {engine: vosk}")
+} else {
+    Copy-Tree (Join-Path $root "models") (Join-Path $app "models")
+}
 Copy-Item (Join-Path $root "README.md") $app -Force
+# ---- التثبيت على أجهزة أخرى: لا Python ولا تثبيت، فقط فك الضغط ----
+# الأيقونة + اختصار سطح المكتب/قائمة ابدأ بنقرة (يشير مباشرة إلى pythonw: بلا نافذة سوداء) + طريقة الإزالة
+& $py (Join-Path $root "scripts\make_icon.py") | Out-Null
+if ($LASTEXITCODE -eq 0) { Copy-Item (Join-Path $root "build\app.ico") (Join-Path $app "app.ico") -Force }
+if ($Mode -eq "python") {
+    # HADJ_SHORTCUT_DIR: لاختبار الإنشاء في مجلد مؤقت بدل سطح المكتب
+    $dirsExpr = '$dirs=if($env:HADJ_SHORTCUT_DIR){@($env:HADJ_SHORTCUT_DIR)}else{@([Environment]::GetFolderPath(''Desktop''),[Environment]::GetFolderPath(''Programs''))}; '
+    $ps = '$d=''%~dp0''; $w=New-Object -ComObject WScript.Shell; ' + $dirsExpr +
+          'foreach($f in $dirs){ $s=$w.CreateShortcut((Join-Path $f ''HADJ No-Touch.lnk'')); ' +
+          '$s.TargetPath=(Join-Path $d ''runtime\pythonw.exe''); ' +
+          '$s.Arguments=(''-s -E '' + [char]34 + (Join-Path $d ''app\main.py'') + [char]34); ' +
+          '$s.WorkingDirectory=$d; $s.IconLocation=(Join-Path $d ''app.ico''); $s.Description=''HADJ No-Touch''; ' +
+          '$s.Save(); Write-Host (''OK: '' + $f) }'
+    Set-Content (Join-Path $app "Creer-raccourci.bat") -Encoding ASCII -Value @(
+        '@echo off',
+        'rem Cree un raccourci "HADJ No-Touch" sur le Bureau et dans le menu Demarrer (rien n''est installe).',
+        'rem Creates a "HADJ No-Touch" shortcut on the Desktop and in the Start menu (nothing is installed).',
+        ('powershell -NoProfile -ExecutionPolicy Bypass -Command "' + $ps + '"'),
+        'if not defined HADJ_SHORTCUT_DIR pause')
+    $rm = $dirsExpr +
+          'foreach($f in $dirs){ $l=Join-Path $f ''HADJ No-Touch.lnk''; if(Test-Path $l){ Remove-Item $l; Write-Host (''Removed: '' + $l) } }'
+    Set-Content (Join-Path $app "Supprimer-raccourci.bat") -Encoding ASCII -Value @(
+        '@echo off',
+        'rem Supprime les raccourcis crees par Creer-raccourci.bat / Removes the shortcuts.',
+        ('powershell -NoProfile -ExecutionPolicy Bypass -Command "' + $rm + '"'),
+        'if not defined HADJ_SHORTCUT_DIR pause')
+}
+$editionLine = if ($Edition -eq "lite") { "Lite : francais + anglais. Pack arabe : decompressez HADJ-NoTouch-pack-ar.zip dans ce dossier." } else { "Complete : arabe + francais + anglais, dictee Whisper." }
+Set-Content (Join-Path $app "LISEZ-MOI_README.txt") -Encoding UTF8 -Value @(
+    "HADJ No-Touch - $editionLine",
+    "",
+    "=== FRANCAIS ===",
+    "Aucune installation, Python n'est PAS necessaire : tout est dans ce dossier.",
+    "Configuration : Windows 10 ou 11 (64 bits), une webcam et un micro.",
+    "1. AVANT d'extraire : clic droit sur le fichier ZIP > Proprietes > cocher 'Debloquer' > OK.",
+    "   (evite les avertissements de Windows sur les fichiers venus d'Internet)",
+    "2. Clic droit sur le ZIP > 'Extraire tout' vers un dossier (ex. C:\HADJ-NoTouch ou une cle USB).",
+    "   Ne lancez pas l'application depuis l'apercu du ZIP sans l'extraire.",
+    "3. Double-cliquez sur HADJ-NoTouch.bat. Le premier demarrage peut prendre 20 a 40 secondes.",
+    "   Facultatif : Creer-raccourci.bat ajoute une icone sur le Bureau et dans le menu Demarrer.",
+    "4. Si la camera ou le micro ne repondent pas : Parametres Windows > Confidentialite et securite >",
+    "   Camera (puis Microphone) > activer 'Autoriser les applications de bureau a acceder...'.",
+    "Aide complete, sans Internet : ouvrez 'AIDE - HELP.html'.",
+    "Desinstaller : Supprimer-raccourci.bat, puis supprimez le dossier. Aucune autre trace sur le PC",
+    "(reglages et journaux sont dans le sous-dossier user_data).",
+    "",
+    "=== ENGLISH ===",
+    "No installation, Python is NOT required: everything is in this folder.",
+    "Requirements: Windows 10 or 11 (64-bit), a webcam and a microphone.",
+    "1. BEFORE extracting: right-click the ZIP > Properties > tick 'Unblock' > OK.",
+    "2. Right-click the ZIP > 'Extract All' to a folder (e.g. C:\HADJ-NoTouch or a USB stick).",
+    "3. Double-click HADJ-NoTouch.bat. The first start can take 20 to 40 seconds.",
+    "   Optional: Creer-raccourci.bat adds a Desktop and Start-menu shortcut.",
+    "4. If the camera or microphone does not respond: Windows Settings > Privacy & security >",
+    "   Camera (then Microphone) > turn on 'Let desktop apps access...'.",
+    "Full offline help: open 'AIDE - HELP.html'. Uninstall: Supprimer-raccourci.bat, then delete the folder.",
+    "",
+    "=== العربية ===",
+    "لا تثبيت ولا حاجة إلى Python: كل شيء داخل هذا المجلد.",
+    "المتطلبات: Windows 10 أو 11 (64 بت)، كاميرا وميكروفون.",
+    "1. قبل فك الضغط: انقر بالزر الأيمن على ملف ZIP > خصائص > فعّل «إلغاء الحظر» > موافق.",
+    "2. انقر بالزر الأيمن على ملف ZIP > «استخراج الكل» إلى مجلد (مثل C:\HADJ-NoTouch أو مفتاح USB).",
+    "3. انقر نقراً مزدوجاً على HADJ-NoTouch.bat. قد يستغرق التشغيل الأول من 20 إلى 40 ثانية.",
+    "   اختياري: Creer-raccourci.bat يضيف اختصاراً على سطح المكتب وفي قائمة ابدأ.",
+    "4. إن لم تستجب الكاميرا أو الميكروفون: إعدادات Windows > الخصوصية والأمان > الكاميرا (ثم الميكروفون)",
+    "   > فعّل «السماح لتطبيقات سطح المكتب بالوصول».",
+    "المساعدة الكاملة دون إنترنت: افتح «AIDE - HELP.html». الإزالة: Supprimer-raccourci.bat ثم احذف المجلد.")
+
+# الدليل المحلي: نسخة python تحمله داخل app\app\help؛ نسخة pyinstaller تحتاجه بجانب الملف التنفيذي
+$helpRel = if ($Mode -eq "python") { "app/help" } else { "help" }
+if ($Mode -ne "python") { Copy-Tree (Join-Path $root "src\help") (Join-Path $app "help") -excludeDirs @("__pycache__") }
+# اختصار ظاهر في جذر المجلد (يعمل دون تشغيل التطبيق ودون إنترنت)
+Set-Content (Join-Path $app "AIDE - HELP.html") -Encoding UTF8 -Value (
+    '<!doctype html><meta charset="utf-8"><title>Help</title>' +
+    "<meta http-equiv=`"refresh`" content=`"0;url=$helpRel/index.html`"><a href=`"$helpRel/index.html`">Help</a>")
 Copy-Item (Join-Path $root "scripts\offline_test.ps1") $app -Force
 New-Item -ItemType Directory -Force (Join-Path $app "user_data") | Out-Null   # الإعدادات والسجلات
 
 if (-not $NoZip) {
     Write-Host "[5/5] الضغط"
-    $zip = Join-Path $dist "HADJ-NoTouch-portable.zip"
-    if (Test-Path $zip) { Remove-Item $zip -Force }
     Push-Location $dist
-    # tar الخاص بـ Windows صراحةً: نسخة GNU (من Git) تتجاهل -a وتنتج tar غير مضغوط باسم .zip
-    try { & "$env:SystemRoot\System32\tar.exe" -a -c -f $zip "HADJ-NoTouch" } finally { Pop-Location }
+    try { & "$env:SystemRoot\System32\tar.exe" -a -c -f "$name-portable.zip" $name } finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { throw "فشل الضغط" }
-    "{0}  ({1:N0} MB)" -f $zip, ((Get-Item $zip).Length / 1MB)
+    "{0}  ({1:N0} MB)" -f (Join-Path $dist "$name-portable.zip"), ((Get-Item (Join-Path $dist "$name-portable.zip")).Length / 1MB)
+    Update-Checksums
 }
 $size = (Get-ChildItem $app -Recurse | Measure-Object Length -Sum).Sum / 1MB
-"الناتج ({0}): {1}  ({2:N0} MB)" -f $Mode, $app, $size
+"الناتج ({0}، {1}): {2}  ({3:N0} MB)" -f $Edition, $Mode, $app, $size

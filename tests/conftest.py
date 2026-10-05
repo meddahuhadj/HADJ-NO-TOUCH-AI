@@ -93,6 +93,8 @@ class FakeOS(OSBackend):
     def monitor_power(self, on): self._rec("monitor_power", on); return True
     def set_dark_mode(self, enabled): self._rec("dark_mode", enabled); return True
     def toggle_microphone_mute(self): self._rec("mic_mute"); return True
+    def open_path(self, path): self._rec("open_path", str(path))
+    def empty_recycle_bin(self): self._rec("empty_recycle_bin"); return True
 
 
 class FakeApp:
@@ -126,6 +128,17 @@ class FakeApp:
 
     def open_settings(self):
         self.calls.append("open_settings")
+
+    def open_help(self):
+        self.calls.append("open_help")
+
+    def wake_camera(self):
+        self.calls.append("wake_camera")
+        return True
+
+    def set_profile(self, profile):
+        self.calls.append(("set_profile", profile))
+        return profile in ("standard", "kitchen", "presentation", "streaming", "browsing")
 
     def show_grid(self):
         from commands.modes import GridMode

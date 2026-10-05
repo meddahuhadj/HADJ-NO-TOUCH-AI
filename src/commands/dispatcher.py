@@ -4,6 +4,7 @@
 الإشعارات للواجهة تمر عبر notify(kind, **data):
     heard(text, accepted) | wake | result(ok, command, key, values, heard)
     confirm(command, heard) | confirm_cleared(executed) | state(...)
+    voice(active, level) | hand(points, pose)   ← لمؤشر الحالة فقط
 """
 from __future__ import annotations
 
@@ -17,8 +18,8 @@ from commands.actions import ActionContext, ActionError, run_steps
 from commands.modes import DictationMode, Mode
 from commands.parser import CommandParser, Match, is_no, is_yes
 from commands.wake import WakeGate, strip_wake
-from core.events import (CalibrationSample, DictationEvent, GestureEvent, PartialSpeechEvent,
-                         SpeechEvent, StatusEvent)
+from core.events import (CalibrationSample, DictationEvent, GestureEvent, HandPreviewEvent,
+                         PartialSpeechEvent, SpeechEvent, StatusEvent, VoiceActivityEvent)
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +67,10 @@ class Dispatcher:
                 self.handle_dictation(ev)
         elif isinstance(ev, CalibrationSample):
             self.notify("calib_sample", sample=ev)
+        elif isinstance(ev, VoiceActivityEvent):
+            self.notify("voice", active=ev.active, level=ev.level)
+        elif isinstance(ev, HandPreviewEvent):
+            self.notify("hand", points=ev.points, pose=ev.pose)
 
     # ---------------- الأوضاع ----------------
     def enter_mode(self, mode: Mode) -> None:
@@ -97,14 +102,32 @@ class Dispatcher:
     def handle_gesture(self, ev: GestureEvent) -> None:
         """إجراءات الإيماءات غير المتعلقة بالفأرة (الفأرة تُنفَّذ في عملية الرؤية)."""
         action = ev.data.get("action", "")
+        if ev.name == "dwell_progress":   # تقدّم النقر بالتحويم: للواجهة فقط، ليس إجراءً
+            try:
+                self.notify("dwell", progress=float(action))
+            except ValueError:
+                pass
+            return
         if action == "app.pause":
             # عملية الرؤية أوقفت التحكم فوراً؛ هنا الإشعار والصوت وإلغاء التأكيد المعلق
             self.ctx.app.pause()
         elif action == "app.resume":
             self.ctx.app.resume()
+        elif action.startswith("cmd:"):
+            self._gesture_command(action[4:], ev.name)
         elif action:
             self.execute_steps([{"action": action}], ev.name)
         self.notify("gesture", name=ev.name, action=action)
+
+    def _gesture_command(self, cid: str, gesture: str) -> None:
+        """إيماءة مربوطة بأمر (ملف شخصي). الأوامر الخطرة تبقى للصوت فقط: الإيماءة لا تُسأل "نعم/لا"."""
+        spec = next((s for s in self.parser.specs if s.id == cid), None)
+        if spec is None or spec.dangerous:
+            key = "unknown_action" if spec is None else "gesture_needs_voice"
+            self.notify("result", ok=False, command=gesture, key=key, values={"name": cid}, heard="")
+            self._sound("error")
+            return
+        self.execute_steps(spec.steps, gesture)
 
     def handle_speech(self, ev: SpeechEvent) -> None:
         with self._lock:
@@ -268,9 +291,10 @@ class Dispatcher:
             self.mode.tick(self.clock())
 
     def _sound(self, kind: str) -> None:
-        if self.ctx.config.feedback.sounds:
+        fb = self.ctx.config.feedback
+        if fb.sounds:
             try:
-                self.ctx.os.play_sound(kind)
+                self.ctx.os.play_sound(kind, fb.sound_volume)
             except Exception:  # noqa: BLE001
                 log.debug("تعذر تشغيل الصوت", exc_info=True)
 

@@ -10,8 +10,6 @@ import time
 import winsound
 from ctypes import wintypes
 
-from core import paths
-from core.sounds import ensure_sounds
 from os_layer.base import AppEntry, MonitorInfo, OSBackend, WindowInfo
 from os_layer.windows import display as win_display
 from os_layer.windows import input as win_input
@@ -46,9 +44,13 @@ def _class_name(hwnd) -> str:
 
 
 class WindowsBackend(OSBackend):
-    def __init__(self):
+    def __init__(self, sound_provider=None):
+        """sound_provider(volume) ← {kind: مسار wav}. اختياري: بدونه لا أصوات.
+        (حقن من الخارج لكي لا تعتمد طبقة النظام على بقية التطبيق: انظر docs/oss.)"""
+        self._sound_provider = sound_provider
         self._held_buttons: set[str] = set()
-        self._sounds = None
+        self._sounds: dict | None = None
+        self._sound_volume = None
         self._hotkey_threads: list[tuple[threading.Thread, int]] = []   # (الخيط، معرّفه في Windows)
 
     # ---- إعداد العملية ----
@@ -363,10 +365,39 @@ class WindowsBackend(OSBackend):
     def list_apps(self) -> list[AppEntry]:
         return list_installed_apps()
 
+    # ---- الملفات ----
+    def open_path(self, path: str) -> None:
+        try:
+            os.startfile(str(path))
+        except OSError:
+            subprocess.Popen(["explorer.exe", str(path)])
+
+    def empty_recycle_bin(self) -> bool:
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                            "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"],
+                           timeout=10, capture_output=True, creationflags=0x08000000)
+            return True
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+    # ---- آخر إدخال ----
+    def seconds_since_input(self) -> float | None:
+        class LASTINPUTINFO(ctypes.Structure):
+            _fields_ = [("cbSize", wintypes.UINT), ("dwTime", wintypes.DWORD)]
+        info = LASTINPUTINFO(ctypes.sizeof(LASTINPUTINFO), 0)
+        if not user32.GetLastInputInfo(ctypes.byref(info)):
+            return None
+        tick = ctypes.windll.kernel32.GetTickCount()
+        return ((tick - info.dwTime) & 0xFFFFFFFF) / 1000.0
+
     # ---- الأصوات ----
-    def play_sound(self, kind: str) -> None:
-        if self._sounds is None:
-            self._sounds = ensure_sounds(paths.user_dir() / "sounds")
+    def play_sound(self, kind: str, volume: int = 70) -> None:
+        if self._sound_provider is None:
+            return
+        if self._sounds is None or self._sound_volume != volume:
+            self._sounds = self._sound_provider(volume)
+            self._sound_volume = volume
         p = self._sounds.get(kind)
         if p:
             winsound.PlaySound(str(p), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)

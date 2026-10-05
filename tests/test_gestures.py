@@ -394,3 +394,61 @@ def test_pointer_executes_scroll_zoom_and_forwards_swipe(ptr):
         s.t += DT
     assert ("zoom", 1) in fake.calls
     assert not any(c[0] == "mouse" for c in fake.calls)   # لا نقرات أثناء التكبير
+
+
+def test_dwell_click_triggers_tap(ptr):
+    p, fake, fwd = ptr
+    p.cfg.dwell_click_enabled = True
+    p.cfg.dwell_click_ms = 300
+    p.cfg.dwell_click_radius = 50.0
+
+    s = Seq()
+    # Stay steady in point pose for 15 frames (~500ms > 300ms threshold)
+    for _ in range(15):
+        out = s.eng.update([make_hand("point")], s.t)
+        p.apply(out, s.t)
+        s.t += DT
+
+    progress_events = [val for ev, val in fwd if ev == "dwell_progress"]
+    assert len(progress_events) > 0
+    assert "pinch_tap:click" in p.performed or ("mouse", "left", "click", 1) in fake.calls
+
+
+
+def test_dwell_clicks_once_while_the_hand_stays_still(ptr):
+    """يد ساكنة فوق زر (مثل «حذف»): نقرة واحدة فقط، لا نقرات متكررة كل ثانية."""
+    p, fake, fwd = ptr
+    p.cfg.dwell_click_enabled = True
+    p.cfg.dwell_click_ms = 300
+    p.cfg.dwell_click_radius = 50.0
+    s = Seq()
+    for _ in range(60):                       # ثانيتان ساكنتان = 6 أضعاف مهلة التحويم
+        p.apply(s.eng.update([make_hand("point")], s.t), s.t)
+        s.t += DT
+    clicks = [c for c in fake.calls if c[:3] == ("mouse", "left", "click")]
+    assert len(clicks) == 1
+    progress = [v for g, v in fwd if g == "dwell_progress"]
+    assert len(progress) <= 15 and all(float(v) in [x / 10 for x in range(11)] for v in progress)
+
+
+def test_dwell_progress_is_a_notification_not_an_action(env):
+    from core.events import GestureEvent
+    env.disp.handle(GestureEvent("dwell_progress", {"action": "0.4"}))
+    assert [k for k, _ in env.notes] == ["dwell"] and env.notes[0][1] == {"progress": 0.4}
+    assert env.os.calls == []
+
+
+def test_media_commands_use_global_media_keys(env):
+    """«pause la musique» مع Word في المقدمة: مفتاح الوسائط، لا مسافة تُكتب في المستند."""
+    from commands.actions import run_steps
+    env.os.window_title = "Rapport.docx - Word"
+    for action in ("media_play_pause", "media_next", "media_prev"):
+        run_steps(env.disp.ctx, [{"action": action}])
+    assert env.os.calls == [("key", "media_play_pause", 1), ("key", "media_next", 1), ("key", "media_prev", 1)]
+
+
+def test_media_keys_exist_on_windows_and_linux():
+    from os_layer.linux.keys import keysym_name
+    from os_layer.windows.input import VK
+    for k in ("media_play_pause", "media_next", "media_prev"):
+        assert k in VK and keysym_name(k).startswith("XF86Audio")

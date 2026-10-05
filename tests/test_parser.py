@@ -170,3 +170,16 @@ def test_no_duplicate_phrases_across_commands(parser):
 def test_yes_no(text, lang, yes, no):
     assert is_yes(text, lang) is yes
     assert is_no(text, lang) is no
+
+
+def test_no_phrase_belongs_to_two_commands():
+    """عبارة واحدة لأمرين: الأول يفوز دائماً والثاني لا يُنفَّذ أبداً."""
+    from commands.parser import normalize
+    from config.loader import load_command_specs
+    from conftest import FIXTURES
+    owner = {}
+    for s in load_command_specs(FIXTURES / "no_user_dir"):
+        for lang, phrases in s.get("phrases", {}).items():
+            for ph in phrases:
+                key = (lang, normalize(ph))
+                assert owner.setdefault(key, s["id"]) == s["id"], (ph, owner[key], s["id"])

@@ -1,0 +1,55 @@
+# البث والتسجيل (OBS Studio). OBS لا يملك اختصارات افتراضية: عيّن المفاتيح نفسها في
+# OBS ← الإعدادات ← اختصارات المفاتيح (Hotkeys).
+# بدء البث وإيقافه يطلبان تأكيداً: البث المباشر يُنشر للجميع فوراً.
+id: streaming
+name: {ar: "البث", fr: "Streaming", en: "Streaming"}
+description:
+  ar: "أوامر OBS بالصوت (عيّن في OBS الاختصارات: Ctrl+Shift+F7…F12 و Ctrl+Shift+1…3). السحب والكف المفتوح معطّلان لكي لا تظهر حركة غير مقصودة في البث."
+  fr: "Commandes OBS à la voix (dans OBS, attribuez les raccourcis Ctrl+Shift+F7…F12 et Ctrl+Shift+1…3). Balayage et paume ouverte désactivés pour éviter un geste involontaire à l'antenne."
+  en: "Voice control for OBS (in OBS, assign hotkeys Ctrl+Shift+F7…F12 and Ctrl+Shift+1…3). Swipe and open palm are disabled to avoid accidental actions on stream."
+phrases:
+  fr: ["mode streaming", "profil obs"]
+  en: ["streaming mode", "profile obs"]
+bindings:
+  swipe_right: none
+  swipe_left: none
+  palm_hold_long: none
+commands:
+  - id: start_recording
+    phrases: {ar: ["ابدا التسجيل"], fr: ["lance l'enregistrement", "démarre l'enregistrement"], en: ["start recording"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+f9"}
+  - id: stop_recording
+    phrases: {ar: ["اوقف التسجيل"], fr: ["arrête l'enregistrement"], en: ["stop recording"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+f10"}
+  - id: start_stream
+    dangerous: true
+    phrases: {ar: ["ابدا البث"], fr: ["lance le direct", "démarre le stream"], en: ["start streaming", "go live"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+f11"}
+  - id: stop_stream
+    dangerous: true
+    phrases: {ar: ["اوقف البث"], fr: ["arrête le direct", "arrête le stream"], en: ["stop streaming", "end stream"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+f12"}
+  - id: mute_stream_mic
+    phrases: {ar: ["اكتم صوت البث"], fr: ["coupe le micro du stream"], en: ["mute stream mic"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+f8"}
+  - id: unmute_stream_mic
+    phrases: {ar: ["شغل صوت البث"], fr: ["rallume le micro du stream"], en: ["unmute stream mic"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+f7"}
+  - id: scene_1
+    phrases: {ar: ["المشهد الاول"], fr: ["scène un", "première scène"], en: ["scene one", "first scene"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+1"}
+  - id: scene_2
+    phrases: {ar: ["المشهد الثاني"], fr: ["scène deux", "deuxième scène"], en: ["scene two", "second scene"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+2"}
+  - id: scene_3
+    phrases: {ar: ["المشهد الثالث"], fr: ["scène trois", "troisième scène"], en: ["scene three", "third scene"]}
+    action: hotkey
+    args: {keys: "ctrl+shift+3"}

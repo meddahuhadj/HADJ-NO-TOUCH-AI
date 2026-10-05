@@ -1,5 +1,7 @@
 """منطق المعايرة (بلا كاميرا ولا واجهة): من عينات اليد إلى عتبات القرص ومنطقة التحكم.
 
+قبلها مرحلة تحضير قصيرة في الواجهة (scene_hints): الإضاءة، عكس الضوء، المسافة.
+
 الخطوات (أقل من دقيقة):
   open  : اليد مفتوحة أمام الكاميرا ← نسبة ظهور اليد، الإضاءة
   pinch : الإبهام يلمس السبابة ← مسافة القرص "المغلق" لهذه اليد
@@ -17,6 +19,42 @@ from core.events import CalibrationSample
 STEPS: list[tuple[str, float]] = [("open", 3.0), ("pinch", 3.0), ("point", 3.0), ("zone", 7.0)]
 SETTLE_S = 0.8           # بداية كل خطوة: وقت لتغيير الوضعية (لا تُحتسب العينات)
 MIN_SAMPLES = 8
+
+# حدود ظروف التصوير (انظر scene_hints)
+DARK_LEVEL = 50.0        # متوسط سطوع الصورة 0..255
+OVEREXPOSED_FRAC = 0.12  # أكثر من 12% من الصورة محترق = مصدر ضوء خلفك غالباً
+BACKLIT_RATIO = 0.65     # اليد أغمق بكثير من بقية الصورة
+TOO_CLOSE = 0.70         # اليد تملأ 70% من ارتفاع الصورة (أقل من ~30 سم)
+TOO_FAR = 0.15           # اليد أصغر من 15% (أبعد من ~1.5 م)
+HINT_ORDER = ("dark", "backlight", "too_close", "too_far")
+
+
+def scene_hints(sample: CalibrationSample) -> list[str]:
+    """مشكلات التصوير في عينة واحدة، بالأهمية: dark | backlight | too_close | too_far."""
+    hints = []
+    if sample.brightness < DARK_LEVEL:
+        hints.append("dark")
+    backlit = sample.overexposed > OVEREXPOSED_FRAC or (
+        sample.has_hand and sample.brightness > 90
+        and 0 < sample.hand_brightness < BACKLIT_RATIO * sample.brightness)
+    if backlit:
+        hints.append("backlight")
+    if sample.has_hand and sample.hand_size > TOO_CLOSE:
+        hints.append("too_close")
+    elif sample.has_hand and 0 < sample.hand_size < TOO_FAR:
+        hints.append("too_far")
+    return hints
+
+
+def dominant_hints(samples: list[CalibrationSample], share: float = 0.5) -> list[str]:
+    """التلميحات الظاهرة في أكثر من share من العينات (يتجاهل الومضات العابرة)."""
+    if not samples:
+        return []
+    counts = {h: 0 for h in HINT_ORDER}
+    for s in samples:
+        for h in scene_hints(s):
+            counts[h] += 1
+    return [h for h in HINT_ORDER if counts[h] > share * len(samples)]
 
 
 @dataclass
@@ -61,8 +99,10 @@ class Calibrator:
         res.brightness = float(np.median([s.brightness for s in allv]))
         if res.detection < 0.6:
             res.warnings.append("hand_rarely_seen")
-        if res.brightness < 50:
+        hints = dominant_hints(allv)
+        if "dark" in hints:
             res.warnings.append("too_dark")
+        res.warnings += [h for h in hints if h != "dark"]
 
         def vals(step, attr):
             return [getattr(s, attr) for s in self.samples[step] if s.has_hand]

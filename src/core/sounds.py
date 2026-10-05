@@ -16,7 +16,12 @@ TONES = {
     "confirm": [(740, 0.1), (0, 0.05), (740, 0.1)],
     "pause": [(520, 0.1), (390, 0.1), (260, 0.14)],
     "resume": [(260, 0.08), (390, 0.08), (520, 0.12)],
+    # خفيفة وقصيرة: تتكرر كثيراً
+    "hand": [(1046, 0.045)],
+    "step": [(587, 0.07), (880, 0.09)],   # خطوة معايرة جديدة
+    "hand_lost": [(784, 0.04), (523, 0.06)],
 }
+QUIET = {"hand": 0.45, "hand_lost": 0.45}   # نسبة من المستوى العام لهذه الأصوات المتكررة
 
 
 def _samples(freq: float, dur: float, volume: float = 0.35):
@@ -27,14 +32,19 @@ def _samples(freq: float, dur: float, volume: float = 0.35):
         yield volume * env * (math.sin(2 * math.pi * freq * i / RATE) if freq else 0.0)
 
 
-def ensure_sounds(folder: Path) -> dict[str, Path]:
+def ensure_sounds(folder: Path, volume: int = 70) -> dict[str, Path]:
+    """volume 10..100 (70 = المستوى الأصلي). كل مستوى في مجلد خاص: لا إعادة توليد عند كل تشغيل."""
+    volume = max(10, min(100, int(volume)))
+    folder = folder / f"v{volume}"
     folder.mkdir(parents=True, exist_ok=True)
+    amp = 0.5 * volume / 100
     paths = {}
     for kind, tones in TONES.items():
         p = folder / f"{kind}.wav"
         if not p.exists():
+            a = amp * QUIET.get(kind, 1.0)
             frames = b"".join(
-                struct.pack("<h", int(s * 32767)) for f, d in tones for s in _samples(f, d))
+                struct.pack("<h", int(s * 32767)) for f, d in tones for s in _samples(f, d, a))
             with wave.open(str(p), "wb") as w:
                 w.setnchannels(1)
                 w.setsampwidth(2)

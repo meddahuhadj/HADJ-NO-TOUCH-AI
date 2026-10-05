@@ -229,7 +229,8 @@ def test_every_default_command_maps_to_registered_action():
 # إجراءات يقصد بها الإيماءات/الماكرو/الواجهة لا النطق الصوتي:
 # mouse_down/mouse_up = ضغط/رفع مستمر (السحب)، move_mouse = إحداثيات
 # (وضع الشبكة)، run = تشغيل ماكرو. نطقها بلا معنى.
-GESTURE_ONLY_ACTIONS = {"mouse_down", "mouse_up", "move_mouse", "run"}
+# app.set_profile: أوامره الصوتية تُولَّد من الملفات الشخصية (config/profiles.py: switch_specs).
+GESTURE_ONLY_ACTIONS = {"mouse_down", "mouse_up", "move_mouse", "run", "app.set_profile"}
 
 
 def test_every_registered_action_has_a_voice_command_or_is_gesture_only():

@@ -199,12 +199,30 @@ class OSBackend(ABC):
     @abstractmethod
     def list_apps(self) -> list[AppEntry]: ...
 
-    def play_sound(self, kind: str) -> None:
-        """kind: ok | error | wake | confirm. اختياري."""
+    def play_sound(self, kind: str, volume: int = 70) -> None:
+        """kind: ok | error | wake | confirm | pause | resume | hand | hand_lost. اختياري."""
+
+    def open_path(self, path: str) -> None:
+        """يفتح ملفاً أو مجلداً أو رابطاً محلياً بالتطبيق الافتراضي (macOS: open، Linux: xdg-open)."""
+        import subprocess
+        import sys
+        subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(path)])
+
+    def empty_recycle_bin(self) -> bool:
+        return False
+
+    def capabilities(self) -> set[str]:
+        """الإمكانات الاختيارية التي ينفّذها هذا النظام فعلاً (طريقة معاد تعريفها في الصنف الفرعي).
+        التطبيق يُخفي الأوامر التي تحتاج إمكانية غير موجودة بدل أن يقبلها ثم يفشل."""
+        return {name for name in OPTIONAL if getattr(type(self), name) is not getattr(OSBackend, name)}
 
     def register_hotkey(self, combo: str, callback) -> bool:
         """اختصار عام للنظام. اختياري؛ يرجع False إن لم يكن مدعوماً."""
         return False
+
+    def seconds_since_input(self) -> float | None:
+        """الثواني منذ آخر حركة فأرة/لوحة مفاتيح (None = غير مدعوم)."""
+        return None
 
     def prepare_process(self) -> None:
         """إعدادات تُطبَّق مرة عند بدء كل عملية (مثل وعي DPI)."""
@@ -216,3 +234,13 @@ class OSBackend(ABC):
         """الخروج النهائي من العملية بعد انتهاء التنظيف."""
         import os
         os._exit(code)
+
+
+# طرق لها تنفيذ افتراضي "غير مدعوم": نظام جديد يستطيع تركها، فتختفي الأوامر المعتمدة عليها
+OPTIONAL = ("list_windows", "focus_window", "move_window", "resize_window", "set_window_rect",
+            "center_window", "snap_window", "set_always_on_top", "list_monitors",
+            "move_window_to_monitor", "set_display_mode", "switch_virtual_desktop",
+            "new_virtual_desktop", "close_virtual_desktop", "brightness", "set_brightness",
+            "current_brightness", "monitor_power", "set_dark_mode", "dark_mode_enabled",
+            "toggle_microphone_mute", "empty_recycle_bin", "register_hotkey", "seconds_since_input",
+            "play_sound")

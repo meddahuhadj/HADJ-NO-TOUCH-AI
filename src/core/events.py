@@ -34,11 +34,28 @@ class CalibrationSample:
     tip_y: float = 0.0
     brightness: float = 0.0
     pose: str = "none"
+    hand_size: float = 0.0        # أكبر بُعد لليد بوحدة ارتفاع الصورة (المسافة عن الكاميرا)
+    overexposed: float = 0.0      # نسبة البكسلات المحترقة (نافذة مضيئة في الخلفية)
+    hand_brightness: float = 0.0  # متوسط سطوع منطقة اليد (اليد مظلمة أمام خلفية مضيئة = عكس الضوء)
 
 
 @dataclass
 class PartialSpeechEvent:
     text: str
+
+
+@dataclass
+class VoiceActivityEvent:
+    """بداية/نهاية الكلام حسب VAD، ومستوى الصوت أثناءه (0..1) لتحريك مؤشر الحالة."""
+    active: bool
+    level: float = 0.0
+
+
+@dataclass
+class HandPreviewEvent:
+    """هيكل اليد المختصر لمؤشر الحالة: 21 نقطة (x, y) بنسب الصورة المعكوسة. أرقام فقط."""
+    points: list[tuple[float, float]]
+    pose: str = "none"
 
 
 @dataclass

@@ -17,9 +17,11 @@ from commands.grammar import build_grammar, grid_and_dictation_phrases
 from commands.modes import DictationMode, GridMode
 from commands.parser import CommandParser
 from commands.wake import WakeGate
+from config import macros as mac
+from config import profiles as prof
 from config.loader import load_command_specs, load_config, update_user_config
 from config.schema import AppConfig
-from core import paths
+from core import edition, paths
 from core.events import ControlMessage
 from core.ipc import Hub
 from os_layer.apps_index import AppIndex
@@ -100,7 +102,15 @@ class Controller:
         self._dispatch_thread: threading.Thread | None = None
 
         sp = self.config.speech
-        self.parser = CommandParser(load_command_specs(), sp.match_threshold)
+        from commands.actions import unsupported_actions
+        self.unsupported = unsupported_actions(backend)
+        self.base_specs = self._supported(load_command_specs())
+        if self.unsupported:
+            log.info("إجراءات غير مدعومة على هذا النظام (أُخفيت أوامرها): %s", sorted(self.unsupported))
+        self.profiles = prof.load_profiles(self.base_specs)
+        self.profile = self.profiles.get(self.config.profiles.active) or self.profiles[prof.STANDARD]
+        self.macros = mac.load_macros(self._non_macro_specs(), self.config.safety.emergency_hotkey)
+        self.parser = CommandParser(self._command_specs(), sp.match_threshold)
         self.gate = WakeGate(self._wake_words(), sp.continuous_listening,
                              sp.wake_timeout_s, sp.followup_s)
         self.apps = AppIndex(backend.list_apps, self.config.app_aliases,
@@ -110,6 +120,9 @@ class Controller:
         self.dispatcher.on_mode_exit = self._on_mode_exit
         self.dictation_state = "off"
         self.calibrating = False
+        self.languages = edition.available_languages()
+        self.lang_fallback: str | None = None
+        self._apply_language_fallback()
 
         self.audio = Worker("audio", self.mp, self.hub, audio_worker.run,
                             lambda: (self.audio_config(),))
@@ -117,12 +130,31 @@ class Controller:
                              lambda: (self.vision_config(), str(paths.models_dir())))
         self._sync_vision_pause()
 
+    def _apply_language_fallback(self) -> None:
+        """نموذج لغة الأوامر غير مثبّت (مثل العربية في النسخة الخفيفة) ← لغة متاحة، في الذاكرة فقط:
+        إعداد المستخدم يبقى كما هو، فيعود تلقائياً عند تثبيت الحزمة."""
+        wanted = self.config.speech.language
+        lang = edition.fallback_language(wanted, self.languages)
+        self.lang_fallback = wanted if lang != wanted else None
+        if self.lang_fallback:
+            log.warning("نموذج اللغة %s غير مثبّت؛ أوامر بـ %s", wanted, lang)
+            self.config.speech.language = lang
+            self.gate.wake_words = self._wake_words()
+
+    def dictation_engine(self) -> str:
+        dc = self.config.dictation
+        return "whisper" if dc.engine == "whisper" and edition.whisper_available() else "vosk"
+
     def _sync_vision_pause(self) -> None:
         msg = ControlMessage("paused", {"value": self.paused.is_set()})
         self.hub.set_initial("vision", [msg])   # لعملية رؤية تتصل لاحقاً
         self.hub.send("vision", msg)
 
     def notify(self, kind: str, **data) -> None:
+        if kind == "wake" or (kind == "result" and data.get("ok") and data.get("heard")):
+            self.wake_camera()   # من يتكلم حاضر: الكاميرا النائمة تستعد
+        if kind == "status" and data.get("source") == "vision":
+            self._vision_sound(data.get("state", ""))
         if kind == "status" and data.get("source") == "dictation":
             self.dictation_state = data["state"]
             log.info("حالة الإملاء: %s %s", data["state"], data.get("detail", ""))
@@ -132,6 +164,19 @@ class Controller:
                 w.state = (data["state"], data.get("detail", ""))
                 log.info("حالة %s: %s %s", w.name, data["state"], data.get("detail", ""))
         self._notify(kind, **data)
+
+    def _vision_sound(self, state: str) -> None:
+        """تنبيه صوتي لحالة الكاميرا: ضروري لمن لا يرى مؤشر الحالة."""
+        prev = self.vision.state[0]
+        if state == prev or self.paused.is_set() or self.calibrating:
+            return
+        if state in ("error", "no_image"):
+            self._sound("error")
+        elif self.config.feedback.hand_sounds:
+            if state == "tracking":
+                self._sound("hand")
+            elif state == "ready" and prev == "tracking":
+                self._sound("hand_lost")
 
     def _wake_words(self) -> list[str]:
         sp = self.config.speech
@@ -152,11 +197,30 @@ class Controller:
         hk = self.config.safety.emergency_hotkey
         if hk:
             self.os.register_hotkey(hk, self.toggle_pause)
+        if self.lang_fallback:
+            self.notify("lang_fallback", wanted=self.lang_fallback, used=self.config.speech.language)
 
     def _log_level(self) -> str:
         return logging.getLevelName(logging.getLogger().level)
 
-    def audio_config(self) -> dict:
+    def _supported(self, specs: list[dict]) -> list[dict]:
+        def actions(spec):
+            if "steps" in spec:
+                return {s.get("action") for s in spec["steps"]}
+            return {spec.get("action")}
+        return [s for s in specs if not actions(s) & self.unsupported]
+
+    def _command_specs(self) -> list[dict]:
+        """الأساسية + الماكرو + أوامر الملف الشخصي النشط + أوامر التبديل بين الملفات."""
+        return [*self.base_specs, *self.macros, *self._supported(self.profile.commands),
+                *prof.switch_specs(self.profiles)]
+
+    def _non_macro_specs(self) -> list[dict]:
+        """كل ما قد يتعارض مع عبارة ماكرو (الماكرو عام: يُقارن بأوامر كل الملفات الشخصية)."""
+        own = [c for p in self.profiles.values() for c in p.commands]
+        return [*self.base_specs, *own, *prof.switch_specs(self.profiles)]
+
+    def _grammar(self) -> dict:
         sp = self.config.speech
         grammar = {}
         latin = [a for a in self.config.app_aliases if not any("؀" <= ch <= "ۿ" for ch in a)]
@@ -166,6 +230,11 @@ class Controller:
             extra = [f"{verb} {a}" for a in latin] if verb else []
             extra += grid_and_dictation_phrases(lang)
             grammar[lang] = build_grammar(self.parser, lang, sp.wake_words.get(lang, []), extra)
+        return grammar
+
+    def audio_config(self) -> dict:
+        sp = self.config.speech
+        grammar = self._grammar()
         return {
             "language": sp.language,
             "models_dir": str(paths.models_dir()),
@@ -184,12 +253,39 @@ class Controller:
         d = self.config.vision.model_dump()
         d["log_level"] = self._log_level()
         d["dry_run"] = self.vision_dry_run
+        d["hand_preview"] = self.config.ui.status_orb
+        d["bindings"] = self.effective_bindings()
         return d
+
+    def effective_bindings(self) -> dict[str, str]:
+        """الإعدادات العامة ← إيماءات الماكرو ← الملف الشخصي النشط ← القبضة المقفلة."""
+        base = {**self.config.vision.bindings, **mac.bindings_for(self.macros)}
+        out = prof.effective_bindings(base, self.profile)
+        # إيماءة مربوطة بإجراء غير مدعوم على هذا النظام ← معطّلة (القبضة لا تُمس)
+        return {g: ("none" if a in self.unsupported and g != "fist_hold" else a) for g, a in out.items()}
+
+    _wake_sent = 0.0
+
+    def wake_camera(self) -> bool:
+        """يوقظ الكاميرا من السكون (لا يشغّلها إن أوقفها المستخدم بنفسه)."""
+        import time
+        if not self.vision.wanted or self.vision.state[0] not in ("dozing", "asleep"):
+            return False
+        now = time.monotonic()
+        if now - self._wake_sent < 2.0:   # رسالة واحدة تكفي حتى تتغير الحالة
+            return True
+        self._wake_sent = now
+        self.vision.send("wake")
+        return True
 
     def watchdog(self) -> None:
         """يُستدعى دورياً من الواجهة."""
         if self.stopping:
             return
+        if self.config.vision.wake_on_input and self.vision.state[0] == "asleep":
+            idle = self.os.seconds_since_input()
+            if idle is not None and idle < 1.0:
+                self.wake_camera()
         for w in (self.audio, self.vision):
             if not w.check():
                 self.notify("status", source=w.name, state="error", detail=w.state[1])
@@ -223,6 +319,7 @@ class Controller:
             "pending": self.dispatcher.pending is not None,
             "mode": self.dispatcher.mode.name if self.dispatcher.mode else None,
             "dictation_state": self.dictation_state,
+            "profile": self.profile.id,
         }
 
     # ---------------- AppControl ----------------
@@ -250,21 +347,27 @@ class Controller:
         self.gate.disarm()
         self.notify("state", **self.snapshot())
 
-    def set_language(self, lang: str) -> None:
-        if lang not in LANGUAGES or lang == self.config.speech.language:
-            return
+    def set_language(self, lang: str) -> bool:
+        """يرجع False إن لم يكن نموذج اللغة مثبّتاً."""
+        if lang not in self.languages:
+            return False
+        if lang == self.config.speech.language:
+            return True
+        self.lang_fallback = None
         self.config.speech.language = lang
         self.gate.wake_words = self._wake_words()
         self.gate.disarm()
         self.audio.send("reload", language=lang)
         update_user_config({"speech": {"language": lang}})
         self.notify("state", **self.snapshot())
+        return True
 
     def toggle_language(self) -> None:
-        """بالتناوب: العربية ← الإنجليزية ← الفرنسية ← العربية."""
+        """بالتناوب بين اللغات المثبّتة: العربية ← الإنجليزية ← الفرنسية ← العربية."""
+        langs = self.languages or list(LANGUAGES)
         cur = self.config.speech.language
-        i = LANGUAGES.index(cur) if cur in LANGUAGES else -1
-        self.set_language(LANGUAGES[(i + 1) % len(LANGUAGES)])
+        i = langs.index(cur) if cur in langs else -1
+        self.set_language(langs[(i + 1) % len(langs)])
 
     def set_continuous(self, value: bool) -> None:
         self.config.speech.continuous_listening = value
@@ -292,8 +395,9 @@ class Controller:
 
     def start_dictation(self) -> None:
         dc = self.config.dictation
-        self.dictation_state = "loading" if dc.engine == "whisper" else "ready"
-        self.audio.send("dictation", on=True, engine=dc.engine, model=dc.whisper_model,
+        engine = self.dictation_engine()   # النسخة الخفيفة: Vosk دائماً
+        self.dictation_state = "loading" if engine == "whisper" else "ready"
+        self.audio.send("dictation", on=True, engine=engine, model=dc.whisper_model,
                         threads=dc.threads, beam_size=dc.beam_size)
         self.dispatcher.enter_mode(DictationMode(self.dispatcher, self.config.speech.language))
 
@@ -308,6 +412,93 @@ class Controller:
     def open_settings(self) -> None:
         self.notify("open_settings")
 
+    def open_help(self) -> None:
+        self.notify("open_help")
+
+    # ---------------- الملفات الشخصية ----------------
+    def set_profile(self, pid: str) -> bool:
+        p = self.profiles.get(pid)
+        if p is None:
+            return False
+        changed = p.id != self.profile.id
+        self.profile = p
+        if changed:
+            self.config.profiles.active = p.id
+            update_user_config({"profiles": {"active": p.id}})
+            self._apply_profile()
+            log.info("الملف الشخصي: %s", p.id)
+        self._sound("ok")
+        self.notify("profile", id=p.id, name=p.label(self.config.ui.ui_language))
+        self.notify("state", **self.snapshot())
+        return True
+
+    def _apply_profile(self) -> None:
+        """دون إعادة تشغيل أي عملية: قواعد صوت جديدة وربط إيماءات جديد فوراً."""
+        parser = CommandParser(self._command_specs(), self.config.speech.match_threshold)
+        self.parser = parser
+        self.dispatcher.parser = parser
+        self.audio.send("set_grammar", grammar=self._grammar())
+        self.vision.send("bindings", bindings=self.effective_bindings())
+
+    def reload_profiles(self) -> None:
+        """بعد استيراد/نسخ/حذف/تعديل ملف: إعادة القراءة من القرص."""
+        self.profiles = prof.load_profiles(self.base_specs)
+        self.profile = self.profiles.get(self.profile.id) or self.profiles[prof.STANDARD]
+        self.config.profiles.active = self.profile.id
+        self._apply_profile()
+        self.notify("profiles_changed")
+
+    def import_profile(self, path) -> tuple["prof.Profile", list[str]]:
+        p, warnings = prof.import_profile(path, self.base_specs, self.profiles)
+        self.reload_profiles()
+        return self.profiles[p.id], warnings
+
+    def export_profile(self, pid: str, dest) -> None:
+        prof.export_profile(self.profiles[pid], dest)
+
+    def duplicate_profile(self, pid: str, name: str) -> "prof.Profile":
+        p = prof.duplicate_profile(self.profiles[pid], name, self.profiles, self.base_specs)
+        self.reload_profiles()
+        return self.profiles[p.id]
+
+    def delete_profile(self, pid: str) -> None:
+        prof.delete_profile(self.profiles[pid])
+        if pid == self.profile.id:
+            self.set_profile(prof.STANDARD)
+        self.reload_profiles()
+
+    # ---------------- الماكرو ----------------
+    def save_macro(self, data: dict) -> dict:
+        """ينشئ ماكرو أو يعدّله (data["id"] موجود = تعديل). يرفع MacroError برسالة للواجهة."""
+        others = [m for m in self.macros if m["id"] != data.get("id")]
+        owners = mac.phrase_owners([*self._non_macro_specs(), *others])
+        spec = mac.build_macro(data, owners, self.config.safety.emergency_hotkey,
+                               {m["id"] for m in others})
+        if spec.get("gesture"):   # إيماءة واحدة لماكرو واحد: الأحدث يأخذها
+            others = [{k: v for k, v in m.items() if not (k == "gesture" and v == spec["gesture"])}
+                      for m in others]
+        idx = next((i for i, m in enumerate(self.macros) if m["id"] == data.get("id")), None)
+        self.macros = others[:idx] + [spec] + others[idx:] if idx is not None else [*others, spec]
+        mac.save_macros(self.macros)
+        self._apply_profile()
+        self.notify("macros_changed")
+        return spec
+
+    def delete_macro(self, mid: str) -> None:
+        self.macros = [m for m in self.macros if m["id"] != mid]
+        mac.save_macros(self.macros)
+        self._apply_profile()
+        self.notify("macros_changed")
+
+    def save_profile_bindings(self, pid: str, bindings: dict[str, str]) -> list[str]:
+        """يحفظ تبديلات الإيماءات لملف مستخدم (تمر بنفس التحقق الأمني). يرجع التحذيرات."""
+        data = self.profiles[pid].to_dict()
+        data["bindings"] = {g: a for g, a in bindings.items() if a}
+        p, warnings = prof.parse_profile(data, self.base_specs)
+        prof.save_profile(p)
+        self.reload_profiles()
+        return warnings
+
     def apply_settings(self, changes: dict) -> bool:
         """يحفظ التغييرات ويطبّقها. يرجع True إذا احتاجت إعادة تشغيل التطبيق (لغة/خط/تباين)."""
         before = self.config.model_copy(deep=True)
@@ -315,6 +506,7 @@ class Controller:
         new = load_config()
         for name in type(self.config).model_fields:   # في المكان: ctx.config يشير لنفس الكائن
             setattr(self.config, name, getattr(new, name))
+        self._apply_language_fallback()
         sp = self.config.speech
         self.gate.wake_words = self._wake_words()
         self.gate.continuous = sp.continuous_listening
@@ -382,9 +574,14 @@ class Controller:
             # بدون abort: Whisper يكمل تحويل ما قيل قبل "أوقف الإملاء" ثم يتحرر
             self.audio.send("dictation", on=False, abort=abort)
 
+    def play_cue(self, kind: str) -> None:
+        """للواجهة: نغمة تأكيد (تحترم إعداد الأصوات ومستواها)."""
+        self._sound(kind)
+
     def _sound(self, kind: str) -> None:
-        if self.config.feedback.sounds:
+        fb = self.config.feedback
+        if fb.sounds:
             try:
-                self.os.play_sound(kind)
+                self.os.play_sound(kind, fb.sound_volume)
             except Exception:  # noqa: BLE001
                 pass

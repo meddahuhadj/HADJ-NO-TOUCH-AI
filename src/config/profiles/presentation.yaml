@@ -1,0 +1,39 @@
+# عرض تقديمي (PowerPoint، Google Slides، عارض PDF): الشرائح بالإيماءات أو الصوت.
+id: presentation
+name: {ar: "العرض التقديمي", fr: "Présentation", en: "Presentation"}
+description:
+  ar: "اسحب يميناً للشريحة التالية ويساراً للسابقة. كف مفتوح ثانيتين = شاشة سوداء."
+  fr: "Balayez à droite pour la diapositive suivante, à gauche pour la précédente. Paume ouverte 2 s = écran noir."
+  en: "Swipe right for the next slide, left for the previous one. Open palm for 2 s = black screen."
+phrases:
+  fr: ["mode présentation", "profil powerpoint"]
+  en: ["presentation mode", "profile powerpoint"]
+bindings:
+  swipe_right: "cmd:next_slide"
+  swipe_left: "cmd:previous_slide"
+  palm_hold_long: "cmd:black_screen"
+commands:
+  - id: next_slide
+    phrases: {ar: ["الشريحة التالية", "التالي"], fr: ["diapositive suivante", "suivante", "suivant"], en: ["next slide", "next"]}
+    action: key
+    args: {key: right}
+  - id: previous_slide
+    phrases: {ar: ["الشريحة السابقة", "السابق"], fr: ["diapositive précédente", "précédente", "précédent"], en: ["previous slide", "previous"]}
+    action: key
+    args: {key: left}
+  - id: start_show
+    phrases: {ar: ["ابدا العرض", "ابدأ العرض من البداية"], fr: ["lance le diaporama", "démarre la présentation"], en: ["start slideshow", "start presentation"]}
+    action: key
+    args: {key: f5}
+  - id: start_here
+    phrases: {ar: ["اعرض من هنا"], fr: ["diaporama à partir d'ici"], en: ["present from here"]}
+    action: hotkey
+    args: {keys: "shift+f5"}
+  - id: end_show
+    phrases: {ar: ["انه العرض", "اخرج من العرض"], fr: ["quitte le diaporama", "fin de la présentation"], en: ["end slideshow", "stop presentation"]}
+    action: key
+    args: {key: escape}
+  - id: black_screen
+    phrases: {ar: ["شاشة سوداء", "سود الشريحة"], fr: ["diapositive noire", "noircis la diapositive"], en: ["black screen", "black slide"]}
+    action: key
+    args: {key: b}

@@ -42,6 +42,14 @@ def main() -> int:
     if "--selftest" in sys.argv:
         from core import selftest
         return selftest.run()
+    from core import instance
+    cmd = instance.cli_command(sys.argv)
+    if cmd:   # HADJ-NoTouch --pause | --resume | --toggle-pause | --show ← للنسخة العاملة
+        from PySide6.QtCore import QCoreApplication
+        QCoreApplication(sys.argv)
+        ok = instance.send_command(cmd)
+        print("ok" if ok else "HADJ No-Touch is not running or did not answer")
+        return 0 if ok else 2
     log = logging.getLogger("main")
 
     from PySide6.QtCore import QLockFile, Qt
@@ -72,13 +80,27 @@ def main() -> int:
     lock = QLockFile(str(paths.user_dir() / "app.lock"))
     lock.setStaleLockTime(0)
     if not lock.tryLock(100):
-        QMessageBox.information(None, tr("app_name"), tr("already_running"))
+        # النسخة العاملة تُظهر لوحتها؛ الرسالة فقط إن تعذّر الاتصال بها
+        if not instance.send_command("show"):
+            QMessageBox.information(None, tr("app_name"), tr("already_running"))
         return 0
 
     bridge = Bridge()
     controller = Controller(create_backend(), bridge.notify, config)
     controller.vision_dry_run = "--vision-dry-run" in sys.argv
     ui = TrayApp(app, controller, bridge)  # noqa: F841 - يجب أن يبقى حياً
+
+    def on_command(command: str) -> None:
+        paused = controller.paused.is_set()
+        if command == "pause" and not paused:
+            controller.pause()
+        elif command == "resume" and paused:
+            controller.resume()
+        elif command == "toggle-pause":
+            controller.toggle_pause()
+        elif command == "show":
+            ui.show_panel()
+    commands = instance.CommandServer(on_command)  # noqa: F841 - يجب أن يبقى حياً
     controller.start()
     log.info("بدأ التطبيق (اللغة=%s)", config.speech.language)
     if "--exit-after" in sys.argv:  # للاختبار: خروج نظيف بعد N ثانية

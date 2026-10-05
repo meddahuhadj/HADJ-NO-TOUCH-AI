@@ -1,0 +1,27 @@
+# المطبخ: يدان مشغولتان أو متسختان ← إيماءات واسعة لتقليب صفحات الوصفة، والصوت لكل شيء آخر.
+id: kitchen
+name: {ar: "المطبخ", fr: "Cuisine", en: "Kitchen"}
+description:
+  ar: "اسحب بيدك لتقليب صفحات الوصفة. كف مفتوح لا يُخفي النوافذ (حركات المطبخ كثيرة)."
+  fr: "Balayez pour tourner les pages de la recette. La paume ouverte ne cache plus les fenêtres (on bouge beaucoup en cuisine)."
+  en: "Swipe to turn recipe pages. An open palm no longer hides windows (lots of movement in a kitchen)."
+phrases:
+  fr: ["mode cuisine"]
+  en: ["kitchen mode"]
+bindings:
+  swipe_right: "cmd:page_down"
+  swipe_left: "cmd:page_up"
+  palm_hold_long: none
+commands:
+  - id: next
+    phrases: {ar: ["التالي", "الصفحة اللي بعدها"], fr: ["suivant", "la suite"], en: ["next", "next part"]}
+    action: key
+    args: {key: pagedown}
+  - id: previous
+    phrases: {ar: ["السابق", "الصفحة اللي قبلها"], fr: ["précédent", "reviens en arrière"], en: ["previous", "go back a page"]}
+    action: key
+    args: {key: pageup}
+  - id: timer
+    phrases: {ar: ["المؤقت", "افتح المؤقت"], fr: ["minuteur", "ouvre le minuteur"], en: ["timer", "open timer"]}
+    action: run
+    args: {target: "ms-clock:"}

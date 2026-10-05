@@ -99,6 +99,20 @@ commands:
       fr: ["paramètres de l'application", "ouvre les réglages"]
     action: app.open_settings
 
+  - id: help
+    phrases:
+      ar: ["مساعدة", "افتح المساعدة", "دليل الاستخدام"]
+      en: ["help", "open help", "user guide"]
+      fr: ["aide", "ouvre l'aide", "guide d'utilisation"]
+    action: app.help
+
+  - id: camera_wake
+    phrases:
+      ar: ["ايقظ الكاميرا", "فعل الكاميرا"]
+      en: ["wake up the camera", "camera on"]
+      fr: ["réveille la caméra", "allume la caméra"]
+    action: app.wake_camera
+
   - id: refresh_apps
     phrases:
       ar: ["حدث قائمة التطبيقات", "حدث التطبيقات"]
@@ -467,12 +481,12 @@ commands:
     args: {dx: 0, dy: 1, step: 80}
 
   - id: window_grow
-    phrases: {ar: ["وسع النافذة", "اجعل النافذة اكبر تدريجيا"], en: ["make window bigger", "grow window"], fr: ["agrandis la fenêtre", "étends la fenêtre"]}
+    phrases: {ar: ["وسع النافذة", "اجعل النافذة اكبر تدريجيا"], en: ["make window bigger", "grow window"], fr: ["étends la fenêtre", "rends la fenêtre plus grande"]}
     action: resize_window
     args: {dw: 1, dh: 1, step: 80}
 
   - id: window_shrink
-    phrases: {ar: ["قلص النافذة", "اجعل النافذة اصغر تدريجيا"], en: ["make window smaller", "shrink window"], fr: ["réduis la fenêtre"]}
+    phrases: {ar: ["قلص النافذة", "اجعل النافذة اصغر تدريجيا"], en: ["make window smaller", "shrink window"], fr: ["rétrécis la fenêtre", "rends la fenêtre plus petite"]}
     action: resize_window
     args: {dw: -1, dh: -1, step: 80}
 
@@ -592,11 +606,11 @@ commands:
     action: browser_reopen_tab
 
   - id: browser_back
-    phrases: {ar: ["الصفحة السابقة في المتصفح", "ارجع للخلف"], en: ["go back", "browser back"], fr: ["page précédente", "retour en arrière"]}
+    phrases: {ar: ["الصفحة السابقة في المتصفح", "ارجع للخلف"], en: ["go back", "browser back"], fr: ["retour en arrière", "page précédente du navigateur"]}
     action: browser_back
 
   - id: browser_forward
-    phrases: {ar: ["الصفحة التالية في المتصفح", "تقدم للامام"], en: ["go forward", "browser forward"], fr: ["page suivante", "avance d'une page"]}
+    phrases: {ar: ["الصفحة التالية في المتصفح", "تقدم للامام"], en: ["go forward", "browser forward"], fr: ["avance d'une page", "page suivante du navigateur"]}
     action: browser_forward
 
   - id: browser_refresh
@@ -608,7 +622,7 @@ commands:
     action: browser_fullscreen
 
   - id: browser_search
-    phrases: {ar: ["ابحث في الويب عن {text}", "بحث انترنت {text}"], en: ["search web for {text}", "google {text}"], fr: ["cherche {text} sur le web", "recherche google {text}"]}
+    phrases: {ar: ["ابحث في الويب عن {text}", "بحث انترنت {text}"], en: ["search web for {text}", "google {text}"], fr: ["cherche sur le web {text}", "recherche google {text}"]}
     action: browser_search
     args: {query: "{text}"}
 
