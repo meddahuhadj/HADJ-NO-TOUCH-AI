@@ -250,17 +250,21 @@ def _search(ctx, a):
 
 
 # ============================ التحكم التام بالنظام والوسائط ============================
+# مفاتيح الوسائط العامة: تتحكم بالمشغّل النشط (Spotify، VLC، YouTube في المتصفح…) حتى في الخلفية،
+# ولا تُدخل أي حرف في النافذة الأمامية (المسافة أو Ctrl+سهم كانت تكتب في المستند المفتوح).
 @action("media_play_pause")
 def _media_play(ctx, a):
-    ctx.os.hotkey("playpause")
+    ctx.os.key("media_play_pause")
+
+
 @action("media_next")
 def _media_next(ctx, a):
-    ctx.os.hotkey("nexttrack")
+    ctx.os.key("media_next")
 
 
 @action("media_prev")
 def _media_prev(ctx, a):
-    ctx.os.hotkey("prevtrack")
+    ctx.os.key("media_prev")
 
 
 @action("task_view")
@@ -624,35 +628,6 @@ def _osk(ctx, a):
 @action("open_action_center")
 def _action_center(ctx, a):
     ctx.os.hotkey("win", "a")
-
-
-
-# ============================ الوسائط والتحكم السياقي ============================
-@action("media_play_pause")
-def _media_play_pause(ctx, a):
-    title = (ctx.os.active_window_title() or "").lower()
-    if any(w in title for w in ["youtube", "vimeo", "twitch"]):
-        ctx.os.key("k")
-    else:
-        ctx.os.hotkey("space")
-
-
-@action("media_next")
-def _media_next(ctx, a):
-    title = (ctx.os.active_window_title() or "").lower()
-    if any(w in title for w in ["youtube", "vimeo"]):
-        ctx.os.hotkey("shift", "n")
-    else:
-        ctx.os.hotkey("ctrl", "right")
-
-
-@action("media_prev")
-def _media_prev(ctx, a):
-    title = (ctx.os.active_window_title() or "").lower()
-    if any(w in title for w in ["youtube", "vimeo"]):
-        ctx.os.hotkey("shift", "p")
-    else:
-        ctx.os.hotkey("ctrl", "left")
 
 
 

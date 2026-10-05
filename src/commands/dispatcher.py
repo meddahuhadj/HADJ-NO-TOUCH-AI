@@ -102,6 +102,12 @@ class Dispatcher:
     def handle_gesture(self, ev: GestureEvent) -> None:
         """إجراءات الإيماءات غير المتعلقة بالفأرة (الفأرة تُنفَّذ في عملية الرؤية)."""
         action = ev.data.get("action", "")
+        if ev.name == "dwell_progress":   # تقدّم النقر بالتحويم: للواجهة فقط، ليس إجراءً
+            try:
+                self.notify("dwell", progress=float(action))
+            except ValueError:
+                pass
+            return
         if action == "app.pause":
             # عملية الرؤية أوقفت التحكم فوراً؛ هنا الإشعار والصوت وإلغاء التأكيد المعلق
             self.ctx.app.pause()

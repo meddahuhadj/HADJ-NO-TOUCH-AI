@@ -76,12 +76,21 @@ class PointerController:
         self._stable_pos = None
         self.reset_dwell()
 
+    DWELL_STEP = 0.1   # يُرسل التقدّم بخطوات 10% فقط (لا 30 رسالة/ث)
+
     def reset_dwell(self) -> None:
         if self.dwell_pos is not None or self.dwell_start_t is not None:
             self.dwell_pos = None
             self.dwell_start_t = None
             self.dwell_triggered = False
-            self.forward("dwell_progress", "0.0")
+            self._dwell_report(0.0)
+
+    def _dwell_report(self, progress: float) -> None:
+        """تقدّم النقر بالتحويم للواجهة (حدث dwell_progress: إشعار فقط، لا ينفّذ أي إجراء)."""
+        step = round(progress / self.DWELL_STEP) * self.DWELL_STEP
+        if step != getattr(self, "_dwell_last", None):
+            self._dwell_last = step
+            self.forward("dwell_progress", f"{step:.1f}")
 
     def _run_binding(self, gesture: str, amount: int = 1) -> None:
         action = self.cfg.bindings.get(gesture, "none")
@@ -213,18 +222,19 @@ class PointerController:
                 else:
                     dist = math.hypot(fx - self.dwell_pos[0], fy - self.dwell_pos[1])
                     if dist > dwell_radius:
+                        # خروج من الدائرة: عدّ جديد (وهو وحده ما يعيد تسليح النقر بعد نقرة)
                         self.dwell_pos = (fx, fy)
                         self.dwell_start_t = t
                         self.dwell_triggered = False
-                        self.forward("dwell_progress", "0.0")
-                    else:
+                        self._dwell_report(0.0)
+                    elif not self.dwell_triggered:
                         elapsed_ms = (t - self.dwell_start_t) * 1000.0
                         progress = min(1.0, elapsed_ms / dwell_ms)
-                        if not self.dwell_triggered:
-                            self.forward("dwell_progress", f"{progress:.2f}")
-                            if progress >= 1.0:
-                                self.dwell_triggered = True
-                                self._run_binding("pinch_tap")
-                                self.reset_dwell()
+                        self._dwell_report(progress)
+                        if progress >= 1.0:
+                            # نقرة واحدة: اليد الساكنة فوق زر (مثل «حذف») لا تنقر مراراً
+                            self.dwell_triggered = True
+                            self._run_binding("pinch_tap")
+                            self._dwell_report(0.0)
         elif getattr(self.cfg, "dwell_click_enabled", False):
             self.reset_dwell()
